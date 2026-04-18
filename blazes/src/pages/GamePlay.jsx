@@ -328,7 +328,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
       {bbPopup.show && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-white text-gray-900 font-black px-6 py-4 rounded-2xl shadow-2xl border-2 border-gray-200 animate-bounce">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-white text-gray-900 font-black px-4 sm:px-6 py-4 rounded-2xl shadow-2xl border-2 border-gray-200 animate-bounce">
           {(bbPopup.xp || 0) > 0 && (
             <div className="text-center">
               <div className="text-xl text-red-600">+{bbPopup.xp}</div>
@@ -347,11 +347,11 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
           )}
         </div>
       )}
-      
+
       {/* Assignment Completion Modal */}
       {assignmentCompleted && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-md w-full shadow-2xl text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-600" strokeWidth={3} />
             </div>
@@ -434,7 +434,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
                   onChange={(e) => setTypedAnswer(e.target.value)}
                   placeholder={currentQuestion.answerType === 'math_equation' ? 'Enter your answer...' : 'Type your answer...'}
                   autoFocus
-                  className="w-full px-6 py-4 border-2 border-gray-200 rounded-2xl text-lg font-bold text-gray-900 focus:border-blue-500 focus:outline-none transition-colors text-center"
+                  className="w-full px-4 sm:px-6 py-4 border-2 border-gray-200 rounded-2xl text-lg font-bold text-gray-900 focus:border-blue-500 focus:outline-none transition-colors text-center"
                 />
                 <button type="submit" disabled={!typedAnswer.trim()}
                   className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lg">
@@ -523,7 +523,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
               ))}
             </div>
             {/* Label options — tap to match to next unmatched pin */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {currentQuestion.options.map((label, i) => {
                 const isCorrectLabel = currentQuestion.correctAnswer.some(p => p.label === label);
                 return (
@@ -861,11 +861,11 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
   // Eliminated screen
   if (isEliminated) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 sm:p-6">
         <div className="text-center">
-          <Skull className="w-20 h-20 text-red-500 mx-auto mb-6" strokeWidth={2} />
-          <h1 className="text-5xl font-black text-white mb-3">Eliminated!</h1>
-          <p className="text-gray-400 text-xl mb-8">You ran out of lives. Better luck next time!</p>
+          <Skull className="w-16 h-16 sm:w-20 sm:h-20 text-red-500 mx-auto mb-6" strokeWidth={2} />
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-3">Eliminated!</h1>
+          <p className="text-gray-400 text-lg sm:text-xl mb-8">You ran out of lives. Better luck next time!</p>
           <div className="flex gap-2 justify-center mb-8">
             {Array.from({ length: livesTotal }).map((_, i) => <Heart key={i} className="w-8 h-8 text-gray-600" />)}
           </div>
@@ -890,15 +890,15 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
       {suddenDeathFlash && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-950/95 animate-pulse">
           <div className="text-center">
-            <Skull className="w-24 h-24 text-red-500 mx-auto mb-4" strokeWidth={2.5} />
-            <h1 className="text-6xl sm:text-8xl font-black text-red-500 mb-2 tracking-tight">SUDDEN DEATH</h1>
-            <p className="text-red-300 font-bold text-xl">One wrong answer and you're out!</p>
+            <Skull className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-red-500 mx-auto mb-4" strokeWidth={2.5} />
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-red-500 mb-2 tracking-tight">SUDDEN DEATH</h1>
+            <p className="text-red-300 font-bold text-base sm:text-lg md:text-xl">One wrong answer and you're out!</p>
           </div>
         </div>
       )}
 
       {bbPopup.show && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-white text-gray-900 font-black px-6 py-4 rounded-2xl shadow-2xl border-2 border-gray-200 animate-bounce">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-white text-gray-900 font-black px-4 sm:px-6 py-4 rounded-2xl shadow-2xl border-2 border-gray-200 animate-bounce">
           {(bbPopup.xp || 0) > 0 && (
             <div className="text-center">
               <div className="text-xl text-red-600">+{bbPopup.xp}</div>

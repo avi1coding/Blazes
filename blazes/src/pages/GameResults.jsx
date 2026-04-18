@@ -157,7 +157,7 @@ export default function GameResults() {
 
       {/* Header */}
       <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
               <Flame className="w-6 h-6 text-white" strokeWidth={2.5} />
@@ -179,7 +179,7 @@ export default function GameResults() {
               <X className="w-12 h-12 text-red-900" strokeWidth={2} />
             </div>
           )}
-          <h1 className="text-3xl sm:text-5xl font-black text-gray-900 mb-2">{hasWon ? 'You Won!' : 'Game Over!'}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-2">{hasWon ? 'You Won!' : 'Game Over!'}</h1>
           <p className="text-lg text-gray-600">
             {gameMode === 'survival' ? 'Survival Mode' : 'Classic Mode'} &middot; Code: {gameCode}
           </p>
@@ -187,7 +187,7 @@ export default function GameResults() {
 
         {/* Your Stats */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-gray-200 mb-6">
-          <div className="grid grid-cols-3 gap-3 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
             <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl">
               <div className="text-3xl sm:text-4xl font-black text-red-600 mb-1">{score}</div>
               <div className="text-xs sm:text-sm font-bold text-gray-600">Score</div>

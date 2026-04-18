@@ -55,14 +55,14 @@ export default function RegularSetupPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-sm sm:max-w-md mx-4 sm:mx-auto">
         <div className="text-center mb-8">
           <Flame className="w-16 h-16 mx-auto text-red-600" />
-          <h1 className="text-4xl font-black text-gray-800 mt-2">Setup Regular Game</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-800 mt-2">Setup Regular Game</h1>
           <p className="text-gray-600">Configure your quiz and get ready to play.</p>
         </div>
 
-        <form onSubmit={handleCreateGame} className="bg-white p-8 rounded-2xl shadow-lg space-y-6">
+        <form onSubmit={handleCreateGame} className="bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-lg space-y-6">
           <div className="space-y-2">
             <label htmlFor="gameName" className="text-sm font-bold text-gray-600">Game Name</label>
             <input

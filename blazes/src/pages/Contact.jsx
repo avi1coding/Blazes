@@ -36,19 +36,19 @@ export default function Contact() {
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
               <Flame className="w-5 h-5 text-white" strokeWidth={2.5} />
             </div>
             <span className="text-xl font-black">Blazes</span>
           </Link>
-          <div className="flex items-center gap-6">
-            <Link to="/" className="text-gray-700 hover:text-red-600 font-semibold">Home</Link>
-            <Link to="/about" className="text-gray-700 hover:text-red-600 font-semibold">About</Link>
-            <Link to="/contact" className="text-red-600 font-bold border-b-2 border-red-600">Contact</Link>
-            <Link to="/pricing" className="text-gray-700 hover:text-red-600 font-semibold">Pricing</Link>
-            <Link to="/login" className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors">
+          <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
+            <Link to="/" className="hidden sm:inline text-gray-700 hover:text-red-600 font-semibold">Home</Link>
+            <Link to="/about" className="hidden md:inline text-gray-700 hover:text-red-600 font-semibold">About</Link>
+            <Link to="/contact" className="hidden sm:inline text-red-600 font-bold border-b-2 border-red-600">Contact</Link>
+            <Link to="/pricing" className="hidden md:inline text-gray-700 hover:text-red-600 font-semibold">Pricing</Link>
+            <Link to="/login" className="bg-red-600 text-white px-4 sm:px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors text-sm sm:text-base">
               Log In
             </Link>
           </div>
@@ -56,23 +56,23 @@ export default function Contact() {
       </nav>
 
       {/* Hero */}
-      <section className="pt-32 pb-16 bg-red-600">
-        <div className="max-w-3xl mx-auto px-6 text-center text-white">
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-8">
+      <section className="pt-20 sm:pt-24 md:pt-32 pb-12 sm:pb-16 bg-red-600">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center text-white">
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-6 sm:mb-8">
             <Mail className="w-4 h-4" />
             <span className="text-sm font-bold uppercase tracking-wide">Get in Touch</span>
           </div>
-          <h1 className="text-5xl md:text-6xl font-black leading-tight mb-4">We're Here to Help</h1>
-          <p className="text-xl text-white/85">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-4">We're Here to Help</h1>
+          <p className="text-base sm:text-lg md:text-xl text-white/85">
             Got a bug, a question, or just want to say hi? We read every message.
           </p>
         </div>
       </section>
 
       {/* Contact Options */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-6 mb-16">
+      <section className="py-12 sm:py-16 bg-gray-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-10 sm:mb-16">
             <div className="bg-white rounded-2xl p-6 border-2 border-gray-100 text-center">
               <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Bug className="w-6 h-6 text-red-600" strokeWidth={2.5} />
@@ -190,8 +190,8 @@ export default function Contact() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white py-12 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+      <footer className="bg-white py-8 sm:py-12 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
               <Flame className="w-5 h-5 text-white" strokeWidth={2.5} />

@@ -223,7 +223,7 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
               <h2 className="text-3xl sm:text-4xl font-black text-white mb-2">Choose Your Wager</h2>
               <p className="text-gray-500">Pick your risk level for the next question</p>
             </div>
-            <div className="grid grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
               {['rock', 'raindrop', 'torch'].map(betType => {
                 const bet = tierData[betType];
                 return (
@@ -286,13 +286,13 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
         {/* RESULT PHASE */}
         {phase === 'result' && lastResult && (
           <div className="text-center py-12 sm:py-16">
-            <div className={`inline-flex items-center gap-4 px-10 py-6 rounded-3xl mb-6 ${lastResult.correct ? 'bg-green-900/60 border-2 border-green-500' : 'bg-red-900/60 border-2 border-red-500'}`}>
+            <div className={`inline-flex items-center gap-3 sm:gap-4 px-5 sm:px-7 md:px-10 py-4 sm:py-5 md:py-6 rounded-3xl mb-6 ${lastResult.correct ? 'bg-green-900/60 border-2 border-green-500' : 'bg-red-900/60 border-2 border-red-500'}`}>
               {lastResult.correct ? <Check className="w-10 h-10 text-green-400" /> : <X className="w-10 h-10 text-red-400" />}
-              <span className={`text-4xl sm:text-5xl font-black ${lastResult.correct ? 'text-green-300' : 'text-red-300'}`}>
+              <span className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black ${lastResult.correct ? 'text-green-300' : 'text-red-300'}`}>
                 {lastResult.correct ? `+${lastResult.points}` : lastResult.points}
               </span>
             </div>
-            <div className="text-5xl sm:text-6xl font-black text-white mb-3">{score} pts</div>
+            <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-3">{score} pts</div>
             <div className="text-gray-500 text-base">
               {streak > 0 ? `${streak} in a row — Tier ${currentTier}` : 'Streak reset'}
             </div>
@@ -311,7 +311,7 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
               : i + 1;
           });
           return (
-            <div className="w-64 flex-shrink-0 bg-gray-900/80 border-l border-gray-800 p-4 overflow-y-auto hidden lg:block">
+            <div className="hidden lg:block w-56 xl:w-64 flex-shrink-0 bg-gray-900/80 border-l border-gray-800 p-4 overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-xs font-black text-gray-500 uppercase tracking-wider">Leaderboard</h4>
                 <button onClick={() => setShowLeaderboard(false)} className="text-gray-600 hover:text-gray-400 text-xs font-bold">Hide</button>

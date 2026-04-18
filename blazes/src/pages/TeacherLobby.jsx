@@ -174,11 +174,11 @@ export default function TeacherLobby() {
                     </div>
 
                     {/* Copy Code */}
-                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
+                    <div className="bg-white rounded-2xl p-5 sm:p-8 shadow-sm border border-gray-200">
                         <h3 className="font-black text-gray-900 mb-4">Share Game Code</h3>
 
                         <div className="bg-gradient-to-br from-orange-100 to-red-100 rounded-xl p-4 sm:p-6 mb-4 border-2 border-orange-200">
-                            <p className="text-center text-3xl sm:text-4xl font-black text-orange-600 tracking-widest">{gameCode}</p>
+                            <p className="text-center text-2xl sm:text-3xl md:text-4xl font-black text-orange-600 tracking-widest">{gameCode}</p>
                         </div>
 
                         <button
@@ -196,7 +196,7 @@ export default function TeacherLobby() {
                 </div>
 
                 {/* Participants */}
-                <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 mb-8">
+                <div className="bg-white rounded-2xl p-5 sm:p-8 shadow-sm border border-gray-200 mb-8">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
                             <Users className="w-6 h-6" />

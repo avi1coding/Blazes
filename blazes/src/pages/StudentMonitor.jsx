@@ -104,11 +104,11 @@ export default function StudentMonitor() {
           <div className="flex items-center gap-4 sm:gap-8">
             <div className="text-center">
               <div className="text-sm text-gray-600">Current Score</div>
-              <div className="text-3xl font-black text-red-600">{studentData.score || 0}</div>
+              <div className="text-xl sm:text-2xl md:text-3xl font-black text-red-600">{studentData.score || 0}</div>
             </div>
             <div className="text-center">
               <div className="text-sm text-gray-600">Answers</div>
-              <div className="text-3xl font-black text-gray-900">{studentAnswers.length}</div>
+              <div className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900">{studentAnswers.length}</div>
             </div>
           </div>
         </div>
@@ -116,8 +116,8 @@ export default function StudentMonitor() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Student Profile Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 mb-8">
-          <div className="flex items-center gap-6">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-200 mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             <AvatarPreview skinId={skinId} initial={studentData.player_name?.charAt(0).toUpperCase() || 'S'} size={80} />
             <div className="flex-1">
               <h2 className="text-2xl font-black text-gray-900">{studentData.player_name}</h2>
@@ -205,10 +205,10 @@ export default function StudentMonitor() {
         </div>
 
         {/* Stats */}
-        <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-3 sm:gap-4">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 text-center">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-200 text-center">
             <div className="text-sm text-gray-600 mb-2">Accuracy</div>
-            <div className="text-3xl font-black text-gray-900">
+            <div className="text-2xl sm:text-3xl font-black text-gray-900">
               {studentAnswers.length > 0
                 ? Math.round((studentAnswers.filter(a => a.is_correct).length / studentAnswers.length) * 100)
                 : 0
@@ -216,16 +216,16 @@ export default function StudentMonitor() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 text-center">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-200 text-center">
             <div className="text-sm text-gray-600 mb-2">Correct Answers</div>
-            <div className="text-3xl font-black text-green-600">
+            <div className="text-2xl sm:text-3xl font-black text-green-600">
               {studentAnswers.filter(a => a.is_correct).length}
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 text-center">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-200 text-center">
             <div className="text-sm text-gray-600 mb-2">Avg Time</div>
-            <div className="text-3xl font-black text-gray-900">
+            <div className="text-2xl sm:text-3xl font-black text-gray-900">
               {(() => {
                 const timed = studentAnswers.filter(a => a.time_taken != null);
                 return timed.length > 0

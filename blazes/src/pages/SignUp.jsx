@@ -436,7 +436,7 @@ export default function SignUp() {
         {role === 'teacher' && (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Title and Name Fields */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Title</label>
                 <StyledSelect

@@ -166,7 +166,7 @@ export default function TeacherMonitoringDashboard() {
       {/* End Game Confirmation Modal */}
       {endGameConfirm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border-2 border-red-200 p-8 max-w-md w-full shadow-xl">
+          <div className="bg-white rounded-2xl border-2 border-red-200 p-5 sm:p-8 max-w-md w-full shadow-xl">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <StopCircle className="w-6 h-6 text-red-600" />
@@ -303,7 +303,7 @@ export default function TeacherMonitoringDashboard() {
                   )}
 
                   {/* Stats cards */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     <div className="bg-white rounded-2xl p-4 text-center border border-gray-200">
                       <Users className="w-5 h-5 text-green-500 mx-auto mb-1" />
                       <div className="text-2xl font-black text-green-600">{alive.length}</div>
@@ -422,10 +422,10 @@ export default function TeacherMonitoringDashboard() {
             </div>
 
             {/* Shared: Timer + Scores */}
-            <div className="bg-gray-900 rounded-2xl p-6 mb-6">
+            <div className="bg-gray-900 rounded-2xl p-4 sm:p-6 mb-6">
               {/* Timer */}
               <div className="text-center mb-4">
-                <span className={`font-black text-3xl tabular-nums ${(displayTimeLeft || 0) < 30 ? 'text-red-400' : 'text-white'}`}>
+                <span className={`font-black text-2xl sm:text-3xl tabular-nums ${(displayTimeLeft || 0) < 30 ? 'text-red-400' : 'text-white'}`}>
                   {mins}:{secs.toString().padStart(2, '0')}
                 </span>
               </div>
@@ -433,15 +433,15 @@ export default function TeacherMonitoringDashboard() {
               <div className="flex items-center gap-4 mb-2">
                 <div className="text-right flex-1">
                   <div className="text-xs font-bold text-blue-400">TEAM 1</div>
-                  <div className="text-4xl font-black text-white">{clashData.team1Score}</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black text-white">{clashData.team1Score}</div>
                 </div>
-                <div className="w-64 h-6 bg-gray-700 rounded-full overflow-hidden flex">
+                <div className="w-32 sm:w-48 md:w-64 h-6 bg-gray-700 rounded-full overflow-hidden flex">
                   <div className="bg-blue-500 h-full transition-all duration-500" style={{ width: `${(clashData.team1Score / total) * 100}%` }} />
                   <div className="bg-red-500 h-full transition-all duration-500" style={{ width: `${(clashData.team2Score / total) * 100}%` }} />
                 </div>
                 <div className="flex-1">
                   <div className="text-xs font-bold text-red-400">TEAM 2</div>
-                  <div className="text-4xl font-black text-white">{clashData.team2Score}</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black text-white">{clashData.team2Score}</div>
                 </div>
               </div>
             </div>
@@ -503,7 +503,7 @@ export default function TeacherMonitoringDashboard() {
               </div>
             ) : (
               /* ─── Dashboard View (teams + players) ─── */
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[1, 2].map(teamNum => {
                   const teamPlayers = (clashData.participants || []).filter(p => p.team === teamNum);
                   return (
@@ -576,7 +576,7 @@ export default function TeacherMonitoringDashboard() {
                   <button
                     key={player.id}
                     onClick={() => handleViewStudent(player.user_id)}
-                    className={`p-6 rounded-xl transition-all border-2 text-left relative ${
+                    className={`p-4 sm:p-6 rounded-xl transition-all border-2 text-left relative ${
                       isEliminated
                         ? 'bg-gray-100 border-gray-200 opacity-60 cursor-default'
                         : 'bg-gradient-to-br from-blue-50 to-purple-50 hover:shadow-lg border-gray-200 hover:border-blue-500'

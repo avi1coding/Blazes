@@ -165,7 +165,7 @@ export default function TeacherGameResults() {
                                 )}
                             </div>
                             <div className="text-right">
-                                <div className="text-4xl font-black text-gray-900">{winner.score || 0}</div>
+                                <div className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900">{winner.score || 0}</div>
                                 <div className="text-sm font-bold text-gray-400">points</div>
                             </div>
                         </div>
@@ -173,7 +173,7 @@ export default function TeacherGameResults() {
                 )}
 
                 {/* Summary Stats */}
-                <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
                     <div className="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-200">
                         <Zap className="w-6 h-6 text-yellow-500 mx-auto mb-2" strokeWidth={2.5} />
                         <div className="text-2xl font-black text-gray-900">{topScore}</div>
@@ -264,7 +264,7 @@ export default function TeacherGameResults() {
                 )}
 
                 {participants.length === 0 && (
-                    <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-gray-200">
+                    <div className="bg-white rounded-3xl p-6 sm:p-8 md:p-12 text-center shadow-sm border border-gray-200">
                         <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-600 font-semibold text-lg">No students completed the game yet.</p>
                     </div>

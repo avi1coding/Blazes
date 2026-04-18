@@ -839,7 +839,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
             {/* Page header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                 <div>
-                    <h1 className="text-4xl font-black text-gray-900">Skins 🎨</h1>
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900">Skins 🎨</h1>
                     <p className="text-gray-500 mt-1 text-sm">Buy from the shop or equip from your collection</p>
                 </div>
                 <div className="flex items-center gap-2 bg-yellow-50 border-2 border-yellow-200 px-4 py-2 rounded-2xl">

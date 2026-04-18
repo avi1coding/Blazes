@@ -924,7 +924,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="flex gap-6">
+        <div className="flex gap-4 md:gap-6">
           {/* Desktop sidebar */}
           <div className="hidden md:block w-56 shrink-0">
             <div className="bg-white rounded-2xl border border-gray-200 p-2 sticky top-20">

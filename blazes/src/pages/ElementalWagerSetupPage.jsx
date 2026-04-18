@@ -43,16 +43,16 @@ export default function ElementalWagerSetupPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-12 px-6">
-        <div className="text-center mb-12">
+      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
+        <div className="text-center mb-8 sm:mb-10 md:mb-12">
           <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 px-4 py-2 rounded-full font-bold mb-4">
             <Flame className="w-5 h-5" /> Risk & Reward
           </div>
-          <h1 className="text-4xl font-black text-gray-900 mb-2">Game Setup</h1>
-          <p className="text-lg text-gray-600">Bet on your knowledge with elemental wagers!</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-2">Game Setup</h1>
+          <p className="text-base sm:text-lg text-gray-600">Bet on your knowledge with elemental wagers!</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8">
+        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Game Name</label>

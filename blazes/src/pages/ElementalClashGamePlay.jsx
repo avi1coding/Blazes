@@ -213,7 +213,7 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
           <div className={`fixed inset-0 z-50 flex items-center justify-center ${cfg.cls} animate-pulse`}>
             <div className="text-center">
               <Icon className="w-24 h-24 mx-auto mb-4" strokeWidth={1.5} />
-              <h1 className="text-5xl sm:text-7xl font-black tracking-tight">{cfg.label}!</h1>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black tracking-tight">{cfg.label}!</h1>
               <p className="text-xl mt-2 opacity-80">-{attackAnimation.damage} points!</p>
             </div>
           </div>
@@ -222,7 +222,7 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
 
       {/* Attack Launched Toast */}
       {attackLaunched && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-40 bg-green-600 text-white font-black px-6 py-3 rounded-2xl shadow-2xl animate-bounce">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-40 bg-green-600 text-white font-black px-3 sm:px-4 md:px-6 py-3 rounded-2xl shadow-2xl animate-bounce">
           Attack launched!
         </div>
       )}
@@ -278,15 +278,15 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
 
         {/* Choice Modal (after correct answer) */}
         {showChoice ? (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button onClick={() => handleChoice('energy')}
-              className="p-6 rounded-2xl border-2 border-yellow-500 bg-yellow-900/30 hover:bg-yellow-900/60 transition-all text-center">
+              className="p-4 sm:p-5 md:p-6 rounded-2xl border-2 border-yellow-500 bg-yellow-900/30 hover:bg-yellow-900/60 transition-all text-center">
               <Zap className="w-10 h-10 text-yellow-400 mx-auto mb-2" />
               <div className="text-xl font-black text-yellow-300">+1 Energy</div>
               <div className="text-sm text-yellow-500 mt-1">For yourself</div>
             </button>
             <button onClick={() => handleChoice('team_points')}
-              className="p-6 rounded-2xl border-2 border-green-500 bg-green-900/30 hover:bg-green-900/60 transition-all text-center">
+              className="p-4 sm:p-5 md:p-6 rounded-2xl border-2 border-green-500 bg-green-900/30 hover:bg-green-900/60 transition-all text-center">
               <Trophy className="w-10 h-10 text-green-400 mx-auto mb-2" />
               <div className="text-xl font-black text-green-300">+10 Points</div>
               <div className="text-sm text-green-500 mt-1">For your team</div>
@@ -320,7 +320,7 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
       {/* Shop Modal */}
       {showShop && (
         <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowShop(false)}>
-          <div className="bg-gray-900 rounded-3xl p-6 max-w-md w-full border-2 border-purple-600 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-gray-900 rounded-3xl p-4 sm:p-5 md:p-6 max-w-md w-full border-2 border-purple-600 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-black text-white flex items-center gap-2">
                 <ShoppingBag className="w-6 h-6 text-purple-400" /> Attack Shop

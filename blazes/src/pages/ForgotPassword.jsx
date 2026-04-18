@@ -55,7 +55,7 @@ export default function ForgotPassword() {
           <h1 className="text-3xl font-black text-gray-900">Reset Password</h1>
         </div>
 
-        <div className="bg-white rounded-3xl p-8 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 shadow-lg border border-gray-200">
           {sent ? (
             <div className="text-center py-4">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">

@@ -123,7 +123,7 @@ export default function ClassroomPage() {
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
       
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate(isTeacher ? '/home/teacher?tab=classrooms' : '/home/student?tab=classrooms')} className="p-2 hover:bg-gray-100 rounded-lg">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -157,7 +157,7 @@ export default function ClassroomPage() {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <button onClick={() => setTab('students')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${tab === 'students' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
@@ -257,7 +257,7 @@ export default function ClassroomPage() {
             )}
 
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
                 <h3 className="font-black text-gray-900">{classroom.students?.length || 0} Students</h3>
               </div>
               {(classroom.students || []).length === 0 ? (
@@ -265,7 +265,7 @@ export default function ClassroomPage() {
               ) : (
                 <div className="divide-y divide-gray-50">
                   {classroom.students.map(s => (
-                    <div key={s.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-gray-50">
+                    <div key={s.id} className="flex items-center gap-4 px-4 sm:px-6 py-3.5 hover:bg-gray-50">
                       <AvatarPreview skinId={playerSkins[s.id] || 'default'} initial={s.name?.[0]?.toUpperCase() || '?'} size={38} userId={s.id} />
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-gray-900 text-sm truncate">{s.name}</div>
@@ -413,7 +413,7 @@ export default function ClassroomPage() {
       {/* Create Assignment Modal */}
       {showCreateAssignment && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCreateAssignment(false)}>
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg w-full shadow-2xl" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-black text-gray-900 mb-6">New Assignment</h2>
             <div className="space-y-4">
               <div>
@@ -476,7 +476,7 @@ export default function ClassroomPage() {
       {/* Remove Student Confirmation */}
       {removeConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setRemoveConfirm(null)}>
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-sm w-full shadow-2xl text-center" onClick={e => e.stopPropagation()}>
             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-7 h-7 text-red-600" />
             </div>
@@ -497,7 +497,7 @@ export default function ClassroomPage() {
       {/* Delete Classroom Confirmation */}
       {deleteClassroomConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDeleteClassroomConfirm(false)}>
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-sm w-full shadow-2xl text-center" onClick={e => e.stopPropagation()}>
             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-7 h-7 text-red-600" />
             </div>
@@ -524,7 +524,7 @@ export default function ClassroomPage() {
       {/* Delete Assignment Confirmation */}
       {deleteAssignmentConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDeleteAssignmentConfirm(null)}>
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-sm w-full shadow-2xl text-center" onClick={e => e.stopPropagation()}>
             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-7 h-7 text-red-600" />
             </div>
@@ -548,7 +548,7 @@ export default function ClassroomPage() {
       {/* Edit Classroom Modal */}
       {showEditClassroom && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowEditClassroom(false)}>
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-black text-gray-900 mb-6">Edit Classroom</h2>
             <div className="space-y-4">
               <div>
@@ -613,7 +613,7 @@ export default function ClassroomPage() {
       {/* Assignment Detail Modal */}
       {selectedAssignment && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedAssignment(null)}>
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-black text-gray-900 mb-1">{selectedAssignment.title}</h2>
             <p className="text-sm text-gray-500 mb-4">{selectedAssignment.kit_title} &middot; {selectedAssignment.classroom_name}</p>
             <h3 className="font-bold text-gray-900 mb-3 text-sm">Student Progress</h3>

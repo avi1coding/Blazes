@@ -136,12 +136,12 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
     <div className="max-w-3xl mx-auto">
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
       <div className="mb-10">
-        <h1 className="text-4xl font-black text-gray-900 mb-2">Create Question Kit</h1>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-2">Create Question Kit</h1>
         <p className="text-gray-500">Build a new set of questions for your students</p>
       </div>
 
       {/* Kit Details */}
-      <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-200 mb-8">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 lg:p-10 shadow-sm border border-gray-200 mb-8">
         <h3 className="text-lg font-black text-gray-900 mb-6">Kit Details</h3>
 
         <div className="space-y-5">
@@ -176,8 +176,8 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
       </div>
 
       {/* Questions */}
-      <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-200 mb-8">
-        <div className="flex items-center justify-between mb-8">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 lg:p-10 shadow-sm border border-gray-200 mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-3 sm:gap-0">
           <div>
             <h3 className="text-lg font-black text-gray-900">Questions</h3>
             <p className="text-sm text-gray-500 mt-0.5">{questions.length} question{questions.length !== 1 ? 's' : ''} added</p>
@@ -310,7 +310,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal header */}
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between rounded-t-3xl z-10">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-4 sm:px-6 md:px-8 py-5 flex items-center justify-between rounded-t-3xl z-10">
               <h2 className="text-xl font-black text-gray-900">{editingIndex !== null ? 'Edit Question' : 'New Question'}</h2>
               <button onClick={() => { setShowQuestionModal(false); setEditingIndex(null); }}
                 className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
@@ -318,7 +318,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
               </button>
             </div>
 
-            <div className="px-8 py-6 space-y-6">
+            <div className="px-4 sm:px-6 md:px-8 py-6 space-y-6">
               {/* Question text */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1.5">Question *</label>
@@ -580,7 +580,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
                       ))}
                     </div>
                   ) : (
-                    <div className="bg-gray-100 rounded-xl p-8 text-center border-2 border-dashed border-gray-300 mb-3">
+                    <div className="bg-gray-100 rounded-xl p-4 sm:p-6 md:p-8 text-center border-2 border-dashed border-gray-300 mb-3">
                       <p className="text-gray-400 font-semibold text-sm">Upload an image first using the image section above</p>
                     </div>
                   )}
@@ -700,7 +700,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
             </div>
 
             {/* Modal footer */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-8 py-5 flex gap-3 rounded-b-3xl">
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 sm:px-6 md:px-8 py-5 flex gap-3 rounded-b-3xl">
               <button onClick={() => { setShowQuestionModal(false); setEditingIndex(null); }}
                 className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors">
                 Cancel
@@ -717,7 +717,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
       {/* AI Generate Modal */}
       {showAIModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !aiLoading && setShowAIModal(false)}>
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-black text-gray-900 mb-2">AI Quiz Generator</h2>
             <p className="text-gray-500 text-sm mb-6">Paste your notes and AI will create questions automatically</p>
 

@@ -279,7 +279,7 @@ export default function StudentHome() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between py-2">
             {/* Left: Logo + Nav tabs */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
               <div className="flex items-center gap-2 mr-2">
                 <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
                   <Flame className="w-5 h-5 text-white" strokeWidth={2.5} />
@@ -382,7 +382,7 @@ export default function StudentHome() {
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
 
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {activeTab === 'dashboard' && (() => {
           const hour = new Date().getHours();
           const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -391,7 +391,7 @@ export default function StudentHome() {
           <>
             {/* Big Home Heading */}
             <div className="mb-8">
-              <h1 className="text-5xl font-black text-gray-900">Home</h1>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900">Home</h1>
             </div>
 
             {/* ── ASSIGNMENTS ── */}
@@ -399,7 +399,7 @@ export default function StudentHome() {
               <h1 className="text-3xl font-black text-gray-900 mb-4">Assignments</h1>
 
               {allAssignments.length === 0 ? (
-                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
+                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 sm:p-8 md:p-12 text-center">
                   <ClipboardList className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500 font-semibold">No assignments yet.</p>
                 </div>
@@ -457,7 +457,7 @@ export default function StudentHome() {
             <div>
               <h1 className="text-3xl font-black text-gray-900 mb-4">Classes</h1>
               {myClassrooms.length === 0 ? (
-                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
+                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 sm:p-8 md:p-12 text-center">
                   <GraduationCap className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500 font-semibold">You're not part of any classes.</p>
                 </div>
@@ -490,7 +490,7 @@ export default function StudentHome() {
           <>
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
-              <h1 className="text-4xl font-black text-gray-900">Your Stats</h1>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900">Your Stats</h1>
               {subscription?.tier && ['blazes_plus', 'teacher_pro', 'school'].includes(subscription.tier) ? (
                 <a href={`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/export/stats/${user.id}`}
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">
@@ -884,7 +884,7 @@ export default function StudentHome() {
                           <Sparkles className="w-5 h-5 text-red-500" />
                           <h3 className="text-lg font-black text-gray-900">Weekly Improvement</h3>
                         </div>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                           <div className="bg-gray-50 rounded-xl p-4 text-center">
                             <div className="text-xs font-semibold text-gray-500 mb-1">This Week</div>
                             <div className="text-2xl font-black text-gray-900">{studentAnalytics.improvement.recent7Accuracy ?? '--'}%</div>
@@ -1012,7 +1012,7 @@ export default function StudentHome() {
                             <Sparkles className="w-5 h-5 text-red-500" />
                             <h3 className="text-lg font-black text-gray-900">When You Play</h3>
                           </div>
-                          <div className="grid grid-cols-6 gap-1.5">
+                          <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
                             {Array.from({ length: 24 }, (_, h) => {
                               const data = studentAnalytics.hourlyPattern.find(p => p.hour === h);
                               const q = data?.questions || 0;
@@ -1218,7 +1218,7 @@ export default function StudentHome() {
                             <Sparkles className="w-5 h-5 text-red-500" />
                             <h3 className="text-lg font-black text-gray-900">Learning from Mistakes</h3>
                           </div>
-                          <div className="flex items-center gap-6 justify-center py-4">
+                          <div className="flex items-center gap-4 sm:gap-6 justify-center py-4">
                             <div className="text-center">
                               <div className="text-3xl font-black text-gray-900">{studentAnalytics.retryImprovement.firstAttemptAcc ?? '--'}%</div>
                               <div className="text-xs font-semibold text-gray-500">1st Attempt</div>
@@ -1319,7 +1319,7 @@ export default function StudentHome() {
                       <div className="grid lg:grid-cols-2 gap-6 mb-6">
                         <div className="bg-white rounded-2xl p-6 border border-gray-200">
                           <h3 className="text-lg font-black text-gray-900 mb-3">Weekly Improvement</h3>
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                             <div className="bg-gray-50 rounded-xl p-3 text-center"><div className="text-xl font-black">78%</div><div className="text-xs text-gray-400">This Week</div></div>
                             <div className="bg-gray-50 rounded-xl p-3 text-center"><div className="text-xl font-black">72%</div><div className="text-xs text-gray-400">Last Week</div></div>
                             <div className="bg-gray-50 rounded-xl p-3 text-center"><div className="text-xl font-black text-green-600">+6%</div><div className="text-xs text-gray-400">Improving</div></div>
@@ -1472,7 +1472,7 @@ export default function StudentHome() {
             {/* Classrooms list */}
             <h2 className="text-lg font-black text-gray-900 mb-3">My Classes</h2>
             {myClassrooms.length === 0 ? (
-              <div className="bg-white rounded-2xl p-8 text-center border border-gray-200">
+              <div className="bg-white rounded-2xl p-5 sm:p-8 text-center border border-gray-200">
                 <GraduationCap className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                 <p className="text-gray-500 text-sm">You're not in any classrooms yet. Your teacher will add you.</p>
               </div>
@@ -1517,7 +1517,7 @@ export default function StudentHome() {
             </div>
 
             {myKits.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200">
+              <div className="bg-white rounded-2xl p-6 sm:p-8 md:p-12 text-center border border-gray-200">
                 <BookOpen className="w-14 h-14 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-600 font-semibold mb-2">No kits yet</p>
                 <p className="text-gray-400 text-sm mb-4">Create your first question kit to play with friends</p>
@@ -1599,7 +1599,7 @@ export default function StudentHome() {
             {/* Delete Kit Confirmation */}
             {deleteKitConfirm && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDeleteKitConfirm(null)}>
-                <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center" onClick={e => e.stopPropagation()}>
+                <div className="bg-white rounded-3xl p-5 sm:p-8 max-w-sm w-full shadow-2xl text-center" onClick={e => e.stopPropagation()}>
                   <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Trash2 className="w-7 h-7 text-red-600" />
                   </div>
@@ -1625,7 +1625,7 @@ export default function StudentHome() {
             {/* Edit Kit Modal */}
             {showEditModal && editingKit && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl p-8 max-w-md w-full">
+                <div className="bg-white rounded-2xl p-5 sm:p-8 max-w-md w-full">
                   <h2 className="text-2xl font-black text-gray-900 mb-6">Edit Kit</h2>
 
                   <div className="space-y-4 mb-6">
@@ -2128,7 +2128,7 @@ export default function StudentHome() {
             {/* AI Generate for Kit Modal */}
             {showKitAIModal && selectedKit && (
               <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => !kitAILoading && setShowKitAIModal(false)}>
-                <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="bg-white rounded-3xl p-5 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                   <h2 className="text-2xl font-black text-gray-900 mb-1">AI Generate Questions</h2>
                   <p className="text-gray-500 text-sm mb-6">Add AI-generated questions to <span className="font-bold text-gray-700">{selectedKit.title}</span></p>
                   {kitAIError && <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm font-semibold">{kitAIError}</div>}
@@ -2204,7 +2204,7 @@ export default function StudentHome() {
             {/* Edit Question Modal */}
             {showQuestionEditModal && editingQuestion && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-                <div className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+                <div className="bg-white rounded-2xl p-5 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
                   <h2 className="text-2xl font-black text-gray-900 mb-6">Edit Question</h2>
 
                   <div className="space-y-4 mb-6">
@@ -2386,7 +2386,7 @@ export default function StudentHome() {
             {/* Delete Question Confirmation Modal */}
             {deleteQuestionConfirm && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-                <div className="bg-white rounded-2xl p-8 max-w-md w-full">
+                <div className="bg-white rounded-2xl p-5 sm:p-8 max-w-md w-full">
                   <h2 className="text-2xl font-black text-gray-900 mb-4">Delete Question?</h2>
                   <p className="text-gray-600 mb-6">
                     Are you sure you want to delete this question? This action cannot be undone.
@@ -2442,9 +2442,9 @@ export default function StudentHome() {
 
       {showJoinModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 max-w-md w-full shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-3xl font-black text-gray-900">Join Game</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900">Join Game</h2>
               <button
                 onClick={() => {
                   setShowJoinModal(false);

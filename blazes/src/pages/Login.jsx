@@ -132,11 +132,11 @@ export default function Login() {
                     <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
                         <Flame className="w-7 h-7 text-red-600" strokeWidth={2.5} />
                     </div>
-                    <h1 className="text-4xl font-black text-white">Blazes</h1>
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white">Blazes</h1>
                 </div>
 
                 {/* Form Card */}
-                <div className="bg-white rounded-3xl p-8 shadow-2xl">
+                <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl">
                     <div className="text-center mb-8">
                         <h2 className="text-3xl font-black text-gray-900 mb-2">Welcome Back!</h2>
                         <p className="text-gray-600">

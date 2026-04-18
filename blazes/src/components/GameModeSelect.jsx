@@ -143,7 +143,7 @@ export default function GameModeSelect({ kit, user, onBack }) {
       </div>
 
       {/* Kit banner */}
-      <div className="bg-gray-900 rounded-2xl px-6 py-4 mb-8 flex items-center justify-between">
+      <div className="bg-gray-900 rounded-2xl px-4 sm:px-6 py-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
             <Flame className="w-5 h-5 text-white" strokeWidth={2.5} />
@@ -157,9 +157,9 @@ export default function GameModeSelect({ kit, user, onBack }) {
       </div>
 
       {/* Split layout: modes list on left, detail on right */}
-      <div className="grid lg:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
         {/* Left: Mode list */}
-        <div className="lg:col-span-2">
+        <div className="md:col-span-1 lg:col-span-2">
           {/* Filter tabs */}
           <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl">
             {[['all', 'All'], ['solo', 'Solo'], ['multi', 'Multiplayer']].map(([key, label]) => (
@@ -210,9 +210,9 @@ export default function GameModeSelect({ kit, user, onBack }) {
         </div>
 
         {/* Right: Detail panel */}
-        <div className="lg:col-span-3">
+        <div className="md:col-span-2 lg:col-span-3">
           {selected ? (
-            <div className="bg-white rounded-2xl border-2 border-gray-100 p-8 h-full">
+            <div className="bg-white rounded-2xl border-2 border-gray-100 p-4 sm:p-6 md:p-8 h-full">
               {/* Mode header */}
               <div className="flex items-center gap-4 mb-6">
                 <div className={`w-14 h-14 bg-gradient-to-br ${selected.color} rounded-2xl flex items-center justify-center shadow-lg`}>
@@ -261,7 +261,7 @@ export default function GameModeSelect({ kit, user, onBack }) {
               </button>
             </div>
           ) : (
-            <div className="bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 p-8 h-full flex flex-col items-center justify-center text-center">
+            <div className="bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 p-4 sm:p-6 md:p-8 h-full flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
                 <Flame className="w-8 h-8 text-gray-300" />
               </div>

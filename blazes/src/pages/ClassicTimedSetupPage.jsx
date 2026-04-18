@@ -76,13 +76,13 @@ export default function ClassicTimedSetupPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-12 px-6">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-black text-gray-900 mb-2">Game Setup</h1>
-          <p className="text-lg text-gray-600">Configure your 'Classic Timed' game.</p>
+      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
+        <div className="text-center mb-8 sm:mb-10 md:mb-12">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-2">Game Setup</h1>
+          <p className="text-base sm:text-lg text-gray-600">Configure your 'Classic Timed' game.</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8">
+        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center">
               <Settings className="w-6 h-6 text-white" />

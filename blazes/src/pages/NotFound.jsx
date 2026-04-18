@@ -15,11 +15,11 @@ export default function NotFound() {
           <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
             <Flame className="w-7 h-7 text-red-600" strokeWidth={2.5} />
           </div>
-          <h1 className="text-4xl font-black text-white">Blazes</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white">Blazes</h1>
         </div>
 
-        <div className="bg-white rounded-3xl p-8 shadow-2xl text-center">
-          <div className="text-6xl font-black text-red-600 mb-2">404</div>
+        <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl text-center">
+          <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-red-600 mb-2">404</div>
           <h2 className="text-2xl font-black text-gray-900 mb-2">This isn't a page</h2>
           <p className="text-gray-600 mb-1">We couldn't find anything at</p>
           <p className="text-sm font-mono text-gray-500 bg-gray-50 rounded-lg px-3 py-2 mb-6 break-all">

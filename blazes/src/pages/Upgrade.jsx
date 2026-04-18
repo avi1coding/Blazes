@@ -71,7 +71,7 @@ export default function Upgrade() {
         {isStudent ? (
           <div className="max-w-md mx-auto">
             {/* Blazes Plus */}
-            <div className={`bg-white rounded-3xl p-8 relative border-2 ${subscription?.tier === 'blazes_plus' ? 'border-green-400' : 'border-red-300'}`}>
+            <div className={`bg-white rounded-3xl p-5 sm:p-6 md:p-8 relative border-2 ${subscription?.tier === 'blazes_plus' ? 'border-green-400' : 'border-red-300'}`}>
               {subscription?.tier === 'blazes_plus' && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">ACTIVE</div>
               )}
@@ -80,7 +80,7 @@ export default function Upgrade() {
                   <Flame className="w-7 h-7 text-red-600" />
                 </div>
                 <h3 className="text-2xl font-black text-gray-900">Blazes Plus</h3>
-                <div className="mt-2"><span className="text-4xl font-black text-gray-900">$9.99</span><span className="text-gray-500 text-sm ml-1">/season (90 days)</span></div>
+                <div className="mt-2"><span className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900">$9.99</span><span className="text-gray-500 text-sm ml-1">/season (90 days)</span></div>
                 <p className="text-xs text-gray-400 mt-1">That's only ~$3.33/month</p>
               </div>
               <ul className="space-y-3 mb-8">
@@ -114,7 +114,7 @@ export default function Upgrade() {
             </div>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-6 mb-10 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10 max-w-3xl mx-auto">
             {/* Teacher Pro */}
             <div className={`bg-white rounded-2xl p-6 relative border-2 ${subscription?.tier === 'teacher_pro' ? 'border-green-400' : 'border-red-300'}`}>
               {subscription?.tier === 'teacher_pro' && (
@@ -157,9 +157,9 @@ export default function Upgrade() {
         )}
 
         {/* BlazesBucks */}
-        <div className="bg-white rounded-2xl p-8 border border-gray-200 mt-10">
-          <div className="text-center mb-8">
-            <h3 className="text-2xl font-black text-gray-900 mb-2">BlazesBucks</h3>
+        <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 border border-gray-200 mt-8 sm:mt-10">
+          <div className="text-center mb-6 sm:mb-8">
+            <h3 className="text-xl sm:text-2xl font-black text-gray-900 mb-2">BlazesBucks</h3>
             <p className="text-gray-500">Skip the grind. Get the skins you want.</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">

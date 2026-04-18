@@ -55,7 +55,7 @@ export default function ProfilePage() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Level card */}
         {progress && (
-          <div className="bg-white/10 backdrop-blur-sm rounded-3xl border border-white/10 p-8 mb-8 text-center relative">
+          <div className="bg-white/10 backdrop-blur-sm rounded-3xl border border-white/10 p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 text-center relative">
             {/* Decorative shapes */}
             <div className="absolute top-4 right-8 w-16 h-16 bg-white/5 rounded-lg rotate-12" />
             <div className="absolute bottom-6 left-10 w-12 h-12 bg-white/5 rounded-lg -rotate-6" />
@@ -82,7 +82,7 @@ export default function ProfilePage() {
 
             {/* Season + Level */}
             <div className="text-orange-400 font-bold text-sm mb-1">Season {progress.season_number}</div>
-            <div className="text-white font-black text-6xl mb-2">LEVEL {level}</div>
+            <div className="text-white font-black text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-2">LEVEL {level}</div>
 
             {/* Multiplier badges */}
             {isPlus && (
@@ -101,7 +101,7 @@ export default function ProfilePage() {
 
             {/* XP bar */}
             <div className="max-w-md mx-auto">
-              <div className="flex justify-between text-sm mb-2">
+              <div className="flex flex-col sm:flex-row justify-between text-xs sm:text-sm mb-2 gap-1">
                 <span className="text-white/70 font-bold">{progress.xp_into_level.toLocaleString()}/{progress.xp_for_next.toLocaleString()} XP</span>
                 <span className="text-white/70 font-bold">{xpToNext.toLocaleString()} XP TO LEVEL {Math.min(level + 1, 100)}</span>
               </div>
@@ -192,7 +192,7 @@ export default function ProfilePage() {
         {/* Milestones */}
         <div className="mb-8">
           <h2 className="text-white/50 font-black text-sm uppercase tracking-wider mb-4">MILESTONES</h2>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {milestones.map(m => (
               <div key={m.label} className={`rounded-xl p-4 text-center border ${level >= m.level ? m.bg + ' ' + m.border : 'bg-white/5 border-white/10'}`}>
                 <div className={`text-2xl font-black ${level >= m.level ? m.color : 'text-white/30'}`}>{m.level}</div>
@@ -206,7 +206,7 @@ export default function ProfilePage() {
         {badges.length > 0 && (
           <div>
             <h2 className="text-white/50 font-black text-sm uppercase tracking-wider mb-4">PAST SEASONS</h2>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {badges.map((b, i) => {
                 const m = milestones.find(ms => ms.label.toLowerCase() === b.badge_tier) || milestones[0];
                 return (

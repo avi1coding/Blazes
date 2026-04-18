@@ -8,8 +8,8 @@ export default function GameStats() {
   const { score, correctCount, totalQuestions } = location.state || { score: 0, correctCount: 0, totalQuestions: 0 };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl p-8 shadow-2xl max-w-md w-full text-center">
+    <div className="min-h-screen bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center p-4 sm:p-6">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 md:p-8 shadow-2xl max-w-md w-full text-center">
             <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Trophy className="w-10 h-10 text-yellow-600" />
             </div>

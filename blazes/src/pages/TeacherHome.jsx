@@ -256,7 +256,7 @@ export default function TeacherHome() {
     <div className="min-h-screen bg-gray-50">
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
               <Flame className="w-6 h-6 text-white" strokeWidth={2.5} />
@@ -264,7 +264,7 @@ export default function TeacherHome() {
             <span className="text-2xl font-black text-gray-900">Blazes</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <NotificationDropdown userId={user?.id} />
             <button onClick={() => navigate('/upgrade')}
               className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 border ${
@@ -280,7 +280,7 @@ export default function TeacherHome() {
             </button>
             <button onClick={() => navigate('/profile')} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={36} isPlus={teacherTier === 'teacher_pro'} />
-              <div className="text-left">
+              <div className="text-left hidden sm:block">
                 <div className="text-sm font-bold text-gray-900">{userName}</div>
                 <div className="text-xs text-gray-500">Level {seasonProgress?.level || 1} • Teacher</div>
               </div>
@@ -290,73 +290,73 @@ export default function TeacherHome() {
       </nav>
 
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center gap-1">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center gap-1 overflow-x-auto">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-6 py-4 font-bold transition-colors border-b-4 ${activeTab === 'dashboard'
+              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'dashboard'
                 ? 'border-red-600 text-red-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
             >
               <Home className="w-5 h-5" strokeWidth={2.5} />
-              Dashboard
+              <span className="hidden sm:inline">Dashboard</span>
             </button>
             <button
               onClick={() => setActiveTab('myKits')}
-              className={`flex items-center gap-2 px-6 py-4 font-bold transition-colors border-b-4 ${activeTab === 'myKits'
+              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'myKits'
                 ? 'border-red-600 text-red-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
             >
               <BookOpen className="w-5 h-5" strokeWidth={2.5} />
-              My Kits
+              <span className="hidden sm:inline">My Kits</span>
             </button>
             <button
               onClick={() => setActiveTab('stats')}
-              className={`flex items-center gap-2 px-6 py-4 font-bold transition-colors border-b-4 ${activeTab === 'stats'
+              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'stats'
                 ? 'border-red-600 text-red-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
             >
               <BarChart3 className="w-5 h-5" strokeWidth={2.5} />
-              Analytics
+              <span className="hidden sm:inline">Analytics</span>
             </button>
             <button
               onClick={() => setActiveTab('classrooms')}
-              className={`flex items-center gap-2 px-6 py-4 font-bold transition-colors border-b-4 ${activeTab === 'classrooms'
+              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'classrooms'
                 ? 'border-red-600 text-red-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
             >
               <GraduationCap className="w-5 h-5" strokeWidth={2.5} />
-              Classrooms
+              <span className="hidden sm:inline">Classrooms</span>
             </button>
             <button
               onClick={() => setActiveTab('createKit')}
-              className={`flex items-center gap-2 px-6 py-4 font-bold transition-colors border-b-4 ${activeTab === 'createKit'
+              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'createKit'
                 ? 'border-red-600 text-red-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
             >
               <Plus className="w-5 h-5" strokeWidth={2.5} />
-              Create Kit
+              <span className="hidden sm:inline">Create Kit</span>
             </button>
             <button
               onClick={() => setActiveTab('skins')}
-              className={`flex items-center gap-2 px-6 py-4 font-bold transition-colors border-b-4 ${activeTab === 'skins'
+              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'skins'
                 ? 'border-red-600 text-red-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
             >
               <Shirt className="w-5 h-5" strokeWidth={2.5} />
-              Skins
+              <span className="hidden sm:inline">Skins</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {activeTab === 'dashboard' && (() => {
           const activeAssignments = teacherAssignments.filter(a => {
             const allDone = a.total_count > 0 && a.completed_count === a.total_count;
@@ -367,12 +367,12 @@ export default function TeacherHome() {
           <>
             {/* Big Home Heading */}
             <div className="mb-8">
-              <h1 className="text-5xl font-black text-gray-900">Home</h1>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900">Home</h1>
             </div>
 
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-4xl font-black text-gray-900 mb-2">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-2">
                 Welcome back, {userName}
               </h1>
               <p className="text-gray-600">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
@@ -419,7 +419,7 @@ export default function TeacherHome() {
             </div>
 
             {/* Quick actions */}
-            <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-8">
               <button onClick={() => setActiveTab('createKit')}
                 className="bg-red-600 text-white rounded-2xl p-5 text-left hover:bg-red-700 transition-all">
                 <Plus className="w-6 h-6 mb-2" strokeWidth={2.5} />
@@ -592,7 +592,7 @@ export default function TeacherHome() {
 
             return (
               <div>
-                <div className="mb-6 flex items-center justify-between">
+                <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                     <h1 className="text-3xl font-black text-gray-900 mb-1">Analytics</h1>
                     <p className="text-gray-500">Performance data for students in your classrooms</p>
@@ -1086,7 +1086,7 @@ export default function TeacherHome() {
                   </div>
 
                   {filtered.length === 0 ? (
-                    <div className="p-12 text-center">
+                    <div className="p-6 sm:p-8 md:p-12 text-center">
                       <Users className="w-10 h-10 text-gray-200 mx-auto mb-2" />
                       <p className="text-gray-400 font-semibold text-sm">{analyticsSearch ? 'No students match your search' : 'No students in your classrooms yet'}</p>
                     </div>
@@ -1183,7 +1183,7 @@ export default function TeacherHome() {
                     </div>
 
                     {!detail ? (
-                      <div className="p-12 text-center">
+                      <div className="p-6 sm:p-8 md:p-12 text-center">
                         <BarChart3 className="w-8 h-8 text-gray-300 mx-auto mb-2 animate-pulse" />
                         <p className="text-gray-400 text-sm">Loading student data...</p>
                       </div>
@@ -1346,7 +1346,7 @@ export default function TeacherHome() {
               </div>
 
               {loadingGameDetails ? (
-                <div className="p-12 text-center">
+                <div className="p-6 sm:p-8 md:p-12 text-center">
                   <BarChart3 className="w-8 h-8 text-gray-300 mx-auto mb-2 animate-pulse" />
                   <p className="text-gray-400 text-sm">Loading game details...</p>
                 </div>
@@ -1492,7 +1492,7 @@ export default function TeacherHome() {
                   )}
                 </div>
               ) : (
-                <div className="p-12 text-center">
+                <div className="p-6 sm:p-8 md:p-12 text-center">
                   <p className="text-gray-400 text-sm">Game details not found</p>
                 </div>
               )}
@@ -1502,12 +1502,12 @@ export default function TeacherHome() {
 
         {activeTab === 'classrooms' && (
           <div>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
               <div>
                 <h1 className="text-3xl font-black text-gray-900 mb-1">Classrooms</h1>
                 <p className="text-gray-500">Manage your classes and assign homework</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button onClick={async () => {
                   setGoogleLoading(true);
                   setGoogleImportResult(null);
@@ -1539,7 +1539,7 @@ export default function TeacherHome() {
             </div>
 
             {classrooms.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200">
+              <div className="bg-white rounded-2xl p-6 sm:p-8 md:p-12 text-center border border-gray-200">
                 <GraduationCap className="w-14 h-14 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-600 font-semibold mb-1">No classrooms yet</p>
                 <p className="text-gray-400 text-sm">Create a classroom to organize students and assign homework</p>
@@ -1769,14 +1769,14 @@ export default function TeacherHome() {
         {activeTab === 'myKits' && (
           <>
             <div className="mb-8">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <div>
-                  <h1 className="text-4xl font-black text-gray-900 mb-2">My Question Kits 📚</h1>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-2">My Question Kits 📚</h1>
                   <p className="text-gray-600">Manage and organize your question kits</p>
                 </div>
                 <button
                   onClick={() => setActiveTab('createKit')}
-                  className="bg-gradient-to-r from-red-600 to-orange-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all flex items-center gap-2"
+                  className="bg-gradient-to-r from-red-600 to-orange-500 text-white px-4 sm:px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all flex items-center gap-2"
                 >
                   <Plus className="w-5 h-5" />
                   New Kit
@@ -1784,7 +1784,7 @@ export default function TeacherHome() {
               </div>
 
               {kits.length === 0 ? (
-                <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-200">
+                <div className="bg-white rounded-2xl p-6 sm:p-8 md:p-12 text-center shadow-sm border border-gray-200">
                   <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-600 font-semibold mb-2">No kits yet</p>
                   <p className="text-gray-500 text-sm">Create your first question kit to get started</p>

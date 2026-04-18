@@ -98,7 +98,7 @@ export default function StudentJoinGame() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
               <Flame className="w-6 h-6 text-white" strokeWidth={2.5} />
@@ -119,8 +119,8 @@ export default function StudentJoinGame() {
 
       {/* Account required wall */}
       {needsAccount && (
-        <div className="max-w-md mx-auto px-6 py-20">
-          <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-red-100 text-center">
+        <div className="max-w-md mx-auto px-4 sm:px-6 py-12 sm:py-20">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-lg border-2 border-red-100 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <UserX className="w-8 h-8 text-red-600" strokeWidth={2.5} />
             </div>
@@ -153,8 +153,8 @@ export default function StudentJoinGame() {
       )}
 
       {/* Main Content */}
-      {!needsAccount && <div className="max-w-md mx-auto px-6 py-20">
-        <div className="bg-white rounded-3xl p-8 shadow-lg border-2 border-gray-200">
+      {!needsAccount && <div className="max-w-md mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-lg border-2 border-gray-200">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Flame className="w-8 h-8 text-white" strokeWidth={2.5} />

@@ -248,8 +248,8 @@ export default function InfernoTowerGamePlay({ gameCode, user, equippedSkinId })
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-950/90 animate-pulse">
           <div className="text-center">
             <Flame className="w-24 h-24 text-red-500 mx-auto mb-4" strokeWidth={1.5} />
-            <h1 className="text-6xl font-black text-red-400 mb-2">BURNED!</h1>
-            <p className="text-red-300 text-xl font-bold">You're now a ghost — send fireballs to freeze others!</p>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-red-400 mb-2">BURNED!</h1>
+            <p className="text-red-300 text-base sm:text-lg md:text-xl font-bold px-4">You're now a ghost -- send fireballs to freeze others!</p>
           </div>
         </div>
       )}
@@ -267,8 +267,8 @@ export default function InfernoTowerGamePlay({ gameCode, user, equippedSkinId })
               <Snowflake className="w-24 h-24 text-blue-300 animate-spin" style={{ animationDuration: '3s' }} />
               <div className="absolute inset-0 rounded-full bg-blue-400/10 animate-ping" />
             </div>
-            <h2 className="text-5xl font-black text-blue-200 mb-3 tracking-tight">FROZEN!</h2>
-            <div className="text-7xl font-black text-white tabular-nums drop-shadow-lg">{frozenCountdown}s</div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-blue-200 mb-3 tracking-tight">FROZEN!</h2>
+            <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white tabular-nums drop-shadow-lg">{frozenCountdown}s</div>
           </div>
         </div>
       )}
@@ -321,14 +321,14 @@ export default function InfernoTowerGamePlay({ gameCode, user, equippedSkinId })
             <div className="mb-8 relative">
               <div className="w-40 h-40 rounded-full border-[6px] border-yellow-500/30 flex items-center justify-center">
                 <div className="w-36 h-36 rounded-full border-4 border-yellow-400 flex items-center justify-center bg-yellow-500/5" key={tbDisplayCount}>
-                  <span className="text-8xl font-black text-white drop-shadow-lg">{tbDisplayCount}</span>
+                  <span className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white drop-shadow-lg">{tbDisplayCount}</span>
                 </div>
               </div>
               <div className="absolute inset-0 rounded-full border-4 border-yellow-400/20 animate-ping" />
             </div>
             <div className="flex items-center gap-3 mb-3">
               <Crosshair className="w-8 h-8 text-yellow-400" strokeWidth={2.5} />
-              <h2 className="text-4xl font-black text-yellow-400 tracking-tight">TIEBREAKER</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-yellow-400 tracking-tight">TIEBREAKER</h2>
             </div>
             <p className="text-gray-400 font-bold text-lg">First correct answer wins!</p>
           </div>
@@ -365,11 +365,11 @@ export default function InfernoTowerGamePlay({ gameCode, user, equippedSkinId })
       {/* Fireball Target Picker (Ghost) */}
       {showFireballPicker && (
         <div className="max-w-4xl mx-auto mb-4">
-          <div className="bg-gradient-to-b from-purple-900 to-purple-950 border-2 border-purple-500 rounded-2xl p-5 shadow-xl shadow-purple-900/30">
+          <div className="bg-gradient-to-b from-purple-900 to-purple-950 border-2 border-purple-500 rounded-2xl p-3 sm:p-4 md:p-5 shadow-xl shadow-purple-900/30">
             <h3 className="font-black text-purple-200 mb-4 flex items-center gap-2 text-lg">
               <Crosshair className="w-6 h-6 text-purple-400" strokeWidth={2.5} /> Choose a target to freeze!
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {alivePlayers.map(p => (
                 <button key={p.user_id} onClick={() => handleFireball(p.user_id)}
                   className="flex items-center gap-2 p-3 bg-purple-800/80 border border-purple-600 rounded-xl hover:bg-purple-700 hover:border-purple-400 hover:shadow-lg transition-all">

@@ -114,12 +114,12 @@ export default function InfernoTowerView() {
       `}</style>
 
       {/* Header */}
-      <div className="bg-black/60 backdrop-blur px-6 py-3 flex items-center justify-between flex-shrink-0 z-20 border-b border-gray-800">
+      <div className="bg-black/60 backdrop-blur px-3 sm:px-4 md:px-6 py-3 flex items-center justify-between flex-shrink-0 z-20 border-b border-gray-800">
         <div className="flex items-center gap-3">
           <Flame className="w-8 h-8 text-orange-500" strokeWidth={2.5} />
-          <span className="text-2xl font-black text-white">Inferno Tower</span>
+          <span className="text-lg sm:text-xl md:text-2xl font-black text-white">Inferno Tower</span>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-4 md:gap-6">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-green-400" />
             <span className="font-black text-green-400 text-lg">{alive.length}</span>
@@ -151,7 +151,7 @@ export default function InfernoTowerView() {
 
         return (
           <div className="fixed inset-0 z-30 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm">
-            <h1 className="text-5xl sm:text-6xl font-black text-white mb-2">Game Over!</h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-2">Game Over!</h1>
             <p className="text-gray-400 text-lg font-bold mb-10">{wasTiebreaker ? 'Decided by Tiebreaker' : 'Final Results'}</p>
 
             {/* Podium */}
@@ -211,7 +211,7 @@ export default function InfernoTowerView() {
         </div>
 
         {/* Tower structure */}
-        <div className="flex-1 relative" style={{ maxWidth: 600, margin: '0 auto' }}>
+        <div className="flex-1 relative max-w-[90vw] sm:max-w-[600px]" style={{ margin: '0 auto' }}>
           {/* Tower body */}
           <div className="absolute inset-x-4 top-0 bottom-0 z-0">
             {/* Brick pattern floors */}
@@ -297,7 +297,7 @@ export default function InfernoTowerView() {
         </div>
 
         {/* Right side: Leaderboard */}
-        <div className="w-56 flex-shrink-0 bg-black/40 backdrop-blur-sm border-l border-gray-800 p-3 z-10 overflow-y-auto">
+        <div className="hidden lg:block w-56 xl:w-64 flex-shrink-0 bg-black/40 backdrop-blur-sm border-l border-gray-800 p-3 z-10 overflow-y-auto">
           <h4 className="text-xs font-black text-gray-500 mb-3 uppercase tracking-wider">Leaderboard</h4>
           <div className="space-y-1.5">
             {players.map((p, i) => {

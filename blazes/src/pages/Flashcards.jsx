@@ -121,7 +121,7 @@ export default function Flashcards() {
                 className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
                 <Minus className="w-4 h-4 text-gray-600" />
               </button>
-              <div className="text-4xl font-black text-gray-900 w-16 text-center">{count}</div>
+              <div className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 w-16 text-center">{count}</div>
               <button onClick={() => setCount(c => Math.min(50, c + 1))}
                 className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
                 <Plus className="w-4 h-4 text-gray-600" />
@@ -213,7 +213,7 @@ export default function Flashcards() {
               }}>
                 {/* Front */}
                 <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0 }}
-                  className="bg-white rounded-3xl border-2 border-gray-200 shadow-lg p-8 flex flex-col items-center justify-center text-center">
+                  className="bg-white rounded-3xl border-2 border-gray-200 shadow-lg p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center">
                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">{index + 1} / {cards.length}</div>
                   <div className="text-2xl font-black text-gray-900 leading-snug">{card?.front}</div>
                   <div className="text-xs text-gray-300 mt-6">Tap to reveal</div>
@@ -221,7 +221,7 @@ export default function Flashcards() {
 
                 {/* Back */}
                 <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', position: 'absolute', inset: 0 }}
-                  className="bg-blue-50 rounded-3xl border-2 border-blue-200 shadow-lg p-8 flex flex-col items-center justify-center text-center overflow-y-auto">
+                  className="bg-blue-50 rounded-3xl border-2 border-blue-200 shadow-lg p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center overflow-y-auto">
                   <div className="text-xs font-bold text-blue-500 uppercase mb-4">Answer</div>
                   <div className="text-2xl font-black text-blue-700 leading-snug whitespace-pre-line">{card?.back}</div>
                 </div>

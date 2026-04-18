@@ -10,19 +10,19 @@ export default function Landing() {
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
               <Flame className="w-5 h-5 text-white" strokeWidth={2.5} />
             </div>
             <span className="text-xl font-black">Blazes</span>
           </Link>
-          <div className="flex items-center gap-6">
-            <Link to="/" className="text-red-600 font-bold border-b-2 border-red-600">Home</Link>
-            <Link to="/about" className="text-gray-700 hover:text-red-600 font-semibold">About</Link>
-            <Link to="/contact" className="text-gray-700 hover:text-red-600 font-semibold">Contact</Link>
-            <Link to="/pricing" className="text-gray-700 hover:text-red-600 font-semibold">Pricing</Link>
-            <Link to="/login" className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors">
+          <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
+            <Link to="/" className="hidden sm:inline text-red-600 font-bold border-b-2 border-red-600">Home</Link>
+            <Link to="/about" className="hidden md:inline text-gray-700 hover:text-red-600 font-semibold">About</Link>
+            <Link to="/contact" className="hidden md:inline text-gray-700 hover:text-red-600 font-semibold">Contact</Link>
+            <Link to="/pricing" className="hidden sm:inline text-gray-700 hover:text-red-600 font-semibold">Pricing</Link>
+            <Link to="/login" className="bg-red-600 text-white px-4 sm:px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors text-sm sm:text-base">
               Log In
             </Link>
           </div>
@@ -30,23 +30,23 @@ export default function Landing() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 bg-red-600 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <section className="pt-20 sm:pt-24 md:pt-32 pb-12 sm:pb-16 md:pb-20 bg-red-600 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
             {/* Left side - Text */}
-            <div className="text-white">
-              <h1 className="text-6xl font-black leading-tight mb-6">
+            <div className="text-white text-center lg:text-left">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-4 sm:mb-6">
                 Study Smarter.<br/>
                 Play Together.<br/>
                 Win Big.
               </h1>
-              <p className="text-xl text-white/90 mb-8">
+              <p className="text-base sm:text-lg md:text-xl text-white/90 mb-6 sm:mb-8">
                 The multiplayer study game that makes learning fun. Compete with friends, climb leaderboards, and master your subjects.
               </p>
             </div>
 
             {/* Right side - Cards */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Join a Game Card */}
               <div className="bg-white rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center gap-2 mb-4">
@@ -105,11 +105,11 @@ export default function Landing() {
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-5xl font-black text-gray-900 mb-4">How It Works</h2>
-            <p className="text-xl text-gray-600">Get started in seconds. No downloads. No hassle.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-4">How It Works</h2>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600">Get started in seconds. No downloads. No hassle.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-6 relative">
                 <Hash className="w-8 h-8 text-white" strokeWidth={3} />
@@ -142,11 +142,11 @@ export default function Landing() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-5xl font-black text-gray-900 mb-4">What Makes Blazes Awesome</h2>
-            <p className="text-xl text-gray-600">Everything you need to make studying competitive, engaging, and fun.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-4">What Makes Blazes Awesome</h2>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600">Everything you need to make studying competitive, engaging, and fun.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 hover:border-red-500 transition-colors">
               <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center mb-4">
                 <BarChart3 className="w-6 h-6 text-white" strokeWidth={2.5} />
@@ -197,8 +197,8 @@ export default function Landing() {
       <section className="py-20 bg-gray-50">
         <div className="max-w-4xl mx-auto px-6">
           <div className="mb-16">
-            <h2 className="text-5xl font-black text-gray-900 mb-4">A Multiplayer Study Game</h2>
-            <p className="text-xl text-gray-600">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-4">A Multiplayer Study Game</h2>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600">
               Blazes transforms studying into an interactive competition. Students answer questions in real-time, climb leaderboards, and unlock achievements while mastering their subjects.
             </p>
           </div>
@@ -266,9 +266,9 @@ export default function Landing() {
       {/* Pricing Teaser */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-5xl mx-auto px-6 text-center">
-          <h2 className="text-4xl font-black text-gray-900 mb-4">Plans for Everyone</h2>
-          <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">Free to play. Upgrade for exclusive perks, AI tools, and premium features.</p>
-          <div className="grid sm:grid-cols-3 gap-4 mb-10 max-w-3xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-4">Plans for Everyone</h2>
+          <p className="text-base sm:text-lg text-gray-600 mb-8 sm:mb-12 max-w-2xl mx-auto">Free to play. Upgrade for exclusive perks, AI tools, and premium features.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 max-w-3xl mx-auto">
             <div className="bg-white rounded-2xl p-5 border border-gray-200">
               <div className="text-2xl font-black text-gray-900 mb-1">Free</div>
               <div className="text-sm font-semibold text-gray-500 mb-2">For Students</div>
@@ -292,22 +292,22 @@ export default function Landing() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 bg-orange-500 relative overflow-hidden">
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6">
-            <Flame className="w-10 h-10 text-orange-500" strokeWidth={2.5} />
+      <section className="py-16 sm:py-20 md:py-24 bg-orange-500 relative overflow-hidden">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center relative z-10">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6">
+            <Flame className="w-8 h-8 sm:w-10 sm:h-10 text-orange-500" strokeWidth={2.5} />
           </div>
-          <h2 className="text-5xl font-black text-white mb-6">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 sm:mb-6">
             Ready to Ignite Your<br/>Learning?
           </h2>
-          <p className="text-xl text-white/90 mb-10">
+          <p className="text-base sm:text-lg md:text-xl text-white/90 mb-8 sm:mb-10">
             Join students who are studying smarter, not harder. Your first game is just a code away!
           </p>
-          <div className="flex gap-4 justify-center">
-            <button className="bg-white text-orange-500 px-8 py-4 rounded-xl font-black text-lg hover:bg-orange-50 transition-colors shadow-xl">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+            <button className="bg-white text-orange-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-black text-base sm:text-lg hover:bg-orange-50 transition-colors shadow-xl">
               Join a Game →
             </button>
-            <Link to="/signup" className="bg-red-600 text-white px-8 py-4 rounded-xl font-black text-lg hover:bg-red-700 transition-colors shadow-xl">
+            <Link to="/signup" className="bg-red-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-black text-base sm:text-lg hover:bg-red-700 transition-colors shadow-xl">
               Sign Up Free →
             </Link>
           </div>
@@ -316,16 +316,16 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white py-12 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between">
+      <footer className="bg-white py-8 sm:py-12 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <Link to="/" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
                 <Flame className="w-5 h-5 text-white" strokeWidth={2.5} />
               </div>
               <span className="text-xl font-black">Blazes</span>
             </Link>
-            <div className="flex gap-8 text-sm text-gray-600">
+            <div className="flex gap-6 sm:gap-8 text-sm text-gray-600">
               <Link to="/about" className="hover:text-red-600">About</Link>
               <Link to="/contact" className="hover:text-red-600">Contact</Link>
               <Link to="/pricing" className="hover:text-red-600">Pricing</Link>

@@ -11,7 +11,7 @@ export default function TeacherGameResults() {
     const [error, setError] = useState('');
     const [playerSkins, setPlayerSkins] = useState({});
 
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
     useEffect(() => {
         const fetchResults = async () => {

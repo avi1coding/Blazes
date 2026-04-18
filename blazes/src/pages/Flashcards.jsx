@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw, Check, X, Sparkles, Mi
 export default function Flashcards() {
   const { kitId } = useParams();
   const navigate = useNavigate();
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const [phase, setPhase] = useState('pick'); // 'pick' | 'loading' | 'study'

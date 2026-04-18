@@ -25,7 +25,7 @@ export default function ElementalWagerSetupPage() {
     setLoading(true); setError('');
     const gameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const res = await fetch(`${base}/api/games/create`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hostId: user.id, kitId: kit.id, gameCode, gameMode: 'elemental_wager', settings: { gameName, timeLimit, allowCustomPlayerNames, hostName: user.name } })

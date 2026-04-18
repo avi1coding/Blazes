@@ -18,7 +18,7 @@ export default function StudentJoinGame() {
   // Fetch equipped skin
   useEffect(() => {
     if (!user) return;
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     fetch(`${base}/api/skins/${user.id}`)
       .then(r => r.json())
       .then(d => { if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin); })
@@ -30,7 +30,7 @@ export default function StudentJoinGame() {
     if (!gameCode) return;
     const fetchSettings = async () => {
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
         const res = await fetch(`${baseUrl}/api/games/${gameCode.toUpperCase()}`);
         const data = await res.json();
         const allowed = data?.settings?.allowCustomPlayerNames === true;
@@ -65,7 +65,7 @@ export default function StudentJoinGame() {
 
     setIsLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const response = await fetch(`${baseUrl}/api/games/${gameCode.toUpperCase()}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

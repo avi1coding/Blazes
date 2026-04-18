@@ -29,13 +29,13 @@ function computeFireLevel(startedAt, settings) {
 function getFullImageUrl(url) {
   if (!url) return null;
   if (url.startsWith('http') || url.startsWith('data:')) return url;
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
   return url.startsWith('/') ? `${base}${url}` : `${base}/${url}`;
 }
 
 export default function InfernoTowerGamePlay({ gameCode, user, equippedSkinId }) {
   const navigate = useNavigate();
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
   const [gameData, setGameData] = useState(null);
   const [questions, setQuestions] = useState([]);

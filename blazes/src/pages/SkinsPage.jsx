@@ -628,7 +628,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
     const [revealPhase, setRevealPhase] = useState('idle'); // idle, opening, revealing, done
     const [userTier, setUserTier] = useState('free');
 
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     const hasSeasonPass = ['blazes_plus'].includes(userTier);
 
     // Fetch user tier

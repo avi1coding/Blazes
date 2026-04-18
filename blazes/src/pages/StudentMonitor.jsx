@@ -16,7 +16,7 @@ export default function StudentMonitor() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
         // Fetch game data
         const gameResponse = await fetch(`${base}/api/games/${gameCode}`);

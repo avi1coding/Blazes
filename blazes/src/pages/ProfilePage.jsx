@@ -18,7 +18,7 @@ export default function ProfilePage() {
     if (!userData) { navigate('/login'); return; }
     const parsed = JSON.parse(userData);
     setUser(parsed);
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     fetch(`${base}/api/season/progress/${parsed.id}`).then(r => r.json()).then(setProgress).catch(() => {});
     fetch(`${base}/api/season/badges/${parsed.id}`).then(r => r.json()).then(d => setBadges(Array.isArray(d) ? d : [])).catch(() => {});
     fetch(`${base}/api/skins/${parsed.id}`).then(r => r.json()).then(d => { if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin); }).catch(() => {});

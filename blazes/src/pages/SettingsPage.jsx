@@ -53,7 +53,7 @@ function getSections(userRole) {
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
   const [user, setUser] = useState(null);
   const [settings, setSettings] = useState(null);
   const [activeSection, setActiveSection] = useState('account');

@@ -28,7 +28,7 @@ function computeFireLevel(startedAt, settings) {
 
 export default function InfernoTowerView() {
   const { gameCode } = useParams();
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
   const [data, setData] = useState(null);
   const [fireLevel, setFireLevel] = useState(0);

@@ -9,7 +9,7 @@ export default function ClassroomPage() {
   const { classroomId } = useParams();
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user'));
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
   const [classroom, setClassroom] = useState(null);
   const [assignments, setAssignments] = useState([]);
@@ -58,7 +58,7 @@ export default function ClassroomPage() {
   // Refetch student assignments when page comes into view to show completion updates
   useEffect(() => {
     if (user?.role === 'student' && classroomId) {
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const interval = setInterval(() => {
         fetch(`${base}/api/assignments/student/${user.id}?t=${Date.now()}`).then(r => r.json()).then(d => {
           setMyAssignments((d || []).filter(a => String(a.classroom_id) === String(classroomId)));

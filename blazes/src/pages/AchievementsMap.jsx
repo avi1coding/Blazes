@@ -229,7 +229,7 @@ export default function AchievementsMap({ userId }) {
 
     useEffect(() => {
         if (!userId) return;
-        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
         const load = async () => {
             const r = await fetch(`${base}/api/achievements/${userId}`);
             const d = await r.json();

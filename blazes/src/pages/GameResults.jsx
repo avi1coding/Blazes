@@ -27,7 +27,7 @@ export default function GameResults() {
   const [userTier, setUserTier] = useState('free');
 
   const user = JSON.parse(localStorage.getItem('user'));
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
   const hasMembership = ['blazes_plus', 'teacher_pro', 'school'].includes(userTier);
 

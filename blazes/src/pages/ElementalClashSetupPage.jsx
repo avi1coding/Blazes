@@ -38,7 +38,7 @@ export default function ElementalClashSetupPage() {
       allowCustomPlayerNames,
     };
     try {
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const response = await fetch(`${base}/api/games/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

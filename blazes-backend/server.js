@@ -8,7 +8,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 const db = new sqlite3.Database('blazes.db');
 
 const path = require('path');
@@ -21,7 +21,12 @@ console.log('[AI]', groq ? 'Groq initialized' : 'NOT configured (no GROQ_API_KEY
 
 const cookieParser = require('cookie-parser');
 const XLSX = require('xlsx');
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174'], credentials: true }));
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:5174'];
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use((req, res, next) => {
   if (req.originalUrl === '/api/payments/webhook') return next();
   express.json({ limit: '10mb' })(req, res, next);
@@ -49,7 +54,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: 'http://localhost:5000/auth/google/callback',
+    callbackURL: `${BACKEND_URL}/auth/google/callback`,
   }, (accessToken, refreshToken, params, profile, done) => {
     const email = profile.emails[0].value.toLowerCase();
     const name = profile.displayName;
@@ -87,13 +92,13 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 
 app.get('/auth/google', (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID) {
-    return res.redirect('http://localhost:5173/login?error=google_not_configured');
+    return res.redirect(`${FRONTEND_URL}/login?error=google_not_configured`);
   }
   passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
 });
 
 app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: 'http://localhost:5173/login?error=google_failed' }),
+  passport.authenticate('google', { failureRedirect: `${FRONTEND_URL}/login?error=google_failed` }),
   async (req, res) => {
     const user = req.user;
 
@@ -106,10 +111,10 @@ app.get('/auth/google/callback',
         const token = crypto.randomBytes(32).toString('hex');
         const expires = new Date(Date.now() + 15 * 60 * 1000).toISOString();
         await dbRun('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?', [token, expires, user.id]);
-        return res.redirect(`http://localhost:5173/reset-password?token=${token}`);
+        return res.redirect(`${FRONTEND_URL}/reset-password?token=${token}`);
       } catch (err) {
         console.error('[Auth] Google reset token error:', err);
-        return res.redirect('http://localhost:5173/forgot-password?error=reset_failed');
+        return res.redirect(`${FRONTEND_URL}/forgot-password?error=reset_failed`);
       }
     }
 
@@ -117,7 +122,7 @@ app.get('/auth/google/callback',
     db.run('INSERT INTO login_activity (user_id, ip_address, user_agent) VALUES (?, ?, ?)',
       [user.id, req.ip, req.headers['user-agent'] || 'Unknown']);
     const userData = encodeURIComponent(JSON.stringify({ id: user.id, email: user.email, name: user.name, role: user.role }));
-    res.redirect(`http://localhost:5173/auth/callback?token=jwt-token-here&user=${userData}`);
+    res.redirect(`${FRONTEND_URL}/auth/callback?token=jwt-token-here&user=${userData}`);
   }
 );
 
@@ -131,7 +136,7 @@ const CLASSROOM_SCOPES = [
 
 // Google Classroom: connect (requests classroom scopes, uses same callback URL)
 app.get('/auth/google/classroom', (req, res, next) => {
-  if (!process.env.GOOGLE_CLIENT_ID) return res.redirect('http://localhost:5173/home/teacher?error=google_not_configured');
+  if (!process.env.GOOGLE_CLIENT_ID) return res.redirect(`${FRONTEND_URL}/home/teacher?error=google_not_configured`);
   passport.authenticate('google', {
     scope: CLASSROOM_SCOPES,
     accessType: 'offline',
@@ -999,7 +1004,7 @@ app.post('/api/auth/register', async (req, res) => {
           service: 'gmail',
           auth: { user: process.env.CONTACT_EMAIL_USER, pass: process.env.CONTACT_EMAIL_PASS },
         });
-        const verifyUrl = `http://localhost:5173/verify-email?token=${verifyToken}`;
+        const verifyUrl = `${FRONTEND_URL}/verify-email?token=${verifyToken}`;
         transporter.sendMail({
           from: `"Blazes" <${process.env.CONTACT_EMAIL_USER}>`,
           to: email,
@@ -1159,7 +1164,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       auth: { user: process.env.CONTACT_EMAIL_USER, pass: process.env.CONTACT_EMAIL_PASS },
     });
 
-    const resetUrl = `http://localhost:5173/reset-password?token=${token}`;
+    const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}`;
     await transporter.sendMail({
       from: `"Blazes" <${process.env.CONTACT_EMAIL_USER}>`,
       to: user.email,
@@ -1188,7 +1193,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 // Google-verified password reset: track pending resets server-side
 const pendingGoogleResets = new Set(); // stores session IDs waiting for reset
 app.get('/auth/google/reset', (req, res, next) => {
-  if (!process.env.GOOGLE_CLIENT_ID) return res.redirect('http://localhost:5173/forgot-password?error=google_not_configured');
+  if (!process.env.GOOGLE_CLIENT_ID) return res.redirect(`${FRONTEND_URL}/forgot-password?error=google_not_configured`);
   // Generate a one-time reset nonce, store it in a cookie so we can verify on callback
   const nonce = crypto.randomBytes(16).toString('hex');
   pendingGoogleResets.add(nonce);
@@ -4990,7 +4995,7 @@ app.post('/api/auth/resend-verification', async (req, res) => {
       service: 'gmail',
       auth: { user: process.env.CONTACT_EMAIL_USER, pass: process.env.CONTACT_EMAIL_PASS },
     });
-    const verifyUrl = `http://localhost:5173/verify-email?token=${verifyToken}`;
+    const verifyUrl = `${FRONTEND_URL}/verify-email?token=${verifyToken}`;
     await transporter.sendMail({
       from: `"Blazes" <${process.env.CONTACT_EMAIL_USER}>`,
       to: email,
@@ -5940,7 +5945,7 @@ app.post('/api/payments/checkout', async (req, res) => {
       await dbRun('UPDATE users SET stripe_customer_id = ? WHERE id = ?', [customerId, userId]);
     }
 
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const baseUrl = FRONTEND_URL;
     let sessionConfig;
 
     if (plan === 'teacher_pro') {
@@ -6744,6 +6749,15 @@ app.get('/api/games/:gameCode/survival-state', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Serve frontend static files in production
+const clientBuildPath = path.join(__dirname, '..', 'blazes', 'dist');
+if (fs.existsSync(clientBuildPath)) {
+  app.use(express.static(clientBuildPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`🚀 Backend with REAL DB: http://localhost:${PORT}`);

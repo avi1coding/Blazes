@@ -32,7 +32,7 @@ export default function Login() {
         setEmailNotFound(false);
         setCheckingEmail(true);
         try {
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+            const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
             const res = await fetch(`${baseUrl}/api/auth/check-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -58,7 +58,7 @@ export default function Login() {
 
     const handlePasswordSubmit = async () => {
         try {
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+            const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
             const response = await fetch(`${baseUrl}/api/auth/login`, {
                 method: 'POST',
                 headers: {
@@ -111,7 +111,7 @@ export default function Login() {
 
 
     const handleGoogleLogin = () => {
-        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
         window.location.href = `${base}/auth/google`;
     };
 
@@ -244,7 +244,7 @@ export default function Login() {
                                     <button type="button" onClick={async () => {
                                         setResending(true);
                                         try {
-                                            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                                            const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                                             await fetch(`${baseUrl}/api/auth/resend-verification`, {
                                                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({ email: verificationEmail })

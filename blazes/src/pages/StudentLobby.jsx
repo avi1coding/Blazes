@@ -27,7 +27,7 @@ export default function StudentLobby() {
             return;
         }
 
-        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
         // Load equipped skin
         fetch(`${base}/api/skins/${user.id}`)
@@ -106,7 +106,7 @@ export default function StudentLobby() {
 
     // Fetch skins for all participants
     useEffect(() => {
-        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
         participants.forEach(p => {
             if (!p.user_id || fetchedSkinIds.current.has(p.user_id)) return;
             fetchedSkinIds.current.add(p.user_id);

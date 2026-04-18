@@ -75,7 +75,7 @@ export default function TeacherHome() {
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
 
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
     // Load equipped skin
     fetch(`${base}/api/skins/${parsedUser.id}`)
@@ -177,7 +177,7 @@ export default function TeacherHome() {
 
   // Fetch skins for any student we haven't fetched yet
   useEffect(() => {
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     const allStudents = [...topPerformers, ...studentsNeedingHelp];
     allStudents.forEach(s => {
       if (!s.id || studentSkins[s.id] !== undefined) return;
@@ -195,7 +195,7 @@ export default function TeacherHome() {
   // Fetch analytics when stats tab is active
   useEffect(() => {
     if (activeTab !== 'stats' || !user) return;
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     setAnalytics(null);
     setSelectedStudent(null);
     setSelectedStudentDetail(null);
@@ -210,7 +210,7 @@ export default function TeacherHome() {
   // Fetch individual student detail when selected
   useEffect(() => {
     if (!selectedStudent) { setSelectedStudentDetail(null); return; }
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     setSelectedStudentDetail(null);
     fetch(`${base}/api/analytics/student/${selectedStudent.id}?teacherId=${user?.id}`)
       .then(r => r.json())
@@ -222,7 +222,7 @@ export default function TeacherHome() {
   useEffect(() => {
     if (!selectedGameCode) { setGameDetails(null); return; }
     if (teacherTier !== 'teacher_pro') { setGameDetails(null); return; }
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     setLoadingGameDetails(true);
     setExpandedPlayerIndex(null);
     fetch(`${base}/api/games/${selectedGameCode}/details`)
@@ -597,7 +597,7 @@ export default function TeacherHome() {
                     <h1 className="text-3xl font-black text-gray-900 mb-1">Analytics</h1>
                     <p className="text-gray-500">Performance data for students in your classrooms</p>
                   </div>
-                  <a href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/export/teacher/${user.id}`}
+                  <a href={`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/export/teacher/${user.id}`}
                     className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors">
                     <BarChart3 className="w-4 h-4" /> Export Report
                   </a>
@@ -1144,7 +1144,7 @@ export default function TeacherHome() {
                                 })() : '--'}
                               </td>
                               <td className="py-3 px-3 text-center">
-                                <a href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/export/teacher/${user.id}/student/${s.id}`}
+                                <a href={`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/export/teacher/${user.id}/student/${s.id}`}
                                   onClick={e => e.stopPropagation()}
                                   className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-colors"
                                   title="Export student report">
@@ -1171,7 +1171,7 @@ export default function TeacherHome() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <a href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/export/teacher/${user.id}/student/${detailStudent.id}`}
+                        <a href={`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/export/teacher/${user.id}/student/${detailStudent.id}`}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors">
                           <BarChart3 className="w-3.5 h-3.5" /> Export
                         </a>
@@ -1512,7 +1512,7 @@ export default function TeacherHome() {
                   setGoogleLoading(true);
                   setGoogleImportResult(null);
                   setShowGoogleImport(true);
-                  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                   try {
                     const res = await fetch(`${base}/api/google-classroom/courses`, { credentials: 'include' });
                     if (res.status === 401) {
@@ -1614,7 +1614,7 @@ export default function TeacherHome() {
                             const file = e.target.files?.[0]; if (!file) return;
                             const reader = new FileReader();
                             reader.onload = async () => {
-                              const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                              const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                               const res = await fetch(`${base}/api/upload-image`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageData: reader.result }) });
                               const data = await res.json();
                               if (data.url) setNewClassroom(prev => ({ ...prev, imageUrl: data.url }));
@@ -1630,7 +1630,7 @@ export default function TeacherHome() {
                     <button onClick={() => setShowCreateClassroom(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl">Cancel</button>
                     <button onClick={async () => {
                       if (!newClassroom.name) return;
-                      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                       await fetch(`${base}/api/classrooms`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ teacherId: user.id, name: newClassroom.name, subject: newClassroom.subject, gradeLevel: newClassroom.gradeLevel, imageUrl: newClassroom.imageUrl })
@@ -1685,7 +1685,7 @@ export default function TeacherHome() {
                     <div className="py-12 text-center">
                       <p className="text-gray-500 mb-4">No active classes found, or you need to connect Google Classroom.</p>
                       <button onClick={() => {
-                        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                         window.location.href = `${base}/auth/google/classroom`;
                       }} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700">
                         Connect Google Classroom
@@ -1698,7 +1698,7 @@ export default function TeacherHome() {
                         <button key={course.id} disabled={importingCourse === course.id}
                           onClick={async () => {
                             setImportingCourse(course.id);
-                            const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                            const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                             try {
                               const importRes = await fetch(`${base}/api/google-classroom/import`, {
                                 method: 'POST',
@@ -1749,7 +1749,7 @@ export default function TeacherHome() {
             onKitCreated={() => {
               setActiveTab('myKits');
               // Refresh kits list
-              fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/teacher/${user.id}`)
+              fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/teacher/${user.id}`)
                 .then(res => res.json())
                 .then(data => setKits(data))
                 .catch(err => console.error('Error refreshing kits:', err));
@@ -1820,7 +1820,7 @@ export default function TeacherHome() {
                         <button
                           onClick={async () => {
                             try {
-                              const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${kit.id}`);
+                              const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${kit.id}`);
                               const kitDetails = await response.json();
                               setSelectedKit(kitDetails);
                               setShowQuestionsModal(true);
@@ -1918,7 +1918,7 @@ export default function TeacherHome() {
                     <button
                       onClick={async () => {
                         try {
-                          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${editingKit.id}`, {
+                          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${editingKit.id}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -1970,7 +1970,7 @@ export default function TeacherHome() {
                     <button
                       onClick={async () => {
                         try {
-                          await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${deleteConfirm}`, {
+                          await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${deleteConfirm}`, {
                             method: 'DELETE'
                           });
                           setKits(kits.filter(k => k.id !== deleteConfirm));
@@ -2090,7 +2090,7 @@ export default function TeacherHome() {
                         e.preventDefault();
                         if (!newCorrect) return;
                         const form = e.target;
-                        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                         try {
                           const res = await fetch(`${base}/api/kits/${selectedKit.id}/questions`, {
                             method: 'POST',
@@ -2148,7 +2148,7 @@ export default function TeacherHome() {
                                 try {
                                   const reader = new FileReader();
                                   reader.onload = async () => {
-                                    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                                    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                                     const res = await fetch(`${base}/api/upload-image`, {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json' },
@@ -2368,7 +2368,7 @@ export default function TeacherHome() {
                     <button
                       onClick={async () => {
                         try {
-                          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions/${editingQuestion.id}`, {
+                          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions/${editingQuestion.id}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -2422,7 +2422,7 @@ export default function TeacherHome() {
                     <button
                       onClick={async () => {
                         try {
-                          await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions/${deleteQuestionConfirm}`, {
+                          await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions/${deleteQuestionConfirm}`, {
                             method: 'DELETE'
                           });
                           setSelectedKit({

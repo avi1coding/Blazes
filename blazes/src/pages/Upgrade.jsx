@@ -4,7 +4,7 @@ import { ArrowLeft, Check, Star, Crown, Building2, Flame } from 'lucide-react';
 
 export default function Upgrade() {
   const navigate = useNavigate();
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(null);

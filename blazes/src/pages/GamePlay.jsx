@@ -9,7 +9,7 @@ import ElementalWagerGamePlay from './ElementalWagerGamePlay';
 function getFullImageUrl(url) {
   if (!url) return null;
   if (url.startsWith('http') || url.startsWith('data:')) return url;
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
   return url.startsWith('/') ? `${base}${url}` : `${base}/${url}`;
 }
 
@@ -81,7 +81,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     
     // If this is an assignment, fetch assignment details for progress bar
     if (initialGame.assignment_id) {
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       fetch(`${base}/api/assignments/${initialGame.assignment_id}`)
         .then(r => r.json())
         .then(data => {
@@ -98,7 +98,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     
     // If this is an assignment resume, load initial progress
     if (initialGame.assignment_id && user?.id && gameCode) {
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       fetch(`${base}/api/games/${gameCode}/student/${user.id}/answers`)
         .then(r => r.json())
         .then(data => {
@@ -125,7 +125,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     const currentUser = JSON.parse(localStorage.getItem('user'));
     if (!currentUser) return null;
     try {
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const payload = {
         userId: currentUser.id,
         finalScore: scoreRef.current,
@@ -166,7 +166,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
         xpEarned = data?.xpEarned || 0;
       } catch (_) { }
       try {
-        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
         fetch(`${base}/api/achievements/check/${currentUser.id}`, { method: 'POST' });
       } catch (_) { }
     }
@@ -184,7 +184,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   useEffect(() => {
     const poll = setInterval(async () => {
       try {
-        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
         const data = await (await fetch(`${base}/api/games/${gameCode}`)).json();
         if (data.status === 'ended') { handleGameOver(); return; }
         // Re-sync timer only when drift > 1s to avoid visual skips
@@ -241,7 +241,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     if (user && currentQuestion.id) {
       const timeTaken = parseFloat(((Date.now() - questionStartTimeRef.current) / 1000).toFixed(1));
       try {
-        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
         await fetch(`${base}/api/games/${gameCode}/answer`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id, questionId: currentQuestion.id, selectedAnswer: String(optionIndex), isCorrect, timeTaken })
@@ -284,7 +284,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
         isCorrect = true;
       } else {
         try {
-          const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+          const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
           const resp = await fetch(`${base}/api/check-answer`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userAnswer: typedAnswer.trim(), correctAnswer: String(currentQ.correctAnswer), questionText: currentQ.text })
@@ -307,7 +307,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     }
     if (user && currentQ.id) {
       const timeTaken = parseFloat(((Date.now() - questionStartTimeRef.current) / 1000).toFixed(1));
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       fetch(`${base}/api/games/${gameCode}/answer`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, questionId: currentQ.id, selectedAnswer: typedAnswer.trim(), isCorrect, timeTaken })
@@ -712,7 +712,7 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
   const correctCountRef = useRef(0);
   const questionsAnsweredRef = useRef(0);
 
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
   const handleGameOver = useCallback(async () => {
     if (gameOverCalledRef.current) return;
@@ -1048,7 +1048,7 @@ export default function GamePlay() {
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     fetch(`${base}/api/skins/${user.id}`).then(r => r.json()).then(d => {
       if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin);
     }).catch(() => {});

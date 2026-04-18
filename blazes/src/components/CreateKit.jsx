@@ -4,7 +4,7 @@ import Toast from '../components/Toast';
 import SubjectPicker, { GradePicker } from './SubjectPicker';
 
 export default function CreateKit({ user, onBack, onKitCreated }) {
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
   const [userTier, setUserTier] = useState('free');
 
   useEffect(() => {

@@ -56,7 +56,7 @@ export default function SignUp() {
     if (!isValidEmail(trimmed)) { setEmailTaken(false); setCheckedEmail(''); return; }
     if (trimmed === checkedEmail) return;
     try {
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const res = await fetch(`${base}/api/auth/check-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -161,7 +161,7 @@ export default function SignUp() {
       return;
     }
     try {
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const res = await fetch(`${base}/api/auth/check-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -193,7 +193,7 @@ export default function SignUp() {
         subject: teacherForm.subject || teacherForm.customSubject
       };
 
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const response = await fetch(`${base}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -327,7 +327,7 @@ export default function SignUp() {
             <button
               type="button"
               onClick={() => {
-                const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                 window.location.href = `${base}/auth/google`;
               }}
               className="w-full mt-4 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-3"

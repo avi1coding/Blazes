@@ -10,7 +10,7 @@ export default function VerifyEmail() {
 
   useEffect(() => {
     if (!token) { setStatus('error'); return; }
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     fetch(`${base}/api/auth/verify-email?token=${token}`)
       .then(r => {
         if (r.ok) setStatus('success');

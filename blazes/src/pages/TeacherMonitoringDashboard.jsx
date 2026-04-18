@@ -36,7 +36,7 @@ export default function TeacherMonitoringDashboard() {
 
     const fetchGame = async () => {
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
         const response = await fetch(`${baseUrl}/api/games/${gameCode}`);
         const data = await response.json();
 
@@ -82,7 +82,7 @@ export default function TeacherMonitoringDashboard() {
 
   // Fetch equipped skin for any participants we haven't fetched yet
   useEffect(() => {
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     participants.forEach(p => {
       if (!p.user_id || fetchedSkinIds.current.has(p.user_id)) return;
       fetchedSkinIds.current.add(p.user_id);
@@ -138,7 +138,7 @@ export default function TeacherMonitoringDashboard() {
   const confirmEndGame = async () => {
     setEndGameConfirm(false);
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       await fetch(`${baseUrl}/api/games/${gameCode}/end`, { method: 'PUT' });
       navigate(`/game/teacher-results/${gameCode}`);
     } catch (err) {

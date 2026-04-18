@@ -17,7 +17,7 @@ export default function ForgotPassword() {
     setError('');
     setShowGoogle(false);
     try {
-      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const res = await fetch(`${base}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,7 +41,7 @@ export default function ForgotPassword() {
   };
 
   const handleGoogleReset = () => {
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     window.location.href = `${base}/auth/google/reset`;
   };
 

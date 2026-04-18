@@ -76,7 +76,7 @@ export default function StudentHome() {
     setUser(parsedUser);
 
     // Load equipped skin
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     fetch(`${base}/api/skins/${parsedUser.id}`)
       .then(r => r.json())
       .then(d => { if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin); })
@@ -169,7 +169,7 @@ export default function StudentHome() {
   // Refetch assignments when dashboard or classrooms tab is active to show updated status
   useEffect(() => {
     if (!user) return;
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     // Immediate fetch on tab/location change
     fetch(`${base}/api/assignments/student/${user.id}?t=${Date.now()}`)
       .then(r => r.json())
@@ -190,7 +190,7 @@ export default function StudentHome() {
   // Fetch student analytics when stats tab is active
   useEffect(() => {
     if (activeTab !== 'stats' || !user) return;
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     setStudentAnalytics(null);
     fetch(`${base}/api/analytics/student/${user.id}`)
       .then(r => r.json())
@@ -203,7 +203,7 @@ export default function StudentHome() {
 
   useEffect(() => {
     if (!user) return;
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     const interval = setInterval(() => {
       fetch(`${base}/api/season/progress/${user.id}`).then(r => r.json()).then(setSeasonProgress).catch(() => {});
     }, 30000);
@@ -227,7 +227,7 @@ export default function StudentHome() {
     setJoinError('');
     setJoinLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const res = await fetch(`${baseUrl}/api/games/${gameCode.toUpperCase()}`);
       if (!res.ok) {
         setJoinError('Game not found. Check the code and try again.');
@@ -429,7 +429,7 @@ export default function StudentHome() {
                         {!isDone && (
                           <button
                             onClick={async () => {
-                              const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                              const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                               try {
                                 const res = await fetch(`${base}/api/assignments/${a.id}/play`, {
                                   method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -492,7 +492,7 @@ export default function StudentHome() {
             <div className="flex items-center justify-between mb-8">
               <h1 className="text-4xl font-black text-gray-900">Your Stats</h1>
               {subscription?.tier && ['blazes_plus', 'teacher_pro', 'school'].includes(subscription.tier) ? (
-                <a href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/export/stats/${user.id}`}
+                <a href={`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/export/stats/${user.id}`}
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">
                   Export Stats
                 </a>
@@ -1427,7 +1427,7 @@ export default function StudentHome() {
                             )}
                           </div>
                           <button onClick={async () => {
-                            const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                            const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                             try {
                               const res = await fetch(`${base}/api/assignments/${a.id}/play`, {
                                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1573,7 +1573,7 @@ export default function StudentHome() {
                       </button>
                       <button
                         onClick={async () => {
-                          const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                          const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                           const res = await fetch(`${base}/api/kits/${kit.id}`);
                           const data = await res.json();
                           setSelectedKit(data);
@@ -1611,7 +1611,7 @@ export default function StudentHome() {
                     <button onClick={() => setDeleteKitConfirm(null)}
                       className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 text-sm">Cancel</button>
                     <button onClick={async () => {
-                      const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                       await fetch(`${base}/api/kits/${deleteKitConfirm.id}`, { method: 'DELETE' });
                       setDeleteKitConfirm(null);
                       fetch(`${base}/api/kits/teacher/${user.id}`).then(r => r.json()).then(setMyKits).catch(() => {});
@@ -1695,7 +1695,7 @@ export default function StudentHome() {
                     <button
                       onClick={async () => {
                         try {
-                          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${editingKit.id}`, {
+                          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${editingKit.id}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -1857,7 +1857,7 @@ export default function StudentHome() {
                           correctAnswer = pairs.join('###');
                         }
 
-                        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                         try {
                           const res = await fetch(`${base}/api/kits/${selectedKit.id}/questions`, {
                             method: 'POST',
@@ -2025,7 +2025,7 @@ export default function StudentHome() {
                                   const reader = new FileReader();
                                   reader.onload = async () => {
                                     try {
-                                      const bse = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                                      const bse = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                                       const res = await fetch(`${bse}/api/upload-audio`, {
                                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ audioData: reader.result })
@@ -2049,7 +2049,7 @@ export default function StudentHome() {
                                   const reader = new FileReader();
                                   reader.onload = async () => {
                                     try {
-                                      const bse = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                                      const bse = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                                       const res = await fetch(`${bse}/api/upload-audio`, {
                                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ audioData: reader.result })
@@ -2172,7 +2172,7 @@ export default function StudentHome() {
                       onClick={async () => {
                         setKitAILoading(true); setKitAIError('');
                         try {
-                          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/ai/generate-from-notes`, {
+                          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/ai/generate-from-notes`, {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ notes: kitAINotes, questionCount: kitAICount, difficulty: kitAIDifficulty, userId: user.id })
                           });
@@ -2180,14 +2180,14 @@ export default function StudentHome() {
                           if (!res.ok) throw new Error(data.error || 'Generation failed');
                           const questions = data.questions || [];
                           for (const q of questions) {
-                            await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions`, {
+                            await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions`, {
                               method: 'POST', headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ question_text: q.question_text, answer_type: q.answer_type, correct_answer: q.correct_answer, option_a: q.option_a || '', option_b: q.option_b || '', option_c: q.option_c || '', option_d: q.option_d || '', image_url: '' })
                             });
                           }
-                          const kitRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${selectedKit.id}`);
+                          const kitRes = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${selectedKit.id}`);
                           setSelectedKit(await kitRes.json());
-                          const kitsRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/teacher/${user.id}`);
+                          const kitsRes = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/teacher/${user.id}`);
                           setMyKits(await kitsRes.json());
                           setShowKitAIModal(false); setKitAINotes(''); setKitAIError('');
                         } catch (err) { setKitAIError(err.message || 'Failed to generate'); }
@@ -2349,7 +2349,7 @@ export default function StudentHome() {
                     <button
                       onClick={async () => {
                         try {
-                          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions/${editingQuestion.id}`, {
+                          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions/${editingQuestion.id}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -2402,7 +2402,7 @@ export default function StudentHome() {
                     <button
                       onClick={async () => {
                         try {
-                          await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions/${deleteQuestionConfirm}`, {
+                          await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions/${deleteQuestionConfirm}`, {
                             method: 'DELETE'
                           });
                           setSelectedKit({
@@ -2432,7 +2432,7 @@ export default function StudentHome() {
             onBack={() => setActiveTab('myKits')}
             onKitCreated={() => {
               setActiveTab('myKits');
-              const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+              const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
               fetch(`${base}/api/kits/teacher/${user.id}`).then(r => r.json()).then(setMyKits).catch(() => {});
             }}
           />

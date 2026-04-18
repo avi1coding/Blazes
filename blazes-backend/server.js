@@ -9,7 +9,8 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const db = new sqlite3.Database('blazes.db');
+const DB_PATH = process.env.DB_PATH || 'blazes.db';
+const db = new sqlite3.Database(DB_PATH);
 
 const path = require('path');
 const fs = require('fs');
@@ -33,8 +34,8 @@ app.use((req, res, next) => {
 });
 app.use(cookieParser());
 // Serve uploaded question images
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
 app.use(session({

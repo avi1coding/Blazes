@@ -6754,7 +6754,7 @@ app.get('/api/games/:gameCode/survival-state', async (req, res) => {
 const clientBuildPath = path.join(__dirname, '..', 'blazes', 'dist');
 if (fs.existsSync(clientBuildPath)) {
   app.use(express.static(clientBuildPath));
-  app.get('*', (req, res) => {
+  app.get('/{*path}', (req, res) => {
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
 }

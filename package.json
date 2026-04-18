@@ -1,6 +1,9 @@
 {
   "name": "blazes",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "install:all": "cd blazes && npm install && cd ../blazes-backend && npm install",
     "build": "cd blazes && npm run build",

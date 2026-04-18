@@ -2,20 +2,15 @@ services:
   - type: web
     name: blazes
     runtime: node
-    plan: starter
     buildCommand: npm run render-build
     startCommand: npm run start
-    disk:
-      name: blazes-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DB_PATH
-        value: /data/blazes.db
-      - key: UPLOADS_PATH
-        value: /data/uploads
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       - key: FRONTEND_URL
         sync: false
       - key: BACKEND_URL

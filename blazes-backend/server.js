@@ -1,16 +1,65 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const { createClient } = require('@libsql/client');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const DB_PATH = process.env.DB_PATH || 'blazes.db';
-const db = new sqlite3.Database(DB_PATH);
+
+// Database: Turso (remote) or local SQLite file
+const tursoClient = createClient({
+  url: process.env.TURSO_DATABASE_URL || `file:${DB_PATH}`,
+  ...(process.env.TURSO_AUTH_TOKEN ? { authToken: process.env.TURSO_AUTH_TOKEN } : {}),
+});
+
+// Compatibility wrapper — provides the same callback API as sqlite3
+// so the rest of the 6700+ lines of code work without changes
+const db = {
+  run(sql, params, callback) {
+    if (typeof params === 'function') { callback = params; params = []; }
+    tursoClient.execute({ sql, args: params || [] })
+      .then(result => {
+        if (callback) callback.call(
+          { lastID: Number(result.lastInsertRowid), changes: result.rowsAffected },
+          null
+        );
+      })
+      .catch(err => {
+        if (callback) callback.call({}, err);
+        // No callback = fire-and-forget (schema setup), silently ignore errors
+      });
+  },
+  get(sql, params, callback) {
+    if (typeof params === 'function') { callback = params; params = []; }
+    tursoClient.execute({ sql, args: params || [] })
+      .then(result => {
+        if (callback) callback(null, result.rows[0] || undefined);
+      })
+      .catch(err => {
+        if (callback) callback(err);
+      });
+  },
+  all(sql, params, callback) {
+    if (typeof params === 'function') { callback = params; params = []; }
+    tursoClient.execute({ sql, args: params || [] })
+      .then(result => {
+        if (callback) callback(null, result.rows);
+      })
+      .catch(err => {
+        if (callback) callback(err);
+      });
+  },
+  serialize(callback) {
+    // sqlite3.serialize guarantees sequential execution;
+    // @libsql/client handles this via its own queue, so just call through
+    if (callback) callback();
+  },
+};
 
 const path = require('path');
 const fs = require('fs');

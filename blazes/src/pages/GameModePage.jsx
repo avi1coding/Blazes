@@ -7,7 +7,7 @@ export default function GameModePage() {
   const navigate = useNavigate();
   const { kit } = location.state || {};
   
-  const user = JSON.parse(localStorage.getItem('user'));
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   if (!kit) {
     return (

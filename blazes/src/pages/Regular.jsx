@@ -31,7 +31,7 @@ export default function Regular() {
 
     const fetchGameData = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/games/${gameCode}/state`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/games/${gameCode}/state`);
         const data = await response.json();
         
         if (!game && data) {
@@ -51,7 +51,7 @@ export default function Regular() {
         }
 
         if (data.kit_id && questions.length === 0) {
-          const kitResponse = await fetch(`http://localhost:5000/api/kits/${data.kit_id}`);
+          const kitResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${data.kit_id}`);
           const kitData = await kitResponse.json();
           setQuestions(kitData.questions || []);
         }
@@ -75,7 +75,7 @@ export default function Regular() {
     const submitFinalScoreAndNavigate = async () => {
       if (!user) return;
       try {
-        await fetch(`http://localhost:5000/api/games/${gameCode}/answers`, {
+        await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/games/${gameCode}/answers`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -131,7 +131,7 @@ export default function Regular() {
     setAnswered(true);
 
     try {
-      await fetch(`http://localhost:5000/api/games/${gameCode}/answer`, {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/games/${gameCode}/answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

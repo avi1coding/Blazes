@@ -88,9 +88,14 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'blazes-session-secret',
+  secret: process.env.SESSION_SECRET || require('crypto').randomBytes(32).toString('hex'),
   resave: false,
   saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -6304,6 +6309,9 @@ app.post('/api/contact', async (req, res) => {
     return res.status(400).json({ error: 'Category and message are required.' });
   }
 
+  // HTML-escape user input to prevent injection
+  const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
   try {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -6316,15 +6324,15 @@ app.post('/api/contact', async (req, res) => {
     await transporter.sendMail({
       from: `"Blazes Contact" <${process.env.CONTACT_EMAIL_USER}>`,
       to: process.env.CONTACT_EMAIL_USER,
-      subject: `[Blazes] ${category}${name ? ` — from ${name}` : ''}`,
+      subject: `[Blazes] ${esc(category)}${name ? ` — from ${esc(name)}` : ''}`,
       html: `
         <h2>New Contact Form Submission</h2>
-        ${name ? `<p><strong>Name:</strong> ${name}</p>` : '<p><strong>Name:</strong> <em>Not provided</em></p>'}
-        ${email ? `<p><strong>Email:</strong> ${email}</p>` : '<p><strong>Email:</strong> <em>Not provided</em></p>'}
-        <p><strong>Category:</strong> ${category}</p>
+        ${name ? `<p><strong>Name:</strong> ${esc(name)}</p>` : '<p><strong>Name:</strong> <em>Not provided</em></p>'}
+        ${email ? `<p><strong>Email:</strong> ${esc(email)}</p>` : '<p><strong>Email:</strong> <em>Not provided</em></p>'}
+        <p><strong>Category:</strong> ${esc(category)}</p>
         <hr/>
         <p><strong>Message:</strong></p>
-        <p>${message.replace(/\n/g, '<br/>')}</p>
+        <p>${esc(message).replace(/\n/g, '<br/>')}</p>
       `,
     });
 
@@ -6355,8 +6363,11 @@ app.post('/api/games/:gameCode/elemental-choice', async (req, res) => {
     if (choice === 'energy') {
       await dbRun('UPDATE game_participants SET energy_points = energy_points + 1 WHERE game_id = ? AND user_id = ?', [game.id, userId]);
     } else {
-      const col = participant.team === 1 ? 'team_1_score' : 'team_2_score';
-      await dbRun(`UPDATE games SET ${col} = ${col} + 10 WHERE id = ?`, [game.id]);
+      if (participant.team === 1) {
+        await dbRun('UPDATE games SET team_1_score = team_1_score + 10 WHERE id = ?', [game.id]);
+      } else {
+        await dbRun('UPDATE games SET team_2_score = team_2_score + 10 WHERE id = ?', [game.id]);
+      }
       await dbRun('UPDATE game_participants SET score = score + 10 WHERE game_id = ? AND user_id = ?', [game.id, userId]);
     }
     const updated = await dbGet('SELECT energy_points FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, userId]);
@@ -6382,8 +6393,11 @@ app.post('/api/games/:gameCode/elemental-attack', async (req, res) => {
     if (!changed) return res.status(400).json({ error: 'Not enough energy' });
     const participant = await dbGet('SELECT team FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, userId]);
     const targetTeam = participant.team === 1 ? 2 : 1;
-    const col = targetTeam === 1 ? 'team_1_score' : 'team_2_score';
-    await dbRun(`UPDATE games SET ${col} = MAX(0, ${col} - ?) WHERE id = ?`, [attack.damage, game.id]);
+    if (targetTeam === 1) {
+      await dbRun('UPDATE games SET team_1_score = MAX(0, team_1_score - ?) WHERE id = ?', [attack.damage, game.id]);
+    } else {
+      await dbRun('UPDATE games SET team_2_score = MAX(0, team_2_score - ?) WHERE id = ?', [attack.damage, game.id]);
+    }
     await dbRun('INSERT INTO elemental_attacks (game_id, attacker_user_id, attack_type, energy_cost, damage, target_team) VALUES (?, ?, ?, ?, ?, ?)',
       [game.id, userId, attackType, attack.cost, attack.damage, targetTeam]);
     const updated = await dbGet('SELECT energy_points FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, userId]);
@@ -6679,8 +6693,8 @@ app.post('/api/games/:gameCode/inferno-answer', async (req, res) => {
         const updated = await dbGet('SELECT tower_floor FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, userId]);
         return res.json({ success: true, isCorrect: true, floor: updated.tower_floor });
       } else {
-        const freezeSec = settings?.wrongAnswerFreezeSeconds || 3;
-        await dbRun(`UPDATE game_participants SET frozen_until = datetime('now', '+${freezeSec} seconds') WHERE game_id = ? AND user_id = ?`, [game.id, userId]);
+        const freezeSec = parseInt(settings?.wrongAnswerFreezeSeconds, 10) || 3;
+        await dbRun(`UPDATE game_participants SET frozen_until = datetime('now', '+' || ? || ' seconds') WHERE game_id = ? AND user_id = ?`, [freezeSec, game.id, userId]);
         return res.json({ success: true, isCorrect: false, frozenFor: freezeSec });
       }
     } else {
@@ -6705,8 +6719,8 @@ app.post('/api/games/:gameCode/inferno-fireball', async (req, res) => {
     if (!attacker || attacker.is_ghost !== 1) return res.status(400).json({ error: 'Only ghosts can fireball' });
     const target = await dbGet('SELECT is_ghost FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, targetUserId]);
     if (!target || target.is_ghost === 1) return res.status(400).json({ error: 'Target is not alive' });
-    const freezeSec = settings?.ghostFreezeSeconds || 2;
-    await dbRun(`UPDATE game_participants SET frozen_until = MAX(COALESCE(frozen_until, '1970-01-01'), datetime('now', '+${freezeSec} seconds')) WHERE game_id = ? AND user_id = ?`, [game.id, targetUserId]);
+    const freezeSec = parseInt(settings?.ghostFreezeSeconds, 10) || 2;
+    await dbRun(`UPDATE game_participants SET frozen_until = MAX(COALESCE(frozen_until, '1970-01-01'), datetime('now', '+' || ? || ' seconds')) WHERE game_id = ? AND user_id = ?`, [freezeSec, game.id, targetUserId]);
     await dbRun('INSERT INTO inferno_fireballs (game_id, attacker_user_id, target_user_id) VALUES (?, ?, ?)', [game.id, userId, targetUserId]);
     res.json({ success: true });
   } catch (err) {

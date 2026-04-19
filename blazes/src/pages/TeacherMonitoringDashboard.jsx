@@ -23,7 +23,7 @@ export default function TeacherMonitoringDashboard() {
   const [endGameConfirm, setEndGameConfirm] = useState(false);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
     if (!user) {
       navigate('/login');
       return;

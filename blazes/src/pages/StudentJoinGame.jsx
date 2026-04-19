@@ -7,7 +7,7 @@ export default function StudentJoinGame() {
   const navigate = useNavigate();
   const location = useLocation();
   const gameCode = location.state?.gameCode || '';
-  const user = JSON.parse(localStorage.getItem('user'));
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   const [playerName, setPlayerName] = useState('');
   const [allowCustomNames, setAllowCustomNames] = useState(null); // null = loading

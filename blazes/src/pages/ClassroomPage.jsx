@@ -8,7 +8,7 @@ import Toast from '../components/Toast';
 export default function ClassroomPage() {
   const { classroomId } = useParams();
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user'));
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
   const [classroom, setClassroom] = useState(null);

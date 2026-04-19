@@ -221,7 +221,7 @@ export default function TeacherHome() {
   // Fetch game details when selected (pro feature)
   useEffect(() => {
     if (!selectedGameCode) { setGameDetails(null); return; }
-    if (teacherTier !== 'teacher_pro') { setGameDetails(null); return; }
+    if (!['teacher_pro', 'school'].includes(teacherTier)) { setGameDetails(null); return; }
     const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     setLoadingGameDetails(true);
     setExpandedPlayerIndex(null);

@@ -2093,53 +2093,12 @@ app.get('/api/games/:gameCode/state', (req, res) => {
   });
 });
 
-// AI answer checking for short answer / fill blank types
-app.post('/api/check-answer', async (req, res) => {
-  const { userAnswer, correctAnswer, questionText } = req.body;
+// Answer checking for short answer / fill blank types — exact match only (case-insensitive)
+app.post('/api/check-answer', (req, res) => {
+  const { userAnswer, correctAnswer } = req.body;
   if (!userAnswer || !correctAnswer) return res.json({ isCorrect: false });
-
-  // Exact match first (case-insensitive, trimmed)
-  if (userAnswer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase()) {
-    return res.json({ isCorrect: true });
-  }
-
-  // If no AI, fall back to exact match only
-  if (!groq) return res.json({ isCorrect: false });
-
-
-  try {
-    const result = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an answer checker for a student quiz game. Compare the student's answer to the correct answer. Accept the answer if:
-- It's a minor typo or misspelling (e.g. "photosynthsis" for "photosynthesis")
-- It's an acceptable abbreviation or alternate form (e.g. "US" for "United States")
-- It means the same thing (e.g. "WW2" for "World War 2")
-- The core answer is correct even if phrased slightly differently
-
-Reject the answer if:
-- It's a completely different answer
-- It's missing key information that changes the meaning
-- It's a different concept entirely
-
-Respond with ONLY "yes" or "no". Nothing else.`
-        },
-        {
-          role: 'user',
-          content: `Question: ${questionText || 'N/A'}\nCorrect answer: ${correctAnswer}\nStudent's answer: ${userAnswer}\n\nIs the student's answer acceptable?`
-        }
-      ],
-      temperature: 0.1,
-      max_tokens: 5,
-    });
-    const response = result.choices[0]?.message?.content?.trim().toLowerCase();
-    return res.json({ isCorrect: response === 'yes' });
-  } catch (err) {
-    console.error('[AI Check] Error:', err.message);
-    return res.json({ isCorrect: false });
-  }
+  const isCorrect = userAnswer.trim().toLowerCase() === String(correctAnswer).trim().toLowerCase();
+  res.json({ isCorrect });
 });
 
 // Student submits answer

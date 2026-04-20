@@ -111,7 +111,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: `${BACKEND_URL}/auth/google/callback`,
-  }, (accessToken, refreshToken, params, profile, done) => {
+  }, async (accessToken, refreshToken, params, profile, done) => {
     const email = profile.emails[0].value.toLowerCase();
     const name = profile.displayName;
     const newScopes = (params && params.scope) || '';
@@ -133,8 +133,27 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         }
         return done(null, user);
       }
+      // Fetch birthday from Google People API to determine role
+      let role = 'pending';
+      if (accessToken) {
+        try {
+          const bRes = await fetch('https://people.googleapis.com/v1/people/me?personFields=birthdays', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const bData = await bRes.json();
+          const bday = bData.birthdays?.find(b => b.date?.year)?.date;
+          if (bday) {
+            const birthDate = new Date(bday.year, (bday.month || 1) - 1, bday.day || 1);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+            role = age >= 18 ? 'teacher' : 'student';
+          }
+        } catch (e) { console.error('[Auth] Birthday fetch failed:', e.message); }
+      }
       db.run('INSERT INTO users (email, name, role, google_access_token, google_refresh_token, google_scopes) VALUES (?, ?, ?, ?, ?, ?)',
-        [email, name, 'pending', accessToken || null, refreshToken || null, newScopes], function(err) {
+        [email, name, role, accessToken || null, refreshToken || null, newScopes], function(err) {
         if (err) return done(err);
         const userId = this.lastID;
         db.run('INSERT INTO user_stats (user_id) VALUES (?)', [userId]);
@@ -150,7 +169,7 @@ app.get('/auth/google', (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID) {
     return res.redirect(`${FRONTEND_URL}/login?error=google_not_configured`);
   }
-  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+  passport.authenticate('google', { scope: ['profile', 'email', 'https://www.googleapis.com/auth/user.birthday.read'] })(req, res, next);
 });
 
 app.get('/auth/google/callback',

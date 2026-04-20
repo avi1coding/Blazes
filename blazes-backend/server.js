@@ -111,7 +111,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: `${BACKEND_URL}/auth/google/callback`,
-  }, async (accessToken, refreshToken, params, profile, done) => {
+  }, (accessToken, refreshToken, params, profile, done) => {
     const email = profile.emails[0].value.toLowerCase();
     const name = profile.displayName;
     const newScopes = (params && params.scope) || '';
@@ -119,8 +119,6 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     db.get('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
       if (err) return done(err);
       if (user) {
-        // Only store/overwrite the access token if the new grant is at least as capable
-        // as what's already stored — otherwise a plain login would wipe out classroom scopes.
         const existingScopes = user.google_scopes || '';
         const existingHasClassroom = existingScopes.includes('classroom.');
         const shouldUpdateToken = !existingHasClassroom || newHasClassroom;
@@ -128,39 +126,44 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           db.run('UPDATE users SET google_access_token = ?, google_refresh_token = COALESCE(?, google_refresh_token), google_scopes = ? WHERE id = ?',
             [accessToken, refreshToken || null, newScopes, user.id]);
         } else if (refreshToken) {
-          // Still capture a refresh token if one was issued (rare on plain login, but harmless).
           db.run('UPDATE users SET google_refresh_token = ? WHERE id = ?', [refreshToken, user.id]);
         }
         return done(null, user);
       }
-      // Fetch birthday from Google People API to determine role
-      let role = 'pending';
+      // New user — fetch birthday from Google People API to determine role
+      const createUser = (role) => {
+        db.run('INSERT INTO users (email, name, role, google_access_token, google_refresh_token, google_scopes) VALUES (?, ?, ?, ?, ?, ?)',
+          [email, name, role, accessToken || null, refreshToken || null, newScopes], function(err) {
+          if (err) return done(err);
+          const userId = this.lastID;
+          db.run('INSERT INTO user_stats (user_id) VALUES (?)', [userId]);
+          db.run('INSERT OR IGNORE INTO user_settings (user_id) VALUES (?)', [userId]);
+          db.run('INSERT OR IGNORE INTO user_equipped (user_id, avatar_skin) VALUES (?, ?)', [userId, randomBasicSkin()]);
+          db.get('SELECT * FROM users WHERE id = ?', [userId], (err, newUser) => done(err, newUser));
+        });
+      };
       if (accessToken) {
-        try {
-          const bRes = await fetch('https://people.googleapis.com/v1/people/me?personFields=birthdays', {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          const bData = await bRes.json();
-          const bday = bData.birthdays?.find(b => b.date?.year)?.date;
-          if (bday) {
-            const birthDate = new Date(bday.year, (bday.month || 1) - 1, bday.day || 1);
-            const today = new Date();
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-            role = age >= 18 ? 'teacher' : 'student';
-          }
-        } catch (e) { console.error('[Auth] Birthday fetch failed:', e.message); }
+        fetch('https://people.googleapis.com/v1/people/me?personFields=birthdays', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+          .then(r => r.json())
+          .then(bData => {
+            const bday = bData.birthdays?.find(b => b.date?.year)?.date;
+            if (bday) {
+              const birthDate = new Date(bday.year, (bday.month || 1) - 1, bday.day || 1);
+              const today = new Date();
+              let age = today.getFullYear() - birthDate.getFullYear();
+              const m = today.getMonth() - birthDate.getMonth();
+              if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+              createUser(age >= 18 ? 'teacher' : 'student');
+            } else {
+              createUser('pending');
+            }
+          })
+          .catch(() => createUser('pending'));
+      } else {
+        createUser('pending');
       }
-      db.run('INSERT INTO users (email, name, role, google_access_token, google_refresh_token, google_scopes) VALUES (?, ?, ?, ?, ?, ?)',
-        [email, name, role, accessToken || null, refreshToken || null, newScopes], function(err) {
-        if (err) return done(err);
-        const userId = this.lastID;
-        db.run('INSERT INTO user_stats (user_id) VALUES (?)', [userId]);
-        db.run('INSERT OR IGNORE INTO user_settings (user_id) VALUES (?)', [userId]);
-        db.run('INSERT OR IGNORE INTO user_equipped (user_id, avatar_skin) VALUES (?, ?)', [userId, randomBasicSkin()]);
-        db.get('SELECT * FROM users WHERE id = ?', [userId], (err, newUser) => done(err, newUser));
-      });
     });
   }));
 }

@@ -769,6 +769,14 @@ db.run(`CREATE TABLE IF NOT EXISTS season_badges (
   UNIQUE(user_id, season_number)
 )`);
 
+// AI usage tracking — daily limits per feature
+db.run(`CREATE TABLE IF NOT EXISTS ai_usage (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  feature TEXT NOT NULL,
+  used_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
 // In-memory rate-limit: tracks when each user last claimed play-time BB (prevents double-awards)
 const lastClaimTime = {}; // { userId: Date.now() }
 
@@ -781,6 +789,37 @@ const dbGet = (sql, params = []) => new Promise((res, rej) => db.get(sql, params
 const dbAll = (sql, params = []) => new Promise((res, rej) => db.all(sql, params, (e, r) => e ? rej(e) : res(r)));
 const dbRun = (sql, params = []) => new Promise((res, rej) => db.run(sql, params, function(e) { e ? rej(e) : res(this.changes); }));
 const parseDbDate = (s) => s ? new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z') : null;
+
+// ─── AI DAILY USAGE LIMITS ───
+const AI_DAILY_LIMITS = {
+  quiz_generate: { blazes_plus: 10, teacher_pro: 25, school: 50 },
+  study_overview: { blazes_plus: 15, teacher_pro: 30, school: 50 },
+  flashcards:    { blazes_plus: 15, teacher_pro: 30, school: 50 },
+  answer_check:  { blazes_plus: 200, teacher_pro: 500, school: 1000 },
+};
+
+async function checkAiLimit(userId, feature) {
+  const tier = await getUserTier(userId);
+  if (!['blazes_plus', 'teacher_pro', 'school'].includes(tier)) {
+    return { allowed: false, reason: 'upgrade_required' };
+  }
+  const limits = AI_DAILY_LIMITS[feature];
+  if (!limits) return { allowed: true, tier };
+  const dailyLimit = limits[tier] || 0;
+  const usage = await dbGet(
+    `SELECT COUNT(*) as count FROM ai_usage WHERE user_id = ? AND feature = ? AND date(used_at) = date('now')`,
+    [userId, feature]
+  );
+  const used = usage?.count || 0;
+  if (used >= dailyLimit) {
+    return { allowed: false, reason: 'limit_reached', used, limit: dailyLimit, tier };
+  }
+  return { allowed: true, used, limit: dailyLimit, tier };
+}
+
+async function trackAiUsage(userId, feature) {
+  await dbRun('INSERT INTO ai_usage (user_id, feature) VALUES (?, ?)', [userId, feature]);
+}
 
 // ─── SEASON XP SYSTEM ───
 function xpForLevel(level) {
@@ -2057,7 +2096,7 @@ app.get('/api/games/:gameCode/state', (req, res) => {
 
 // AI answer checking for short answer / fill blank types
 app.post('/api/check-answer', async (req, res) => {
-  const { userAnswer, correctAnswer, questionText } = req.body;
+  const { userAnswer, correctAnswer, questionText, userId } = req.body;
   if (!userAnswer || !correctAnswer) return res.json({ isCorrect: false });
 
   // Exact match first (case-insensitive, trimmed)
@@ -2067,6 +2106,12 @@ app.post('/api/check-answer', async (req, res) => {
 
   // If no AI, fall back to exact match only
   if (!groq) return res.json({ isCorrect: false });
+
+  // Check AI usage limit for answer grading
+  if (userId) {
+    const limit = await checkAiLimit(userId, 'answer_check');
+    if (!limit.allowed) return res.json({ isCorrect: false });
+  }
 
   try {
     const result = await groq.chat.completions.create({
@@ -2096,6 +2141,7 @@ Respond with ONLY "yes" or "no". Nothing else.`
       max_tokens: 5,
     });
     const response = result.choices[0]?.message?.content?.trim().toLowerCase();
+    if (userId) await trackAiUsage(userId, 'answer_check');
     return res.json({ isCorrect: response === 'yes' });
   } catch (err) {
     console.error('[AI Check] Error:', err.message);
@@ -2929,9 +2975,10 @@ app.get('/api/games/:gameCode/student/:userId/answers', (req, res) => {
 app.get('/api/games/:gameCode/ai-overview/:userId', async (req, res) => {
   const { gameCode, userId } = req.params;
   try {
-    const tier = await getUserTier(parseInt(userId));
-    if (!['blazes_plus', 'teacher_pro', 'school'].includes(tier)) {
-      return res.status(403).json({ error: 'upgrade_required', message: 'AI Study Overview requires Blazes Plus', requiredTier: 'blazes_plus' });
+    const limit = await checkAiLimit(parseInt(userId), 'study_overview');
+    if (!limit.allowed) {
+      if (limit.reason === 'upgrade_required') return res.status(403).json({ error: 'upgrade_required', message: 'AI Study Overview requires Blazes Plus', requiredTier: 'blazes_plus' });
+      return res.status(429).json({ error: 'daily_limit', message: `AI overview limit reached (${limit.used}/${limit.limit} today). Resets at midnight.`, used: limit.used, limit: limit.limit });
     }
     const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
@@ -2987,6 +3034,7 @@ Keep the entire response under 150 words. No markdown headers, just plain text w
     });
 
     const overview = result.choices[0]?.message?.content?.trim() || 'Could not generate overview.';
+    await trackAiUsage(parseInt(userId), 'study_overview');
     res.json({ overview });
   } catch (err) {
     console.error('[AI Overview] Error:', err.message);
@@ -5067,9 +5115,10 @@ app.get('/api/flashcards/:kitId', async (req, res) => {
   try {
     const { userId, count } = req.query;
     if (userId) {
-      const tier = await getUserTier(parseInt(userId));
-      if (!['blazes_plus', 'teacher_pro', 'school'].includes(tier)) {
-        return res.status(403).json({ error: 'upgrade_required', message: 'Flashcard mode requires Blazes Plus', requiredTier: 'blazes_plus' });
+      const limit = await checkAiLimit(parseInt(userId), 'flashcards');
+      if (!limit.allowed) {
+        if (limit.reason === 'upgrade_required') return res.status(403).json({ error: 'upgrade_required', message: 'Flashcard mode requires Blazes Plus', requiredTier: 'blazes_plus' });
+        return res.status(429).json({ error: 'daily_limit', message: `AI flashcard limit reached (${limit.used}/${limit.limit} today). Resets at midnight.`, used: limit.used, limit: limit.limit });
       }
     }
 
@@ -5166,6 +5215,7 @@ Important rules:
           front: fc.front,
           back: fc.back,
         }));
+        if (userId) await trackAiUsage(parseInt(userId), 'flashcards');
         return res.json({ cards, total: questions.length });
       }
       return res.json({ cards: questions.slice(0, requestedCount).map((q, i) => ({ id: i + 1, front: q.question_text, back: q.correct_answer })), total: questions.length });
@@ -5828,14 +5878,15 @@ app.post('/api/ai/generate-from-notes', async (req, res) => {
   try {
     const { notes, questionCount = 10, difficulty = 'medium', questionTypes = ['multiple_choice'], userId } = req.body;
     if (!notes || notes.trim().length < 20) return res.status(400).json({ error: 'Please provide at least 20 characters of notes' });
-    // Gate: AI Quiz Generation requires Blazes Plus or higher
     if (userId) {
-      const tier = await getUserTier(userId);
-      if (!['blazes_plus', 'teacher_pro', 'school'].includes(tier)) {
-        return res.status(403).json({ error: 'upgrade_required', message: 'AI Quiz Generation requires Blazes Plus or higher', requiredTier: 'blazes_plus' });
+      const limit = await checkAiLimit(userId, 'quiz_generate');
+      if (!limit.allowed) {
+        if (limit.reason === 'upgrade_required') return res.status(403).json({ error: 'upgrade_required', message: 'AI Quiz Generation requires Blazes Plus or higher', requiredTier: 'blazes_plus' });
+        return res.status(429).json({ error: 'daily_limit', message: `AI quiz limit reached (${limit.used}/${limit.limit} today). Resets at midnight.`, used: limit.used, limit: limit.limit });
       }
     }
     const questions = await generateQuiz(notes, questionCount, difficulty, questionTypes);
+    if (userId) await trackAiUsage(userId, 'quiz_generate');
     console.log(`[AI] Generated ${questions.length} questions from notes (${notes.length} chars)`);
     res.json({ questions });
   } catch (err) {
@@ -5848,14 +5899,15 @@ app.post('/api/ai/generate-from-pdf', async (req, res) => {
   try {
     const { text, questionCount = 10, difficulty = 'medium', questionTypes = ['multiple_choice'], userId } = req.body;
     if (!text || text.trim().length < 20) return res.status(400).json({ error: 'Could not extract enough text from the document' });
-    // Gate: AI Quiz Generation requires Blazes Plus or higher
     if (userId) {
-      const tier = await getUserTier(userId);
-      if (!['blazes_plus', 'teacher_pro', 'school'].includes(tier)) {
-        return res.status(403).json({ error: 'upgrade_required', message: 'AI Quiz Generation requires Blazes Plus or higher', requiredTier: 'blazes_plus' });
+      const limit = await checkAiLimit(userId, 'quiz_generate');
+      if (!limit.allowed) {
+        if (limit.reason === 'upgrade_required') return res.status(403).json({ error: 'upgrade_required', message: 'AI Quiz Generation requires Blazes Plus or higher', requiredTier: 'blazes_plus' });
+        return res.status(429).json({ error: 'daily_limit', message: `AI quiz limit reached (${limit.used}/${limit.limit} today). Resets at midnight.`, used: limit.used, limit: limit.limit });
       }
     }
     const questions = await generateQuiz(text, questionCount, difficulty, questionTypes);
+    if (userId) await trackAiUsage(userId, 'quiz_generate');
     console.log(`[AI] Generated ${questions.length} questions from PDF (${text.length} chars)`);
     res.json({ questions });
   } catch (err) {
@@ -5873,6 +5925,26 @@ app.post('/api/ai/extract-pdf', express.raw({ type: 'application/pdf', limit: '1
     console.error('[AI] PDF parse error:', err);
     res.status(500).json({ error: 'Failed to read PDF' });
   }
+});
+
+// AI usage status endpoint
+app.get('/api/ai/usage/:userId', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const tier = await getUserTier(userId);
+    if (!['blazes_plus', 'teacher_pro', 'school'].includes(tier)) {
+      return res.json({ tier: 'free', features: {} });
+    }
+    const features = {};
+    for (const [feature, limits] of Object.entries(AI_DAILY_LIMITS)) {
+      const usage = await dbGet(
+        `SELECT COUNT(*) as count FROM ai_usage WHERE user_id = ? AND feature = ? AND date(used_at) = date('now')`,
+        [userId, feature]
+      );
+      features[feature] = { used: usage?.count || 0, limit: limits[tier] || 0 };
+    }
+    res.json({ tier, features });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // =========== SEASON PACKS ===========

@@ -71,11 +71,12 @@ console.log('[AI]', groq ? 'Groq initialized' : 'NOT configured (no GROQ_API_KEY
 
 const cookieParser = require('cookie-parser');
 const XLSX = require('xlsx');
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || null;
+const FRONTEND_URL = process.env.FRONTEND_URL || RENDER_URL || 'http://localhost:5173';
+const BACKEND_URL = process.env.BACKEND_URL || RENDER_URL || 'http://localhost:5000';
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://localhost:5174'];
+  : [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:5174'].filter(Boolean);
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use((req, res, next) => {
   if (req.originalUrl === '/api/payments/webhook') return next();
@@ -6817,10 +6818,17 @@ app.get('/api/games/:gameCode/survival-state', async (req, res) => {
 // Serve frontend static files in production
 const clientBuildPath = path.join(__dirname, '..', 'blazes', 'dist');
 if (fs.existsSync(clientBuildPath)) {
+  console.log('[Static] Serving frontend from', clientBuildPath);
   app.use(express.static(clientBuildPath));
+  // SPA catch-all: serve index.html for any non-API route
   app.get('/{*path}', (req, res) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/auth/') || req.path.startsWith('/uploads/')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
+} else {
+  console.log('[Static] No frontend build found at', clientBuildPath);
 }
 
 app.listen(PORT, () => {

@@ -134,7 +134,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         return done(null, user);
       }
       db.run('INSERT INTO users (email, name, role, google_access_token, google_refresh_token, google_scopes) VALUES (?, ?, ?, ?, ?, ?)',
-        [email, name, 'student', accessToken || null, refreshToken || null, newScopes], function(err) {
+        [email, name, 'pending', accessToken || null, refreshToken || null, newScopes], function(err) {
         if (err) return done(err);
         const userId = this.lastID;
         db.run('INSERT INTO user_stats (user_id) VALUES (?)', [userId]);
@@ -178,7 +178,11 @@ app.get('/auth/google/callback',
     db.run('INSERT INTO login_activity (user_id, ip_address, user_agent) VALUES (?, ?, ?)',
       [user.id, req.ip, req.headers['user-agent'] || 'Unknown']);
     const userData = encodeURIComponent(JSON.stringify({ id: user.id, email: user.email, name: user.name, role: user.role }));
-    res.redirect(`${FRONTEND_URL}/auth/callback?token=jwt-token-here&user=${userData}`);
+    if (user.role === 'pending') {
+      res.redirect(`${FRONTEND_URL}/auth/callback?token=jwt-token-here&user=${userData}&new=true`);
+    } else {
+      res.redirect(`${FRONTEND_URL}/auth/callback?token=jwt-token-here&user=${userData}`);
+    }
   }
 );
 
@@ -6203,6 +6207,25 @@ app.put('/api/settings/:userId', async (req, res) => {
     await dbRun(`UPDATE user_settings SET ${updates.join(', ')} WHERE user_id = ?`, [...values, userId]);
     const settings = await dbGet('SELECT * FROM user_settings WHERE user_id = ?', [userId]);
     res.json(settings);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Set role based on birthday (for new Google sign-ups)
+app.post('/api/auth/set-role', async (req, res) => {
+  try {
+    const { userId, birthday } = req.body;
+    if (!userId || !birthday) return res.status(400).json({ error: 'Missing userId or birthday' });
+    const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.role !== 'pending') return res.status(400).json({ error: 'Role already set' });
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
+    const role = age >= 18 ? 'teacher' : 'student';
+    await dbRun('UPDATE users SET role = ? WHERE id = ?', [role, userId]);
+    res.json({ role });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

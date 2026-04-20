@@ -795,7 +795,6 @@ const AI_DAILY_LIMITS = {
   quiz_generate: { blazes_plus: 10, teacher_pro: 25, school: 50 },
   study_overview: { blazes_plus: 15, teacher_pro: 30, school: 50 },
   flashcards:    { blazes_plus: 15, teacher_pro: 30, school: 50 },
-  answer_check:  { blazes_plus: 200, teacher_pro: 500, school: 1000 },
 };
 
 async function checkAiLimit(userId, feature) {
@@ -2096,7 +2095,7 @@ app.get('/api/games/:gameCode/state', (req, res) => {
 
 // AI answer checking for short answer / fill blank types
 app.post('/api/check-answer', async (req, res) => {
-  const { userAnswer, correctAnswer, questionText, userId } = req.body;
+  const { userAnswer, correctAnswer, questionText } = req.body;
   if (!userAnswer || !correctAnswer) return res.json({ isCorrect: false });
 
   // Exact match first (case-insensitive, trimmed)
@@ -2107,11 +2106,6 @@ app.post('/api/check-answer', async (req, res) => {
   // If no AI, fall back to exact match only
   if (!groq) return res.json({ isCorrect: false });
 
-  // Check AI usage limit for answer grading
-  if (userId) {
-    const limit = await checkAiLimit(userId, 'answer_check');
-    if (!limit.allowed) return res.json({ isCorrect: false });
-  }
 
   try {
     const result = await groq.chat.completions.create({
@@ -2141,7 +2135,6 @@ Respond with ONLY "yes" or "no". Nothing else.`
       max_tokens: 5,
     });
     const response = result.choices[0]?.message?.content?.trim().toLowerCase();
-    if (userId) await trackAiUsage(userId, 'answer_check');
     return res.json({ isCorrect: response === 'yes' });
   } catch (err) {
     console.error('[AI Check] Error:', err.message);

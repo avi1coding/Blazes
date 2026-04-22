@@ -6922,7 +6922,106 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running: http://localhost:${PORT}`);
-  console.log('Database:', process.env.TURSO_DATABASE_URL || `file:${DB_PATH}`);
+// Initialize database schema before starting the server
+// (fire-and-forget db.run calls don't wait for Turso, so we batch here)
+async function initSchema() {
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, password TEXT, name TEXT, role TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS user_stats (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, gamesWon INTEGER DEFAULT 0, dayStreak INTEGER DEFAULT 0, accuracyRate INTEGER DEFAULT 0, totalGames INTEGER DEFAULT 0, winRate REAL DEFAULT 0, avgScore INTEGER DEFAULT 0, questionsAnswered INTEGER DEFAULT 0, currentXP INTEGER DEFAULT 0, level INTEGER DEFAULT 1, totalGamesHosted INTEGER DEFAULT 0, activeStudents INTEGER DEFAULT 0, totalCorrectAnswers INTEGER DEFAULT 0, FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS games (id INTEGER PRIMARY KEY AUTOINCREMENT, host_id INTEGER, game_code TEXT UNIQUE, kit_id INTEGER, game_mode TEXT DEFAULT 'classic_timed', game_type TEXT DEFAULT 'live', subject TEXT, status TEXT DEFAULT 'waiting', settings TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, started_at DATETIME, ended_at DATETIME, FOREIGN KEY(host_id) REFERENCES users(id), FOREIGN KEY(kit_id) REFERENCES question_kits(id))`,
+    `CREATE TABLE IF NOT EXISTS game_participants (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER, user_id INTEGER, player_name TEXT, score INTEGER DEFAULT 0, joined_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(game_id) REFERENCES games(id), FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, activity_type TEXT, description TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS question_kits (id INTEGER PRIMARY KEY AUTOINCREMENT, teacher_id INTEGER, title TEXT, subject TEXT, grade_level TEXT, description TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(teacher_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS questions (id INTEGER PRIMARY KEY AUTOINCREMENT, kit_id INTEGER, question_text TEXT, answer_type TEXT, correct_answer TEXT, option_a TEXT, option_b TEXT, option_c TEXT, option_d TEXT, time_limit INTEGER DEFAULT 30, points INTEGER DEFAULT 100, FOREIGN KEY(kit_id) REFERENCES question_kits(id))`,
+    `CREATE TABLE IF NOT EXISTS game_answers (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER, user_id INTEGER, question_id INTEGER, answer TEXT, is_correct BOOLEAN, time_taken INTEGER, points_earned INTEGER, answered_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(game_id) REFERENCES games(id), FOREIGN KEY(user_id) REFERENCES users(id), FOREIGN KEY(question_id) REFERENCES questions(id))`,
+    `CREATE TABLE IF NOT EXISTS blazes_bucks (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, balance INTEGER DEFAULT 0, FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS blazes_bucks_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, amount INTEGER, reason TEXT, game_code TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS user_achievements (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, achievement_id TEXT, unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, achievement_id), FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS review_events (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, review_count INTEGER DEFAULT 0)`,
+    `CREATE TABLE IF NOT EXISTS user_skins (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, skin_id TEXT, skin_type TEXT DEFAULT 'avatar', purchased_at DATETIME DEFAULT CURRENT_TIMESTAMP, stock_rotation TEXT, FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS skin_stock (id INTEGER PRIMARY KEY AUTOINCREMENT, skin_ids TEXT NOT NULL, generated_at DATETIME DEFAULT CURRENT_TIMESTAMP, expires_at DATETIME NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS user_equipped (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, avatar_skin TEXT DEFAULT 'default', bar_skin TEXT DEFAULT 'default', updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS elemental_attacks (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER, attacker_user_id INTEGER, attack_type TEXT, energy_cost INTEGER, damage INTEGER, target_team INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(game_id) REFERENCES games(id))`,
+    `CREATE TABLE IF NOT EXISTS game_answers_claimed (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER, user_id INTEGER, question_id INTEGER, claimed_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS classrooms (id INTEGER PRIMARY KEY AUTOINCREMENT, teacher_id INTEGER, name TEXT, subject TEXT, grade_level TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(teacher_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS classroom_students (id INTEGER PRIMARY KEY AUTOINCREMENT, classroom_id INTEGER, student_id INTEGER, status TEXT DEFAULT 'pending', joined_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(classroom_id, student_id), FOREIGN KEY(classroom_id) REFERENCES classrooms(id), FOREIGN KEY(student_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS classroom_teachers (id INTEGER PRIMARY KEY AUTOINCREMENT, classroom_id INTEGER, teacher_id INTEGER, role TEXT DEFAULT 'co-teacher', added_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(classroom_id, teacher_id), FOREIGN KEY(classroom_id) REFERENCES classrooms(id), FOREIGN KEY(teacher_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS assignments (id INTEGER PRIMARY KEY AUTOINCREMENT, classroom_id INTEGER, kit_id INTEGER, game_mode TEXT DEFAULT 'classic_timed', title TEXT, instructions TEXT, due_date DATETIME, due_time TEXT, requirements TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(classroom_id) REFERENCES classrooms(id), FOREIGN KEY(kit_id) REFERENCES question_kits(id))`,
+    `CREATE TABLE IF NOT EXISTS assignment_submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, assignment_id INTEGER, student_id INTEGER, status TEXT DEFAULT 'pending', questions_answered INTEGER DEFAULT 0, correct_answers INTEGER DEFAULT 0, score INTEGER DEFAULT 0, completed_at DATETIME, UNIQUE(assignment_id, student_id), FOREIGN KEY(assignment_id) REFERENCES assignments(id), FOREIGN KEY(student_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, type TEXT, title TEXT, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS inferno_fireballs (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER, attacker_user_id INTEGER, target_user_id INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(game_id) REFERENCES games(id))`,
+    `CREATE TABLE IF NOT EXISTS bb_daily_tracker (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, date TEXT, games_played INTEGER DEFAULT 0, bb_earned_today INTEGER DEFAULT 0, streak_day INTEGER DEFAULT 0, UNIQUE(user_id, date))`,
+    `CREATE TABLE IF NOT EXISTS user_settings (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, notify_assignments INTEGER DEFAULT 1, notify_achievements INTEGER DEFAULT 1, notify_game_invites INTEGER DEFAULT 1, notify_classroom INTEGER DEFAULT 1, sound_enabled INTEGER DEFAULT 1, animations_enabled INTEGER DEFAULT 1, timer_warnings INTEGER DEFAULT 1, font_size TEXT DEFAULT 'medium', reduce_motion INTEGER DEFAULT 0, leaderboard_visible INTEGER DEFAULT 1, activity_visible INTEGER DEFAULT 1, FOREIGN KEY(user_id) REFERENCES users(id))`,
+    `CREATE TABLE IF NOT EXISTS login_activity (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, ip_address TEXT, user_agent TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS seasons (id INTEGER PRIMARY KEY AUTOINCREMENT, season_number INTEGER UNIQUE, start_date TEXT, end_date TEXT)`,
+    `CREATE TABLE IF NOT EXISTS season_progress (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, season_id INTEGER, xp INTEGER DEFAULT 0, level INTEGER DEFAULT 1, xp_earned_today INTEGER DEFAULT 0, last_xp_date TEXT, UNIQUE(user_id, season_id))`,
+    `CREATE TABLE IF NOT EXISTS season_xp_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, season_id INTEGER, amount INTEGER, source TEXT, game_code TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS season_badges (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, season_number INTEGER, peak_level INTEGER, badge_tier TEXT, UNIQUE(user_id, season_number))`,
+    `CREATE TABLE IF NOT EXISTS ai_usage (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, feature TEXT NOT NULL, used_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+  ];
+
+  // ALTER TABLE statements — these may fail if column already exists, that's OK
+  const alterStatements = [
+    `ALTER TABLE game_participants ADD COLUMN joined_game_at DATETIME`,
+    `ALTER TABLE game_participants ADD COLUMN lives INTEGER DEFAULT 3`,
+    `ALTER TABLE game_participants ADD COLUMN eliminated INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN eliminated_at_round INTEGER`,
+    `ALTER TABLE games ADD COLUMN current_question_index INTEGER DEFAULT 0`,
+    `ALTER TABLE games ADD COLUMN round_started_at DATETIME`,
+    `ALTER TABLE games ADD COLUMN round_ended_at DATETIME`,
+    `ALTER TABLE games ADD COLUMN round_status TEXT DEFAULT 'answering'`,
+    `ALTER TABLE games ADD COLUMN sudden_death INTEGER DEFAULT 0`,
+    `ALTER TABLE games ADD COLUMN rounds_played INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN team INTEGER`,
+    `ALTER TABLE game_participants ADD COLUMN energy_points INTEGER DEFAULT 0`,
+    `ALTER TABLE games ADD COLUMN team_1_score INTEGER DEFAULT 0`,
+    `ALTER TABLE games ADD COLUMN team_2_score INTEGER DEFAULT 0`,
+    `ALTER TABLE games ADD COLUMN assignment_id INTEGER`,
+    `ALTER TABLE users ADD COLUMN reset_token TEXT`,
+    `ALTER TABLE users ADD COLUMN reset_token_expires DATETIME`,
+    `ALTER TABLE users ADD COLUMN google_access_token TEXT`,
+    `ALTER TABLE users ADD COLUMN google_refresh_token TEXT`,
+    `ALTER TABLE users ADD COLUMN google_scopes TEXT`,
+    `ALTER TABLE users ADD COLUMN password_changed_at TEXT`,
+    `ALTER TABLE users ADD COLUMN subscription_tier TEXT DEFAULT 'free'`,
+    `ALTER TABLE users ADD COLUMN subscription_id TEXT`,
+    `ALTER TABLE users ADD COLUMN subscription_expires TEXT`,
+    `ALTER TABLE users ADD COLUMN stripe_customer_id TEXT`,
+    `ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 1`,
+    `ALTER TABLE users ADD COLUMN verification_token TEXT`,
+    `ALTER TABLE game_participants ADD COLUMN wager_streak INTEGER DEFAULT 0`,
+    `ALTER TABLE questions ADD COLUMN image_url TEXT`,
+    `ALTER TABLE game_participants ADD COLUMN tower_floor INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN is_ghost INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN frozen_until DATETIME`,
+    `ALTER TABLE classrooms ADD COLUMN image_url TEXT`,
+    `ALTER TABLE blazes_bucks ADD COLUMN last_streak_date TEXT`,
+    `ALTER TABLE blazes_bucks ADD COLUMN current_streak INTEGER DEFAULT 0`,
+    `ALTER TABLE bb_daily_tracker ADD COLUMN playtime_seconds INTEGER DEFAULT 0`,
+    `ALTER TABLE blazes_bucks ADD COLUMN play_time_remainder_seconds INTEGER DEFAULT 0`,
+  ];
+
+  console.log('[Schema] Creating tables...');
+  for (const sql of statements) {
+    try { await tursoClient.execute(sql); } catch (e) {
+      console.error('[Schema] Error:', e.message);
+    }
+  }
+  console.log('[Schema] Running migrations...');
+  for (const sql of alterStatements) {
+    try { await tursoClient.execute(sql); } catch (e) {
+      // "duplicate column" or "already exists" errors are expected — ignore them
+    }
+  }
+  console.log('[Schema] Database ready');
+}
+
+initSchema().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 Backend running: http://localhost:${PORT}`);
+    console.log('Database:', process.env.TURSO_DATABASE_URL || `file:${DB_PATH}`);
+  });
+}).catch(err => {
+  console.error('[Schema] Fatal error:', err);
+  process.exit(1);
 });

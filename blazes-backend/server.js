@@ -112,59 +112,69 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: `${BACKEND_URL}/auth/google/callback`,
   }, (accessToken, refreshToken, params, profile, done) => {
-    const email = profile.emails[0].value.toLowerCase();
-    const name = profile.displayName;
-    const newScopes = (params && params.scope) || '';
-    const newHasClassroom = newScopes.includes('classroom.');
-    db.get('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
-      if (err) return done(err);
-      if (user) {
-        const existingScopes = user.google_scopes || '';
-        const existingHasClassroom = existingScopes.includes('classroom.');
-        const shouldUpdateToken = !existingHasClassroom || newHasClassroom;
-        if (accessToken && shouldUpdateToken) {
-          db.run('UPDATE users SET google_access_token = ?, google_refresh_token = COALESCE(?, google_refresh_token), google_scopes = ? WHERE id = ?',
-            [accessToken, refreshToken || null, newScopes, user.id]);
-        } else if (refreshToken) {
-          db.run('UPDATE users SET google_refresh_token = ? WHERE id = ?', [refreshToken, user.id]);
+    try {
+      const email = profile.emails[0].value.toLowerCase();
+      const name = profile.displayName;
+      const newScopes = (params && params.scope) || '';
+      const newHasClassroom = newScopes.includes('classroom.');
+      db.get('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
+        if (err) { console.error('[Auth] DB lookup error:', err); return done(err); }
+        if (user) {
+          const existingScopes = user.google_scopes || '';
+          const existingHasClassroom = existingScopes.includes('classroom.');
+          const shouldUpdateToken = !existingHasClassroom || newHasClassroom;
+          if (accessToken && shouldUpdateToken) {
+            db.run('UPDATE users SET google_access_token = ?, google_refresh_token = COALESCE(?, google_refresh_token), google_scopes = ? WHERE id = ?',
+              [accessToken, refreshToken || null, newScopes, user.id]);
+          } else if (refreshToken) {
+            db.run('UPDATE users SET google_refresh_token = ? WHERE id = ?', [refreshToken, user.id]);
+          }
+          return done(null, user);
         }
-        return done(null, user);
-      }
-      // New user — fetch birthday from Google People API to determine role
-      const createUser = (role) => {
-        db.run('INSERT INTO users (email, name, role, google_access_token, google_refresh_token, google_scopes) VALUES (?, ?, ?, ?, ?, ?)',
-          [email, name, role, accessToken || null, refreshToken || null, newScopes], function(err) {
-          if (err) return done(err);
-          const userId = this.lastID;
-          db.run('INSERT INTO user_stats (user_id) VALUES (?)', [userId]);
-          db.run('INSERT OR IGNORE INTO user_settings (user_id) VALUES (?)', [userId]);
-          db.run('INSERT OR IGNORE INTO user_equipped (user_id, avatar_skin) VALUES (?, ?)', [userId, randomBasicSkin()]);
-          db.get('SELECT * FROM users WHERE id = ?', [userId], (err, newUser) => done(err, newUser));
-        });
-      };
-      if (accessToken) {
-        fetch('https://people.googleapis.com/v1/people/me?personFields=birthdays', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        })
-          .then(r => r.json())
-          .then(bData => {
-            const bday = bData.birthdays?.find(b => b.date?.year)?.date;
-            if (bday) {
-              const birthDate = new Date(bday.year, (bday.month || 1) - 1, bday.day || 1);
-              const today = new Date();
-              let age = today.getFullYear() - birthDate.getFullYear();
-              const m = today.getMonth() - birthDate.getMonth();
-              if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-              createUser(age >= 18 ? 'teacher' : 'student');
-            } else {
-              createUser('pending');
-            }
+        // New user — fetch birthday from Google People API to determine role
+        const createUser = (role) => {
+          console.log('[Auth] Creating new user:', email, 'role:', role);
+          db.run('INSERT INTO users (email, name, role, google_access_token, google_refresh_token, google_scopes) VALUES (?, ?, ?, ?, ?, ?)',
+            [email, name, role, accessToken || null, refreshToken || null, newScopes], function(err) {
+            if (err) { console.error('[Auth] User insert error:', err); return done(err); }
+            const userId = this.lastID;
+            console.log('[Auth] New user created, id:', userId);
+            db.run('INSERT INTO user_stats (user_id) VALUES (?)', [userId]);
+            db.run('INSERT OR IGNORE INTO user_settings (user_id) VALUES (?)', [userId]);
+            db.run('INSERT OR IGNORE INTO user_equipped (user_id, avatar_skin) VALUES (?, ?)', [userId, randomBasicSkin()]);
+            db.get('SELECT * FROM users WHERE id = ?', [userId], (err, newUser) => {
+              if (err) console.error('[Auth] User fetch error:', err);
+              done(err, newUser);
+            });
+          });
+        };
+        if (accessToken) {
+          fetch('https://people.googleapis.com/v1/people/me?personFields=birthdays', {
+            headers: { Authorization: `Bearer ${accessToken}` },
           })
-          .catch(() => createUser('pending'));
-      } else {
-        createUser('pending');
-      }
-    });
+            .then(r => r.json())
+            .then(bData => {
+              const bday = bData.birthdays?.find(b => b.date?.year)?.date;
+              if (bday) {
+                const birthDate = new Date(bday.year, (bday.month || 1) - 1, bday.day || 1);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const m = today.getMonth() - birthDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+                createUser(age >= 18 ? 'teacher' : 'student');
+              } else {
+                createUser('pending');
+              }
+            })
+            .catch((e) => { console.error('[Auth] Birthday API error:', e.message); createUser('pending'); });
+        } else {
+          createUser('pending');
+        }
+      });
+    } catch (e) {
+      console.error('[Auth] Google strategy error:', e);
+      done(e);
+    }
   }));
 }
 
@@ -6906,7 +6916,13 @@ if (fs.existsSync(clientBuildPath)) {
   console.log('[Static] No frontend build found at', clientBuildPath);
 }
 
+// Global error handler — logs the actual error instead of just "Internal Server Error"
+app.use((err, req, res, next) => {
+  console.error('[Server Error]', req.method, req.originalUrl, err.stack || err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 app.listen(PORT, () => {
-  console.log(`🚀 Backend with REAL DB: http://localhost:${PORT}`);
-  console.log('Database file: blazes.db');
+  console.log(`🚀 Backend running: http://localhost:${PORT}`);
+  console.log('Database:', process.env.TURSO_DATABASE_URL || `file:${DB_PATH}`);
 });

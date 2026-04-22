@@ -178,7 +178,9 @@ app.get('/auth/google', (req, res, next) => {
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: `${FRONTEND_URL}/login?error=google_failed` }),
   async (req, res) => {
+    try {
     const user = req.user;
+    if (!user) return res.redirect(`${FRONTEND_URL}/login?error=google_failed`);
 
     // If this was a password reset flow (verified by httpOnly cookie + server-side nonce)
     const resetNonce = req.cookies?.blazes_reset_nonce;
@@ -204,6 +206,10 @@ app.get('/auth/google/callback',
       res.redirect(`${FRONTEND_URL}/auth/callback?token=jwt-token-here&user=${userData}&new=true`);
     } else {
       res.redirect(`${FRONTEND_URL}/auth/callback?token=jwt-token-here&user=${userData}`);
+    }
+    } catch (err) {
+      console.error('[Auth] Google callback error:', err);
+      res.redirect(`${FRONTEND_URL}/login?error=google_failed`);
     }
   }
 );

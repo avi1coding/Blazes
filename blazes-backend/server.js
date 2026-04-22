@@ -6907,7 +6907,7 @@ if (fs.existsSync(clientBuildPath)) {
   app.use(express.static(clientBuildPath));
   // SPA catch-all: serve index.html for any non-API route
   app.get('/{*path}', (req, res) => {
-    if (req.path.startsWith('/api/') || req.path.startsWith('/auth/') || req.path.startsWith('/uploads/')) {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/auth/google') || req.path.startsWith('/uploads/')) {
       return res.status(404).json({ error: 'Not found' });
     }
     res.sendFile(path.join(clientBuildPath, 'index.html'));

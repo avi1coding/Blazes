@@ -16,6 +16,20 @@ export default function TeacherLobby() {
       audio.play().catch(() => {});
       return () => { audio.pause(); audio.src = ''; };
     }, []);
+
+    // Cancel game if host closes/leaves the tab
+    useEffect(() => {
+      const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+      const cancelUrl = `${base}/api/games/${gameCode}/cancel`;
+
+      const handleUnload = () => {
+        fetch(cancelUrl, { method: 'PUT', keepalive: true }).catch(() => {});
+      };
+
+      window.addEventListener('beforeunload', handleUnload);
+      return () => window.removeEventListener('beforeunload', handleUnload);
+    }, [gameCode]);
+
     const [game, setGame] = useState(null);
     const [participants, setParticipants] = useState([]);
     const [copied, setCopied] = useState(false);

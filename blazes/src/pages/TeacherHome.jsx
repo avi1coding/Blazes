@@ -1527,7 +1527,7 @@ export default function TeacherHome() {
                 }}
                   className="bg-white border-2 border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2.5 text-sm transition-colors">
                   <span className="w-6 h-6 rounded-md bg-white ring-1 ring-gray-200 flex items-center justify-center overflow-hidden shrink-0">
-                    <img src="https://www.gstatic.com/classroom/logo_square_48.png" className="w-5 h-5 object-contain" alt="Google Classroom" />
+                    <img src="/google-classroom.png" className="w-5 h-5 object-contain" alt="Google Classroom" />
                   </span>
                   Import from Google Classroom
                 </button>
@@ -1650,7 +1650,7 @@ export default function TeacherHome() {
                 <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center gap-3 mb-6">
                     <span className="w-10 h-10 rounded-xl bg-white ring-1 ring-gray-200 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
-                      <img src="https://www.gstatic.com/classroom/logo_square_48.png" className="w-8 h-8 object-contain" alt="Google Classroom" />
+                      <img src="/google-classroom.png" className="w-8 h-8 object-contain" alt="Google Classroom" />
                     </span>
                     <h2 className="text-2xl font-black text-gray-900">Import from Google Classroom</h2>
                   </div>

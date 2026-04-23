@@ -7,6 +7,15 @@ import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 export default function TeacherLobby() {
     const { gameCode } = useParams();
     const navigate = useNavigate();
+
+    // Lobby music
+    useEffect(() => {
+      const audio = new Audio('/audio/LobbyMusic.mp3');
+      audio.loop = true;
+      audio.volume = 0.3;
+      audio.play().catch(() => {});
+      return () => { audio.pause(); audio.src = ''; };
+    }, []);
     const [game, setGame] = useState(null);
     const [participants, setParticipants] = useState([]);
     const [copied, setCopied] = useState(false);

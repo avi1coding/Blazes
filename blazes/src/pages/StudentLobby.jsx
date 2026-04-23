@@ -7,6 +7,8 @@ import SkinsPage from './SkinsPage';
 export default function StudentLobby() {
     const navigate = useNavigate();
     const { gameCode } = useParams();
+
+
     const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
     const [game, setGame] = useState(null);
     const [participants, setParticipants] = useState([]);

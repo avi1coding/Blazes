@@ -767,8 +767,12 @@ db.run(`CREATE TABLE IF NOT EXISTS user_settings (
   reduce_motion INTEGER DEFAULT 0,
   leaderboard_visible INTEGER DEFAULT 1,
   activity_visible INTEGER DEFAULT 1,
+  music_volume INTEGER DEFAULT 30,
+  sfx_volume INTEGER DEFAULT 70,
   FOREIGN KEY(user_id) REFERENCES users(id)
 )`);
+db.run(`ALTER TABLE user_settings ADD COLUMN music_volume INTEGER DEFAULT 30`, () => {});
+db.run(`ALTER TABLE user_settings ADD COLUMN sfx_volume INTEGER DEFAULT 70`, () => {});
 db.run(`CREATE TABLE IF NOT EXISTS login_activity (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER,
@@ -6999,6 +7003,8 @@ async function initSchema() {
     `ALTER TABLE blazes_bucks ADD COLUMN current_streak INTEGER DEFAULT 0`,
     `ALTER TABLE bb_daily_tracker ADD COLUMN playtime_seconds INTEGER DEFAULT 0`,
     `ALTER TABLE blazes_bucks ADD COLUMN play_time_remainder_seconds INTEGER DEFAULT 0`,
+    `ALTER TABLE user_settings ADD COLUMN music_volume INTEGER DEFAULT 30`,
+    `ALTER TABLE user_settings ADD COLUMN sfx_volume INTEGER DEFAULT 70`,
   ];
 
   console.log('[Schema] Creating tables...');

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Flame, Users, Copy, Zap, CheckCircle, Eye } from 'lucide-react';
 import Toast from '../components/Toast';
+import VolumeControl from '../components/VolumeControl';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 
 export default function TeacherLobby() {
@@ -9,10 +10,15 @@ export default function TeacherLobby() {
     const navigate = useNavigate();
 
     // Lobby music
+    const lobbyAudioRef = useRef(null);
     useEffect(() => {
+      const s = JSON.parse(localStorage.getItem('blazes_settings') || '{}');
+      const vol = (s.music_volume ?? 30) / 100;
+      const muted = s.sound_enabled === false || s.sound_enabled === 0;
       const audio = new Audio('/audio/LobbyMusic.mp3');
       audio.loop = true;
-      audio.volume = 0.3;
+      audio.volume = muted ? 0 : vol;
+      lobbyAudioRef.current = audio;
       audio.play().catch(() => {});
       return () => { audio.pause(); audio.src = ''; };
     }, []);
@@ -153,9 +159,12 @@ export default function TeacherLobby() {
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-5 sm:p-8 text-white mb-6 sm:mb-8">
-                    <div className="flex items-center gap-3 mb-2 sm:mb-4">
-                        <Flame className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />
-                        <h1 className="text-2xl sm:text-4xl font-black">Teacher Lobby</h1>
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                        <div className="flex items-center gap-3">
+                            <Flame className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />
+                            <h1 className="text-2xl sm:text-4xl font-black">Teacher Lobby</h1>
+                        </div>
+                        <VolumeControl audioRef={lobbyAudioRef} />
                     </div>
                     <p className="text-white/90 text-sm sm:text-base">Game Code: <span className="font-black text-base sm:text-lg">{gameCode}</span></p>
                 </div>

@@ -18,6 +18,25 @@ function getPasswordStrength(pw) {
   return { label: 'Very Strong', color: 'bg-green-600', width: '100%' };
 }
 
+function VolumeSlider({ value, onChange, label, description }) {
+  return (
+    <div className="py-3">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <div className="font-bold text-gray-900 text-sm">{label}</div>
+          {description && <div className="text-xs text-gray-500 mt-0.5">{description}</div>}
+        </div>
+        <span className="text-sm font-bold text-gray-500 w-10 text-right">{value}%</span>
+      </div>
+      <input
+        type="range" min="0" max="100" value={value}
+        onChange={(e) => onChange(parseInt(e.target.value, 10))}
+        className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-red-600"
+      />
+    </div>
+  );
+}
+
 function Toggle({ enabled, onChange, label, description }) {
   return (
     <div className="flex items-center justify-between py-3">
@@ -547,9 +566,21 @@ export default function SettingsPage() {
       <h3 className="font-black text-gray-900 text-sm mb-1">Gameplay Settings</h3>
       <p className="text-xs text-gray-500 mb-3">Customize your in-game experience.</p>
       <div className="divide-y divide-gray-100">
+        <VolumeSlider
+          label="Music Volume"
+          description="Background music in lobbies and games"
+          value={settings?.music_volume ?? 30}
+          onChange={v => updateSetting('music_volume', v)}
+        />
+        <VolumeSlider
+          label="Sound Effects Volume"
+          description="Sound effects during gameplay"
+          value={settings?.sfx_volume ?? 70}
+          onChange={v => updateSetting('sfx_volume', v)}
+        />
         <Toggle
           label="Sound Effects"
-          description="Play sounds during games"
+          description="Enable or disable all sounds"
           enabled={settings?.sound_enabled ?? true}
           onChange={v => updateSetting('sound_enabled', v)}
         />

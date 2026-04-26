@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
 import VolumeControl from '../components/VolumeControl';
+import { createSeamlessLoop } from '../utils/seamlessAudio';
 
 export default function TeacherMonitoringDashboard() {
   const navigate = useNavigate();
@@ -24,17 +25,15 @@ export default function TeacherMonitoringDashboard() {
   const [endGameConfirm, setEndGameConfirm] = useState(false);
   const gameAudioRef = useRef(null);
 
-  // Gameplay music — plays only on host's device
+  // Gameplay music — seamless loop, plays only on host's device
   useEffect(() => {
     const s = JSON.parse(localStorage.getItem('blazes_settings') || '{}');
     const vol = (s.music_volume ?? 30) / 100;
     const muted = s.sound_enabled === false || s.sound_enabled === 0;
-    const audio = new Audio('/audio/GameMusic.mp3');
-    audio.loop = true;
-    audio.volume = muted ? 0 : vol;
+    const audio = createSeamlessLoop('/audio/GameMusic.mp3', muted ? 0 : vol);
     gameAudioRef.current = audio;
-    audio.play().catch(() => {});
-    return () => { audio.pause(); audio.src = ''; };
+    audio.play();
+    return () => audio.stop();
   }, []);
 
   useEffect(() => {

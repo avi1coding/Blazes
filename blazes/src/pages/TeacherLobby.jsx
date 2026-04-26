@@ -3,24 +3,23 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Flame, Users, Copy, Zap, CheckCircle, Eye } from 'lucide-react';
 import Toast from '../components/Toast';
 import VolumeControl from '../components/VolumeControl';
+import { createSeamlessLoop } from '../utils/seamlessAudio';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 
 export default function TeacherLobby() {
     const { gameCode } = useParams();
     const navigate = useNavigate();
 
-    // Lobby music
+    // Lobby music — seamless loop via Web Audio API
     const lobbyAudioRef = useRef(null);
     useEffect(() => {
       const s = JSON.parse(localStorage.getItem('blazes_settings') || '{}');
       const vol = (s.music_volume ?? 30) / 100;
       const muted = s.sound_enabled === false || s.sound_enabled === 0;
-      const audio = new Audio('/audio/LobbyMusic.mp3');
-      audio.loop = true;
-      audio.volume = muted ? 0 : vol;
+      const audio = createSeamlessLoop('/audio/LobbyMusic.mp3', muted ? 0 : vol);
       lobbyAudioRef.current = audio;
-      audio.play().catch(() => {});
-      return () => { audio.pause(); audio.src = ''; };
+      audio.play();
+      return () => audio.stop();
     }, []);
 
     // Cancel game if host closes/leaves the tab

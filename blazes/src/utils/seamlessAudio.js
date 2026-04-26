@@ -1,11 +1,40 @@
-// Seamless looping audio using Web Audio API
-// HTML5 Audio.loop has a small gap between loops — this doesn't.
+// Seamless looping audio using Web Audio API.
+// Trims silence at start/end of buffer so loops don't have a gap
+// (MP3 files often have encoder padding ~50ms at start and ~26ms at end).
+
+function findFirstNonSilent(buffer, threshold = 0.001) {
+  const channels = buffer.numberOfChannels;
+  const length = buffer.length;
+  for (let i = 0; i < length; i++) {
+    for (let c = 0; c < channels; c++) {
+      if (Math.abs(buffer.getChannelData(c)[i]) > threshold) {
+        return i;
+      }
+    }
+  }
+  return 0;
+}
+
+function findLastNonSilent(buffer, threshold = 0.001) {
+  const channels = buffer.numberOfChannels;
+  const length = buffer.length;
+  for (let i = length - 1; i >= 0; i--) {
+    for (let c = 0; c < channels; c++) {
+      if (Math.abs(buffer.getChannelData(c)[i]) > threshold) {
+        return i;
+      }
+    }
+  }
+  return length - 1;
+}
 
 export function createSeamlessLoop(src, initialVolume = 0.3) {
   let audioCtx = null;
   let source = null;
   let gainNode = null;
   let buffer = null;
+  let loopStart = 0;
+  let loopEnd = 0;
   let loaded = false;
   let pendingPlay = false;
 
@@ -19,6 +48,14 @@ export function createSeamlessLoop(src, initialVolume = 0.3) {
       const response = await fetch(src);
       const arrayBuffer = await response.arrayBuffer();
       buffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+      // Find actual audio start/end (skip encoder padding silence)
+      const sampleRate = buffer.sampleRate;
+      const startSample = findFirstNonSilent(buffer);
+      const endSample = findLastNonSilent(buffer);
+      loopStart = startSample / sampleRate;
+      loopEnd = (endSample + 1) / sampleRate;
+
       loaded = true;
       if (pendingPlay) play();
     } catch (e) {
@@ -28,13 +65,16 @@ export function createSeamlessLoop(src, initialVolume = 0.3) {
 
   const play = () => {
     if (!loaded) { pendingPlay = true; return; }
-    if (source) return; // already playing
+    if (source) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     source = audioCtx.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
+    source.loopStart = loopStart;
+    source.loopEnd = loopEnd;
     source.connect(gainNode);
-    source.start(0);
+    // Start at the trimmed start, not 0, so we don't play the silence the first time
+    source.start(0, loopStart);
   };
 
   const stop = () => {
@@ -57,8 +97,6 @@ export function createSeamlessLoop(src, initialVolume = 0.3) {
 
   init();
 
-  // Object compatible with HTMLAudioElement interface (has .volume property)
-  // so VolumeControl can do `audioRef.current.volume = x`
   return {
     play,
     stop,

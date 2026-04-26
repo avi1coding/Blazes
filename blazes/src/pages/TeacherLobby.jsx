@@ -123,8 +123,20 @@ export default function TeacherLobby() {
             console.log('start response:', response.status, data);
 
             if (response.ok) {
-                if (currentUser.role === 'student' || game.settings?.teacherPlaying) {
+                if (currentUser.role === 'student') {
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
+                } else if (hostPlays) {
+                    // Auto-join host as a participant first
+                    try {
+                        await fetch(`${baseUrl}/api/games/${gameCode}/join`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: currentUser.id, playerName: currentUser.name }),
+                        });
+                    } catch (_) {}
+                    // Open the gameplay screen in a new tab so host can play and monitor at the same time
+                    window.open(`/game/play/${gameCode}`, '_blank', 'noopener');
+                    navigate(`/game/monitor/${gameCode}/all`, { state: { game, user: currentUser } });
                 } else {
                     navigate(`/game/monitor/${gameCode}/all`, { state: { game, user: currentUser } });
                 }

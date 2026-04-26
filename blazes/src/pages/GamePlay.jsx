@@ -385,10 +385,18 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
           <span className="font-black text-lg sm:text-xl" style={{ color: getNameColor(equippedSkinId) }}>{user?.name || 'Player'}</span>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          <button onClick={handleGameOver}
-            className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-xl text-xs sm:text-sm font-bold border border-gray-200 hover:border-red-200 transition-colors">
-            Finish
-          </button>
+          {game?.host_id === user?.id && (
+            <button onClick={async () => {
+              try {
+                const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+                await fetch(`${base}/api/games/${gameCode}/end`, { method: 'PUT' });
+              } catch (_) {}
+              handleGameOver();
+            }}
+              className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-xl text-xs sm:text-sm font-bold border border-gray-200 hover:border-red-200 transition-colors">
+              Finish
+            </button>
+          )}
           <div className="flex items-center gap-1 sm:gap-2 bg-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-sm border border-gray-200">
             <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
             <span className="font-black text-sm sm:text-base text-gray-900">{score}</span>

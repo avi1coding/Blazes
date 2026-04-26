@@ -78,17 +78,23 @@ export function createSeamlessLoop(src, initialVolume = 0.3) {
   };
 
   const stop = () => {
+    pendingPlay = false;
+    if (gainNode) {
+      // Silence first to avoid clicks
+      try { gainNode.gain.value = 0; } catch (_) {}
+    }
     if (source) {
-      try { source.stop(); } catch (_) {}
-      source.disconnect();
+      try { source.stop(0); } catch (_) {}
+      try { source.disconnect(); } catch (_) {}
       source = null;
     }
     if (audioCtx) {
-      audioCtx.close();
+      try { audioCtx.close(); } catch (_) {}
       audioCtx = null;
     }
+    gainNode = null;
+    buffer = null;
     loaded = false;
-    pendingPlay = false;
   };
 
   const setVolume = (v) => {

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Flame, Trophy, Target, Home, Share2, X, Crown, Medal, Shield, Sparkles, Lock } from 'lucide-react';
 import Toast from '../components/Toast';
 import { AvatarPreview, getNameColor, isBlazesPlusCached, cacheTier } from './SkinsPage';
+import { rankParticipants } from '../utils/ranking';
 
 export default function GameResults() {
   const navigate = useNavigate();
@@ -67,17 +68,7 @@ export default function GameResults() {
       .then(data => {
         setGameMode(data.gameMode);
         setTotalRounds(data.totalRoundsPlayed || 0);
-        const sorted = (data.participants || []).sort((a, b) => {
-          if (data.gameMode === 'survival') {
-            if ((a.eliminated || 0) !== (b.eliminated || 0)) return (a.eliminated || 0) - (b.eliminated || 0);
-            if (a.eliminated && b.eliminated) {
-              const aRound = a.eliminated_at_round || 0;
-              const bRound = b.eliminated_at_round || 0;
-              if (aRound !== bRound) return bRound - aRound;
-            }
-          }
-          return (b.score || 0) - (a.score || 0);
-        });
+        const sorted = rankParticipants(data.participants || []);
         setLeaderboard(sorted);
         if (sorted.length > 0 && sorted[0].user_id === user?.id) {
           setHasWon(true);

@@ -2773,11 +2773,13 @@ app.get('/api/games/:gameCode/results', (req, res) => {
 
     db.all(
       `SELECT gp.user_id, gp.player_name, gp.score, gp.lives, gp.eliminated, gp.eliminated_at_round,
-              u.name, u.role
+              u.name, u.role,
+              (SELECT COUNT(*) FROM game_answers WHERE game_id = gp.game_id AND user_id = gp.user_id AND is_correct = 1) AS correct_answers,
+              (SELECT AVG(time_taken) FROM game_answers WHERE game_id = gp.game_id AND user_id = gp.user_id) AS avg_time
        FROM game_participants gp
        JOIN users u ON gp.user_id = u.id
        WHERE gp.game_id = ?
-       ORDER BY gp.score DESC`,
+       ORDER BY gp.score DESC, correct_answers DESC, avg_time ASC, gp.user_id ASC`,
       [game.id],
       (err, participants) => {
         if (err) return res.status(500).json({ error: err.message });

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Flame, Trophy, Home, Users, Crown, Medal, Shield, Skull, Heart, BarChart3, Zap } from 'lucide-react';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
+import { rankParticipants } from '../utils/ranking';
 
 export default function TeacherGameResults() {
     const { gameCode } = useParams();
@@ -60,22 +61,9 @@ export default function TeacherGameResults() {
     }
 
     const participants = results?.participants || [];
-    const isSurvival = results?.gameMode === 'survival';
     const totalRounds = results?.totalRoundsPlayed || 0;
 
-    // Sort: survival = non-eliminated first, then by rounds survived (desc), then by score; classic = by score
-    const sorted = [...participants].sort((a, b) => {
-        if (isSurvival) {
-            if ((a.eliminated || 0) !== (b.eliminated || 0)) return (a.eliminated || 0) - (b.eliminated || 0);
-            // Both eliminated: survived longer = better
-            if (a.eliminated && b.eliminated) {
-                const aRound = a.eliminated_at_round || 0;
-                const bRound = b.eliminated_at_round || 0;
-                if (aRound !== bRound) return bRound - aRound;
-            }
-        }
-        return (b.score || 0) - (a.score || 0);
-    });
+    const sorted = rankParticipants(participants);
 
     // Compute placements with ties (same score+status = same placement)
     const placements = [];

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AvatarPreview, isBlazesPlusCached } from './SkinsPage';
 import { Check, X, Flame, Mountain, Droplets, Trophy, Clock, Zap, Crown } from 'lucide-react';
+import { rankParticipants } from '../utils/ranking';
 
 const TIERS = {
   1: {
@@ -303,13 +304,8 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
 
         {/* Leaderboard sidebar — right side on desktop */}
         {hasMultiplayer && showLeaderboard && (() => {
-          const sorted = [...participants].sort((a, b) => (b.score || 0) - (a.score || 0));
-          const places = sorted.map((p, i) => {
-            if (i === 0) return 1;
-            return (p.score || 0) === (sorted[i - 1].score || 0)
-              ? (() => { let j = i - 1; while (j > 0 && (sorted[j].score || 0) === (sorted[j - 1].score || 0)) j--; return j + 1; })()
-              : i + 1;
-          });
+          const sorted = rankParticipants(participants);
+          const places = sorted.map(p => p.rank);
           return (
             <div className="hidden lg:block w-56 xl:w-64 flex-shrink-0 bg-gray-900/80 border-l border-gray-800 p-4 overflow-y-auto">
               <div className="flex items-center justify-between mb-4">

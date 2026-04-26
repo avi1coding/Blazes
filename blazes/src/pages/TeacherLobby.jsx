@@ -123,6 +123,8 @@ export default function TeacherLobby() {
             console.log('start response:', response.status, data);
 
             if (response.ok) {
+                // Stop lobby music before navigating
+                if (lobbyAudioRef.current) lobbyAudioRef.current.stop();
                 if (currentUser.role === 'student') {
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
                 } else if (hostPlays) {

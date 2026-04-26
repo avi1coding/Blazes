@@ -76,6 +76,7 @@ export default function TeacherMonitoringDashboard() {
           // Auto-navigate to results when game ends
           if (data.status === 'ended' && !navigatedRef.current) {
             navigatedRef.current = true;
+            if (gameAudioRef.current) gameAudioRef.current.stop();
             navigate(`/game/teacher-results/${gameCode}`);
           }
         } else {
@@ -151,6 +152,7 @@ export default function TeacherMonitoringDashboard() {
 
   const confirmEndGame = async () => {
     setEndGameConfirm(false);
+    if (gameAudioRef.current) gameAudioRef.current.stop();
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       await fetch(`${baseUrl}/api/games/${gameCode}/end`, { method: 'PUT' });
@@ -161,6 +163,7 @@ export default function TeacherMonitoringDashboard() {
   };
 
   const handleLeave = () => {
+    if (gameAudioRef.current) gameAudioRef.current.stop();
     navigate('/home/teacher');
   };
 

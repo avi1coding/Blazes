@@ -23,11 +23,8 @@ const RegularSetupPage = lazy(() => import("./pages/RegularSetupPage"));
 const TeacherMonitoringDashboard = lazy(() => import("./pages/TeacherMonitoringDashboard"));
 const StudentMonitor = lazy(() => import("./pages/StudentMonitor"));
 const TeacherGameResults = lazy(() => import("./pages/TeacherGameResults"));
-const SurvivalSetupPage = lazy(() => import("./pages/SurvivalSetupPage"));
 const ElementalClashSetupPage = lazy(() => import("./pages/ElementalClashSetupPage"));
-const InfernoTowerSetupPage = lazy(() => import("./pages/InfernoTowerSetupPage"));
 const ElementalWagerSetupPage = lazy(() => import("./pages/ElementalWagerSetupPage"));
-const InfernoTowerView = lazy(() => import("./pages/InfernoTowerView"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Pricing = lazy(() => import("./pages/Pricing"));
@@ -102,11 +99,8 @@ function App() {
           <Route path="/game/mode-select" element={<GameModePage />} />
           <Route path="/game/classic-timed-setup" element={<ClassicTimedSetupPage />} />
           <Route path="/game/regular-setup" element={<RegularSetupPage />} />
-          <Route path="/game/survival-setup" element={<SurvivalSetupPage />} />
           <Route path="/game/elemental-clash-setup" element={<ElementalClashSetupPage />} />
-          <Route path="/game/inferno-tower-setup" element={<InfernoTowerSetupPage />} />
           <Route path="/game/elemental-wager-setup" element={<ElementalWagerSetupPage />} />
-          <Route path="/game/inferno-tower-view/:gameCode" element={<InfernoTowerView />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

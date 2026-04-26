@@ -3,7 +3,6 @@ import { AvatarPreview, getNameColor, isBlazesPlusCached } from './SkinsPage';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Clock, Trophy, Check, X, Heart, Skull, Lock, Users, Flame } from 'lucide-react';
 import ElementalClashGamePlay from './ElementalClashGamePlay';
-import InfernoTowerGamePlay from './InfernoTowerGamePlay';
 import ElementalWagerGamePlay from './ElementalWagerGamePlay';
 
 function getFullImageUrl(url) {
@@ -174,11 +173,9 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
       setBbPopup({ show: true, amount: bbEarned, xp: xpEarned });
       await new Promise(r => setTimeout(r, 2500));
     }
-    if (currentUser?.role === 'teacher') {
-      navigate(`/game/teacher-results/${gameCode}`);
-    } else {
-      navigate(`/game/results/${gameCode}`, { state: { score: finalScore, correctCount: finalCorrect, questionsAnswered: finalAnswered, totalQuestions: totalQs, game: currentGame, bbEarned, xpEarned } });
-    }
+    // GamePlay is the playing tab — always show student-style results here.
+    // (The teacher monitor tab shows teacher-results separately.)
+    navigate(`/game/results/${gameCode}`, { state: { score: finalScore, correctCount: finalCorrect, questionsAnswered: finalAnswered, totalQuestions: totalQs, game: currentGame, bbEarned, xpEarned } });
   }, [gameCode, navigate]);
 
   useEffect(() => {
@@ -1069,14 +1066,8 @@ export default function GamePlay() {
   if (error) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-red-600">{error}</div>;
   if (!game) return null;
 
-  if (game.game_mode === 'survival') {
-    return <SurvivalGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
-  }
   if (game.game_mode === 'elemental_clash') {
     return <ElementalClashGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
-  }
-  if (game.game_mode === 'inferno_tower') {
-    return <InfernoTowerGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
   }
   if (game.game_mode === 'elemental_wager') {
     return <ElementalWagerGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;

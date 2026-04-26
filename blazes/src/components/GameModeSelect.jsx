@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Flame, Trophy, Lock, Heart, Swords, ChevronRight, Users, Clock, Zap } from 'lucide-react';
+import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function GameModeSelect({ kit, user, onBack }) {
@@ -28,25 +28,6 @@ export default function GameModeSelect({ kit, user, onBack }) {
       available: true
     },
     {
-      id: 'survival',
-      name: 'Survival',
-      icon: Heart,
-      color: 'from-red-500 to-rose-600',
-      accent: 'red',
-      tags: ['multi'],
-      description: 'High-stakes elimination. Every player starts with lives. Wrong answers or running out of time costs a life. Lose them all and you\'re out. Last one standing wins.',
-      difficulty: 'Hard',
-      players: '2-50',
-      duration: 'Until 1 remains',
-      features: [
-        'Configurable lives per player (1-5)',
-        'Timed questions — no answer = lose a life',
-        'Sudden death when top players tie',
-        'Tiebreaker round for final showdown'
-      ],
-      available: true
-    },
-    {
       id: 'elemental_clash',
       name: 'Elemental Clash',
       icon: Swords,
@@ -62,25 +43,6 @@ export default function GameModeSelect({ kit, user, onBack }) {
         'Choose: +1 energy or +10 team points per correct answer',
         'Buy attacks: Earthquake, Tsunami, Hurricane, Wildfire',
         'Team with most points when time runs out wins'
-      ],
-      available: true
-    },
-    {
-      id: 'inferno_tower',
-      name: 'Inferno Tower',
-      icon: Flame,
-      color: 'from-orange-500 to-red-600',
-      accent: 'orange',
-      tags: ['solo', 'multi'],
-      description: 'Climb the tower before the rising fire catches you. Correct answers move you up one floor. Wrong answers freeze you for 3 seconds while the fire keeps climbing. If it reaches you, you become a ghost who can fireball survivors.',
-      difficulty: 'Hard',
-      players: '1-50',
-      duration: 'Until 1 remains',
-      features: [
-        'Fire rises and accelerates over time',
-        'Wrong answers freeze you (fire keeps going!)',
-        'Eliminated players become ghosts',
-        'Ghosts send fireballs to freeze survivors'
       ],
       available: true
     },
@@ -126,9 +88,7 @@ export default function GameModeSelect({ kit, user, onBack }) {
 
   const handleContinue = () => {
     if (selectedMode === 'classic_timed') navigate('/game/classic-timed-setup', { state: { kit, user } });
-    else if (selectedMode === 'survival') navigate('/game/survival-setup', { state: { kit, user } });
     else if (selectedMode === 'elemental_clash') navigate('/game/elemental-clash-setup', { state: { kit, user } });
-    else if (selectedMode === 'inferno_tower') navigate('/game/inferno-tower-setup', { state: { kit, user } });
     else if (selectedMode === 'elemental_wager') navigate('/game/elemental-wager-setup', { state: { kit, user } });
   };
 

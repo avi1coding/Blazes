@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Zap, Clock, Play, Swords } from 'lucide-react';
+import HostPlaysToggle from '../components/HostPlaysToggle';
 
 export default function ElementalClashSetupPage() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function ElementalClashSetupPage() {
   const [gameName, setGameName] = useState(`${kit?.title || 'Clash'} — Elemental Clash`);
   const [timeLimit, setTimeLimit] = useState(300); // seconds
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
+  const [hostPlays, setHostPlays] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +38,7 @@ export default function ElementalClashSetupPage() {
       pointsPerCorrectAnswer: 10,
       hostName: user.name,
       allowCustomPlayerNames,
+      hostPlays,
     };
     try {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -126,6 +129,8 @@ export default function ElementalClashSetupPage() {
                 <li>Team with the most points when time runs out wins!</li>
               </ul>
             </div>
+
+            <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />
           </div>
 
           {error && <p className="mt-6 text-center text-red-600">{error}</p>}

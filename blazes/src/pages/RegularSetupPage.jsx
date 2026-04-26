@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Flame, Settings, Play } from 'lucide-react';
+import HostPlaysToggle from '../components/HostPlaysToggle';
 
 export default function RegularSetupPage() {
   const navigate = useNavigate();
   const [gameName, setGameName] = useState('My Blazes Quiz');
   const [timeLimit, setTimeLimit] = useState(600); // 10 minutes
   const [kitId, setKitId] = useState(''); // You'll need a way to select a question kit
+  const [hostPlays, setHostPlays] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -35,6 +37,7 @@ export default function RegularSetupPage() {
             gameName,
             gameplayTime: timeLimit,
             repeatQuestions: true, // Or make this a form option
+            hostPlays,
           },
         }),
       });
@@ -101,6 +104,8 @@ export default function RegularSetupPage() {
               required
             />
           </div>
+
+          <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />
 
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 

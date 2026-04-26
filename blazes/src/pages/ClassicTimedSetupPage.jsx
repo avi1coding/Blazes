@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Settings, Clock, Star, Play } from 'lucide-react';
+import HostPlaysToggle from '../components/HostPlaysToggle';
 
 export default function ClassicTimedSetupPage() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export default function ClassicTimedSetupPage() {
   const [timeLimit, setTimeLimit] = useState(300);
   const [pointsPerCorrectAnswer, setPointsPerCorrectAnswer] = useState(10);
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
+  const [hostPlays, setHostPlays] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -45,6 +47,7 @@ export default function ClassicTimedSetupPage() {
       pointsPerCorrectAnswer,
       hostName: user.name,
       allowCustomPlayerNames,
+      hostPlays,
     };
 
     try {
@@ -138,6 +141,8 @@ export default function ClassicTimedSetupPage() {
                   : 'Students will join using their account name automatically.'}
               </p>
             </div>
+
+            <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />
 
             {/* Time Limit */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

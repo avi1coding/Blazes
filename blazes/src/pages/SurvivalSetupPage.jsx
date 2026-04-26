@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Heart, Clock, Play } from 'lucide-react';
+import HostPlaysToggle from '../components/HostPlaysToggle';
 
 export default function SurvivalSetupPage() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export default function SurvivalSetupPage() {
   const [livesPerPlayer, setLivesPerPlayer] = useState(3);
   const [questionTimeLimit, setQuestionTimeLimit] = useState(15);
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
+  const [hostPlays, setHostPlays] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -41,6 +43,7 @@ export default function SurvivalSetupPage() {
       hostName: user.name,
       allowCustomPlayerNames,
       endless: true,
+      hostPlays,
     };
 
     try {
@@ -160,6 +163,8 @@ export default function SurvivalSetupPage() {
                 Last player standing wins.
               </p>
             </div>
+
+            <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />
           </div>
 
           {error && <p className="mt-6 text-center text-red-600">{error}</p>}

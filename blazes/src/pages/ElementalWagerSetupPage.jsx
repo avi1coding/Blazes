@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Flame, Play, Clock, Mountain, Droplets } from 'lucide-react';
+import HostPlaysToggle from '../components/HostPlaysToggle';
 
 export default function ElementalWagerSetupPage() {
   const navigate = useNavigate();
@@ -9,6 +10,7 @@ export default function ElementalWagerSetupPage() {
   const [gameName, setGameName] = useState(`${kit?.title || 'Wager'} — Risk & Reward`);
   const [timeLimit, setTimeLimit] = useState(180);
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
+  const [hostPlays, setHostPlays] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +30,7 @@ export default function ElementalWagerSetupPage() {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const res = await fetch(`${base}/api/games/create`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hostId: user.id, kitId: kit.id, gameCode, gameMode: 'elemental_wager', settings: { gameName, timeLimit, allowCustomPlayerNames, hostName: user.name } })
+        body: JSON.stringify({ hostId: user.id, kitId: kit.id, gameCode, gameMode: 'elemental_wager', settings: { gameName, timeLimit, allowCustomPlayerNames, hostName: user.name, hostPlays } })
       });
       if (!res.ok) throw new Error('Failed to create game.');
       const data = await res.json();
@@ -106,6 +108,8 @@ export default function ElementalWagerSetupPage() {
               </div>
               <p className="text-xs text-amber-700 mt-3">10 correct in a row upgrades all bets. Wrong answer resets your streak!</p>
             </div>
+
+            <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />
           </div>
 
           {error && <p className="mt-6 text-center text-red-600">{error}</p>}

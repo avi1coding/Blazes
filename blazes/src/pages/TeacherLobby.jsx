@@ -39,7 +39,6 @@ export default function TeacherLobby() {
     const [participants, setParticipants] = useState([]);
     const [copied, setCopied] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
-    const [hostWillPlay, setHostWillPlay] = useState(false);
     const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
     const [playerSkins, setPlayerSkins] = useState({});
     const fetchedSkinIds = useRef(new Set());
@@ -151,7 +150,12 @@ export default function TeacherLobby() {
 
     const isTeacher = user?.role === 'teacher';
     const isSurvival = game.game_mode === 'survival';
-    const hasPlayers = participants.length >= 1 || hostWillPlay;
+    const settingsObj = (() => {
+      try { return typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {}); }
+      catch { return {}; }
+    })();
+    const hostPlays = !!settingsObj.hostPlays;
+    const hasPlayers = participants.length >= 1 || hostPlays;
     const canStart = hasPlayers && (!isSurvival || participants.length >= 2);
 
     return (
@@ -287,20 +291,14 @@ export default function TeacherLobby() {
                         Cancel
                     </button>
                     <div className="flex-1 flex flex-col gap-2">
-                        {participants.length === 0 && (
-                            <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 bg-orange-50 border-2 border-orange-200 rounded-xl hover:bg-orange-100 transition-colors">
-                                <input
-                                    type="checkbox"
-                                    checked={hostWillPlay}
-                                    onChange={(e) => setHostWillPlay(e.target.checked)}
-                                    className="w-4 h-4 accent-orange-600 cursor-pointer"
-                                />
-                                <span className="text-sm font-bold text-orange-900">I'll play this game myself</span>
-                            </label>
+                        {hostPlays && participants.length === 0 && (
+                            <p className="text-center text-sm font-bold text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                                You're playing — ready to start solo
+                            </p>
                         )}
                         {!hasPlayers && (
                             <p className="text-center text-sm font-bold text-red-600">
-                                Wait for at least one player to join, or check the box above.
+                                Wait for at least one player to join.
                             </p>
                         )}
                         {isSurvival && hasPlayers && participants.length < 2 && (

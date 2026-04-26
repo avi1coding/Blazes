@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Flame, Play, Clock } from 'lucide-react';
+import HostPlaysToggle from '../components/HostPlaysToggle';
 
 export default function InfernoTowerSetupPage() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function InfernoTowerSetupPage() {
   const [gameName, setGameName] = useState(`${kit?.title || 'Inferno'} — Inferno Tower`);
   const [fireSpeed, setFireSpeed] = useState('medium');
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
+  const [hostPlays, setHostPlays] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -45,6 +47,7 @@ export default function InfernoTowerSetupPage() {
       ghostFreezeSeconds: 2,
       hostName: user.name,
       allowCustomPlayerNames,
+      hostPlays,
     };
     try {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -129,6 +132,8 @@ export default function InfernoTowerSetupPage() {
                 <li>Last player standing wins!</li>
               </ul>
             </div>
+
+            <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />
           </div>
 
           {error && <p className="mt-6 text-center text-red-600">{error}</p>}

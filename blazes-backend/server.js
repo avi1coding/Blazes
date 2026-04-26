@@ -2151,12 +2151,19 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
     });
     if (!question) return res.status(404).json({ error: 'Question not found' });
 
-    const settings = typeof game.settings === 'string' ? JSON.parse(game.settings) : game.settings;
-    const pointsPerCorrectAnswer = settings?.pointsPerCorrectAnswer || 10;
-
+    // Rank-based scoring: 1st correct = 100, each subsequent gets less, floor at 50
     let pointsEarned = 0;
     if (isCorrect) {
-      pointsEarned = pointsPerCorrectAnswer;
+      const correctSoFar = await new Promise((resolve, reject) => {
+        db.get(
+          'SELECT COUNT(*) AS c FROM game_answers WHERE game_id = ? AND question_id = ? AND is_correct = 1',
+          [game.id, questionId],
+          (err, row) => err ? reject(err) : resolve(row?.c || 0)
+        );
+      });
+      // Rank 1 (no one has it yet) = 100, rank 2 = 90, rank 3 = 80... floor at 50
+      const rank = correctSoFar + 1;
+      pointsEarned = Math.max(50, 100 - (rank - 1) * 10);
     }
 
     // Record the answer (with time_taken)

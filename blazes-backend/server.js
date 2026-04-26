@@ -2151,19 +2151,19 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
     });
     if (!question) return res.status(404).json({ error: 'Question not found' });
 
-    // Rank-based scoring: 1st correct = 100, each subsequent gets less, floor at 50
+    // Time-based scoring: faster = more points (only for timed questions)
+    // Formula: points = 100 * (1 - timeTaken / questionTimeLimit)
+    // Answer instantly = 100 pts, answer at the buzzer = 0 pts, wrong = 0 pts
     let pointsEarned = 0;
     if (isCorrect) {
-      const correctSoFar = await new Promise((resolve, reject) => {
-        db.get(
-          'SELECT COUNT(*) AS c FROM game_answers WHERE game_id = ? AND question_id = ? AND is_correct = 1',
-          [game.id, questionId],
-          (err, row) => err ? reject(err) : resolve(row?.c || 0)
-        );
-      });
-      // Rank 1 (no one has it yet) = 100, rank 2 = 90, rank 3 = 80... floor at 50
-      const rank = correctSoFar + 1;
-      pointsEarned = Math.max(50, 100 - (rank - 1) * 10);
+      const questionTimeLimit = question.time_limit || 0;
+      if (questionTimeLimit > 0 && typeof timeTaken === 'number' && timeTaken >= 0) {
+        const ratio = Math.min(1, timeTaken / questionTimeLimit);
+        pointsEarned = Math.max(0, Math.round(100 * (1 - ratio)));
+      } else {
+        // Untimed question — flat 100 for correct
+        pointsEarned = 100;
+      }
     }
 
     // Record the answer (with time_taken)

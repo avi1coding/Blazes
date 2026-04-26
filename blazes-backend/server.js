@@ -2153,13 +2153,19 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
 
     // Time-based scoring: faster = more points (only for timed questions)
     // Formula: points = 50 + 50 * (1 - timeTaken / questionTimeLimit)
-    // Answer instantly = 100 pts, answer at the buzzer = 50 pts (min for correct), wrong = 0 pts
+    // Answer instantly = 100 pts, answer at the buzzer = 50 pts (min for correct)
+    // Over time limit = 0 pts (shouldn't be able to answer past the timer)
+    // Wrong answer = 0 pts
     let pointsEarned = 0;
     if (isCorrect) {
       const questionTimeLimit = question.time_limit || 0;
       if (questionTimeLimit > 0 && typeof timeTaken === 'number' && timeTaken >= 0) {
-        const ratio = Math.min(1, timeTaken / questionTimeLimit);
-        pointsEarned = Math.round(50 + 50 * (1 - ratio));
+        if (timeTaken > questionTimeLimit) {
+          pointsEarned = 0;
+        } else {
+          const ratio = timeTaken / questionTimeLimit;
+          pointsEarned = Math.round(50 + 50 * (1 - ratio));
+        }
       } else {
         // Untimed question — flat 100 for correct
         pointsEarned = 100;

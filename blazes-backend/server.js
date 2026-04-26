@@ -2184,6 +2184,54 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
       );
     });
 
+    // Arena mode: apply combo + double-down + perm bonus, award coins, track stats
+    let arenaInfo = null;
+    if (game.game_mode === 'arena') {
+      const p = await dbGet('SELECT arena_combo, arena_max_combo, arena_double_down, arena_perm_bonus FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, userId]);
+      let combo = p?.arena_combo || 0;
+      let maxCombo = p?.arena_max_combo || 0;
+      const doubleDown = p?.arena_double_down || 0;
+      const permBonus = p?.arena_perm_bonus || 0;
+
+      if (isCorrect) {
+        combo += 1;
+        if (combo > maxCombo) maxCombo = combo;
+        // Apply perm bonus
+        pointsEarned += permBonus;
+        // Apply double-down (consume one charge)
+        if (doubleDown > 0) {
+          pointsEarned *= 2;
+          await dbRun('UPDATE game_participants SET arena_double_down = arena_double_down - 1 WHERE game_id = ? AND user_id = ?', [game.id, userId]);
+        }
+      } else {
+        combo = 0;
+      }
+
+      // Coins: correct = same as points, wrong = 5 consolation
+      const coinsEarned = isCorrect ? pointsEarned : 5;
+
+      // Combo milestones
+      const milestones = { 3: { coins: 50 }, 5: { freeItem: true }, 7: { permBonus: 10 }, 10: { ultimate: true } };
+      const milestone = milestones[combo];
+      let bonusCoins = 0;
+      let extraPermBonus = 0;
+      if (milestone) {
+        if (milestone.coins) bonusCoins += milestone.coins;
+        if (milestone.permBonus) extraPermBonus = milestone.permBonus;
+        if (milestone.ultimate) {
+          // Ultimate: -100 to all opponents' scores
+          await dbRun('UPDATE game_participants SET score = MAX(0, score - 100) WHERE game_id = ? AND user_id != ?', [game.id, userId]);
+        }
+      }
+
+      await dbRun(
+        'UPDATE game_participants SET arena_combo = ?, arena_max_combo = ?, arena_coins = arena_coins + ?, arena_perm_bonus = arena_perm_bonus + ? WHERE game_id = ? AND user_id = ?',
+        [combo, maxCombo, coinsEarned + bonusCoins, extraPermBonus, game.id, userId]
+      );
+
+      arenaInfo = { combo, coinsEarned: coinsEarned + bonusCoins, milestone: milestone ? Object.keys(milestones).find(k => milestones[k] === milestone) : null };
+    }
+
     // Update participant's score
     await new Promise((resolve, reject) => {
       db.run(
@@ -2220,7 +2268,7 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
       }
     }
 
-    res.json({ success: true, isCorrect, pointsEarned });
+    res.json({ success: true, isCorrect, pointsEarned, arenaInfo });
   } catch (err) {
     console.error('Error processing answer:', err);
     res.status(500).json({ error: err.message });
@@ -2311,6 +2359,16 @@ app.put('/api/games/:gameCode/start', (req, res) => {
         [gameCode],
         async (err) => {
           if (err) return res.status(500).json({ error: err.message });
+
+          // Arena: give starting coins from settings
+          if (row.game_mode === 'arena') {
+            try {
+              const game = await dbGet('SELECT id, settings FROM games WHERE game_code = ?', [gameCode]);
+              const settings = typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {});
+              const starting = settings.startingCoins || 100;
+              await dbRun('UPDATE game_participants SET arena_coins = ? WHERE game_id = ?', [starting, game.id]);
+            } catch (e) { console.error('[arena] starting coins error:', e); }
+          }
 
           // Elemental Clash: assign teams
           if (row.game_mode === 'elemental_clash') {
@@ -6433,6 +6491,211 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
+// =========== ARENA MODE ===========
+const ARENA_ITEMS = {
+  lightning:  { name: 'Lightning Strike', cost: 50,  damage: 30 },
+  fireball:   { name: 'Fireball',         cost: 100, damage: 50, multiTarget: 3 },
+  shield:     { name: 'Shield',           cost: 75,  effect: 'shield' },
+  mirror:     { name: 'Mirror',           cost: 150, effect: 'mirror' },
+  doubleDown: { name: 'Double Down',      cost: 100, effect: 'doubleDown' },
+  scoreBoost: { name: 'Score Boost',      cost: 200, effect: 'scoreBoost', amount: 50 },
+};
+
+const ARENA_EVENTS = {
+  // Good
+  coinRain:      { type: 'good', name: 'Coin Rain',      desc: 'Everyone gets 100 coins!',           duration: 0 },
+  bossQuestion:  { type: 'good', name: 'Boss Question',  desc: 'Class question — get it right for 500 coins!', duration: 60 },
+  lightningRound:{ type: 'good', name: 'Lightning Round',desc: 'All questions worth 2x for 30s',     duration: 30 },
+  stockCrash:    { type: 'good', name: 'Stock Crash',    desc: 'Shop items 50% off for 30s',         duration: 30 },
+  bonusRound:    { type: 'good', name: 'Bonus Round',    desc: 'Free random item for everyone!',     duration: 0 },
+  mentorsGift:   { type: 'good', name: "Mentor's Gift",  desc: 'Top 3 each get 250 coins',           duration: 0 },
+  underdogBoost: { type: 'good', name: 'Underdog Boost', desc: 'Bottom 3 each get 200 coins',        duration: 0 },
+  // Bad
+  taxDay:        { type: 'bad',  name: 'Tax Day',        desc: 'Everyone loses 25% of their coins!', duration: 0 },
+  timeCrunch:    { type: 'bad',  name: 'Time Crunch',    desc: 'Question timer halved for 30s',      duration: 30 },
+  shopClosed:    { type: 'bad',  name: 'Shop Closed',    desc: 'Shop disabled for 30s',              duration: 30 },
+  fogOfWar:      { type: 'bad',  name: 'Fog of War',     desc: 'Scores hidden for 60s',              duration: 60 },
+  inflation:     { type: 'bad',  name: 'Inflation',      desc: 'Shop prices 3x, but answers 3x for 60s', duration: 60 },
+  // Chaotic
+  bounty:        { type: 'chaos',name: 'Bounty',         desc: 'First 3 to answer next correct get 300 coins!', duration: 0 },
+  mysteryBox:    { type: 'chaos',name: 'Mystery Box',    desc: 'Random item delivered to everyone',  duration: 0 },
+};
+const ARENA_EVENT_KEYS = Object.keys(ARENA_EVENTS);
+
+// Get arena state for one player
+app.get('/api/games/:gameCode/arena/state/:userId', async (req, res) => {
+  try {
+    const { gameCode, userId } = req.params;
+    const game = await dbGet('SELECT id, game_mode FROM games WHERE game_code = ?', [gameCode]);
+    if (!game || game.game_mode !== 'arena') return res.status(404).json({ error: 'Not an arena game' });
+
+    const me = await dbGet('SELECT * FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, userId]);
+    const inventory = await dbAll('SELECT item_key, COUNT(*) AS qty FROM arena_attacks WHERE game_id = ? AND attacker_id = ? AND target_id = ? GROUP BY item_key', [game.id, userId, userId]);
+
+    // Active events
+    const activeEvents = await dbAll(
+      `SELECT event_key, started_at, ends_at, payload FROM arena_events
+       WHERE game_id = ? AND (ends_at IS NULL OR datetime(ends_at) > datetime('now'))
+       ORDER BY started_at DESC LIMIT 5`,
+      [game.id]
+    );
+
+    res.json({
+      coins: me?.arena_coins || 0,
+      combo: me?.arena_combo || 0,
+      maxCombo: me?.arena_max_combo || 0,
+      shields: me?.arena_shields || 0,
+      doubleDown: me?.arena_double_down || 0,
+      permBonus: me?.arena_perm_bonus || 0,
+      score: me?.score || 0,
+      activeEvents: activeEvents.map(e => ({
+        key: e.event_key,
+        info: ARENA_EVENTS[e.event_key],
+        startedAt: e.started_at,
+        endsAt: e.ends_at,
+      })),
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Buy a shop item
+app.post('/api/games/:gameCode/arena/buy', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const { userId, itemKey } = req.body;
+    const game = await dbGet('SELECT id, game_mode FROM games WHERE game_code = ?', [gameCode]);
+    if (!game || game.game_mode !== 'arena') return res.status(404).json({ error: 'Not an arena game' });
+    const item = ARENA_ITEMS[itemKey];
+    if (!item) return res.status(400).json({ error: 'Unknown item' });
+
+    // Check shop closed event
+    const shopClosed = await dbGet(`SELECT 1 AS x FROM arena_events WHERE game_id = ? AND event_key = 'shopClosed' AND datetime(ends_at) > datetime('now')`, [game.id]);
+    if (shopClosed) return res.status(400).json({ error: 'Shop closed' });
+
+    // Apply pricing modifiers
+    const stockCrash = await dbGet(`SELECT 1 AS x FROM arena_events WHERE game_id = ? AND event_key = 'stockCrash' AND datetime(ends_at) > datetime('now')`, [game.id]);
+    const inflation = await dbGet(`SELECT 1 AS x FROM arena_events WHERE game_id = ? AND event_key = 'inflation' AND datetime(ends_at) > datetime('now')`, [game.id]);
+    let cost = item.cost;
+    if (stockCrash) cost = Math.floor(cost / 2);
+    if (inflation) cost = cost * 3;
+
+    const me = await dbGet('SELECT arena_coins FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, userId]);
+    if ((me?.arena_coins || 0) < cost) return res.status(400).json({ error: 'Not enough coins' });
+
+    await dbRun('UPDATE game_participants SET arena_coins = arena_coins - ? WHERE game_id = ? AND user_id = ?', [cost, game.id, userId]);
+
+    // Apply effects that don't need a target
+    if (item.effect === 'shield') {
+      await dbRun('UPDATE game_participants SET arena_shields = arena_shields + 1 WHERE game_id = ? AND user_id = ?', [game.id, userId]);
+    } else if (item.effect === 'doubleDown') {
+      await dbRun('UPDATE game_participants SET arena_double_down = arena_double_down + 1 WHERE game_id = ? AND user_id = ?', [game.id, userId]);
+    } else if (item.effect === 'scoreBoost') {
+      await dbRun('UPDATE game_participants SET score = score + ? WHERE game_id = ? AND user_id = ?', [item.amount || 50, game.id, userId]);
+    }
+
+    // Items that need a target (lightning, fireball, mirror) — store as inventory
+    if (item.damage || item.effect === 'mirror') {
+      await dbRun('INSERT INTO arena_attacks (game_id, attacker_id, target_id, item_key, score_delta) VALUES (?, ?, ?, ?, 0)', [game.id, userId, userId, itemKey]);
+    }
+
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Use an attack item (lightning, fireball)
+app.post('/api/games/:gameCode/arena/attack', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const { userId, itemKey, targetUserId } = req.body;
+    const game = await dbGet('SELECT id, game_mode FROM games WHERE game_code = ?', [gameCode]);
+    if (!game || game.game_mode !== 'arena') return res.status(404).json({ error: 'Not an arena game' });
+    const item = ARENA_ITEMS[itemKey];
+    if (!item || (!item.damage && item.effect !== 'mirror')) return res.status(400).json({ error: 'Not an attack item' });
+
+    // Consume one from inventory
+    const owned = await dbGet('SELECT id FROM arena_attacks WHERE game_id = ? AND attacker_id = ? AND target_id = ? AND item_key = ? LIMIT 1', [game.id, userId, userId, itemKey]);
+    if (!owned) return res.status(400).json({ error: "You don't own that item" });
+    await dbRun('DELETE FROM arena_attacks WHERE id = ?', [owned.id]);
+
+    let targets = [];
+    if (item.multiTarget) {
+      // Pick random N opponents
+      const opps = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ? AND user_id != ?', [game.id, userId]);
+      targets = opps.sort(() => Math.random() - 0.5).slice(0, item.multiTarget).map(o => o.user_id);
+    } else if (targetUserId) {
+      targets = [targetUserId];
+    }
+
+    for (const tid of targets) {
+      // Check shield
+      const target = await dbGet('SELECT arena_shields FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, tid]);
+      if (target && target.arena_shields > 0) {
+        // Shield blocks
+        await dbRun('UPDATE game_participants SET arena_shields = arena_shields - 1 WHERE game_id = ? AND user_id = ?', [game.id, tid]);
+        await dbRun('INSERT INTO arena_attacks (game_id, attacker_id, target_id, item_key, score_delta) VALUES (?, ?, ?, ?, 0)', [game.id, userId, tid, 'blocked_' + itemKey]);
+      } else {
+        await dbRun('UPDATE game_participants SET score = MAX(0, score - ?) WHERE game_id = ? AND user_id = ?', [item.damage, game.id, tid]);
+        await dbRun('INSERT INTO arena_attacks (game_id, attacker_id, target_id, item_key, score_delta) VALUES (?, ?, ?, ?, ?)', [game.id, userId, tid, itemKey, -item.damage]);
+      }
+    }
+
+    await dbRun('UPDATE game_participants SET arena_attacks_dealt = arena_attacks_dealt + ? WHERE game_id = ? AND user_id = ?', [targets.length, game.id, userId]);
+    res.json({ success: true, targets });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Trigger a random world event (called by host periodically)
+app.post('/api/games/:gameCode/arena/event', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const game = await dbGet('SELECT id, game_mode, host_id FROM games WHERE game_code = ?', [gameCode]);
+    if (!game || game.game_mode !== 'arena') return res.status(404).json({ error: 'Not an arena game' });
+
+    const eventKey = ARENA_EVENT_KEYS[Math.floor(Math.random() * ARENA_EVENT_KEYS.length)];
+    const event = ARENA_EVENTS[eventKey];
+    const endsAt = event.duration > 0 ? new Date(Date.now() + event.duration * 1000).toISOString() : null;
+
+    await dbRun('INSERT INTO arena_events (game_id, event_key, ends_at) VALUES (?, ?, ?)', [game.id, eventKey, endsAt]);
+
+    // Apply instant effects
+    if (eventKey === 'coinRain') {
+      await dbRun('UPDATE game_participants SET arena_coins = arena_coins + 100 WHERE game_id = ?', [game.id]);
+    } else if (eventKey === 'taxDay') {
+      await dbRun('UPDATE game_participants SET arena_coins = arena_coins - (arena_coins / 4) WHERE game_id = ?', [game.id]);
+    } else if (eventKey === 'mentorsGift') {
+      const top = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score DESC LIMIT 3', [game.id]);
+      for (const t of top) await dbRun('UPDATE game_participants SET arena_coins = arena_coins + 250 WHERE game_id = ? AND user_id = ?', [game.id, t.user_id]);
+    } else if (eventKey === 'underdogBoost') {
+      const bottom = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score ASC LIMIT 3', [game.id]);
+      for (const b of bottom) await dbRun('UPDATE game_participants SET arena_coins = arena_coins + 200 WHERE game_id = ? AND user_id = ?', [game.id, b.user_id]);
+    } else if (eventKey === 'bonusRound' || eventKey === 'mysteryBox') {
+      // Give random attack item to everyone
+      const players = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ?', [game.id]);
+      const itemKeys = Object.keys(ARENA_ITEMS).filter(k => ARENA_ITEMS[k].damage || ARENA_ITEMS[k].effect === 'mirror');
+      for (const p of players) {
+        const randomItem = itemKeys[Math.floor(Math.random() * itemKeys.length)];
+        await dbRun('INSERT INTO arena_attacks (game_id, attacker_id, target_id, item_key, score_delta) VALUES (?, ?, ?, ?, 0)', [game.id, p.user_id, p.user_id, randomItem]);
+      }
+    }
+
+    res.json({ event: { key: eventKey, info: event, endsAt } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Get inventory for current user
+app.get('/api/games/:gameCode/arena/inventory/:userId', async (req, res) => {
+  try {
+    const { gameCode, userId } = req.params;
+    const game = await dbGet('SELECT id FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    const items = await dbAll(
+      'SELECT item_key, COUNT(*) AS qty FROM arena_attacks WHERE game_id = ? AND attacker_id = ? AND target_id = ? AND item_key NOT LIKE ? GROUP BY item_key',
+      [game.id, userId, userId, 'blocked_%']
+    );
+    res.json({ items });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // =========== ELEMENTAL CLASH ===========
 const ELEMENTAL_ATTACKS = {
   earthquake: { cost: 5, damage: 30 },
@@ -6962,6 +7225,8 @@ async function initSchema() {
     `CREATE TABLE IF NOT EXISTS season_xp_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, season_id INTEGER, amount INTEGER, source TEXT, game_code TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS season_badges (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, season_number INTEGER, peak_level INTEGER, badge_tier TEXT, UNIQUE(user_id, season_number))`,
     `CREATE TABLE IF NOT EXISTS ai_usage (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, feature TEXT NOT NULL, used_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS arena_events (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER NOT NULL, event_key TEXT NOT NULL, started_at DATETIME DEFAULT CURRENT_TIMESTAMP, ends_at DATETIME, payload TEXT)`,
+    `CREATE TABLE IF NOT EXISTS arena_attacks (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER NOT NULL, attacker_id INTEGER, target_id INTEGER, item_key TEXT, score_delta INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
   ];
 
   // ALTER TABLE statements — these may fail if column already exists, that's OK
@@ -7005,6 +7270,13 @@ async function initSchema() {
     `ALTER TABLE blazes_bucks ADD COLUMN play_time_remainder_seconds INTEGER DEFAULT 0`,
     `ALTER TABLE user_settings ADD COLUMN music_volume INTEGER DEFAULT 30`,
     `ALTER TABLE user_settings ADD COLUMN sfx_volume INTEGER DEFAULT 70`,
+    `ALTER TABLE game_participants ADD COLUMN arena_coins INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN arena_combo INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN arena_max_combo INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN arena_attacks_dealt INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN arena_shields INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN arena_double_down INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN arena_perm_bonus INTEGER DEFAULT 0`,
   ];
 
   console.log('[Schema] Creating tables...');

@@ -65,6 +65,26 @@ export default function GameModeSelect({ kit, user, onBack }) {
       ],
       available: true
     },
+    ...(user?.role === 'teacher' ? [{
+      id: 'arena',
+      name: 'Arena',
+      icon: Swords,
+      color: 'from-purple-600 to-indigo-700',
+      accent: 'purple',
+      tags: ['solo', 'multi', 'teacher'],
+      description: 'Strategic battle quiz. Earn coins, buy attacks/shields, build combos, and survive random world events. Teacher exclusive.',
+      difficulty: 'Hard',
+      players: '1-50',
+      duration: '5-20 min',
+      features: [
+        'Shop with attacks, shields, and power-ups',
+        'Combo system — streaks unlock huge bonuses',
+        '13 random world events (good, bad, chaotic)',
+        'No deaths — everyone plays the whole game'
+      ],
+      available: true,
+      teacherOnly: true,
+    }] : []),
     {
       id: 'race',
       name: 'Race',
@@ -90,6 +110,7 @@ export default function GameModeSelect({ kit, user, onBack }) {
     if (selectedMode === 'classic_timed') navigate('/game/classic-timed-setup', { state: { kit, user } });
     else if (selectedMode === 'elemental_clash') navigate('/game/elemental-clash-setup', { state: { kit, user } });
     else if (selectedMode === 'elemental_wager') navigate('/game/elemental-wager-setup', { state: { kit, user } });
+    else if (selectedMode === 'arena') navigate('/game/arena-setup', { state: { kit, user } });
   };
 
   const selected = gameModes.find(m => m.id === selectedMode);

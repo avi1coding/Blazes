@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Clock, Trophy, Check, X, Heart, Skull, Lock, Users, Flame } from 'lucide-react';
 import ElementalClashGamePlay from './ElementalClashGamePlay';
 import ElementalWagerGamePlay from './ElementalWagerGamePlay';
+import ArenaGamePlay from './ArenaGamePlay';
 
 function getFullImageUrl(url) {
   if (!url) return null;
@@ -1071,6 +1072,9 @@ export default function GamePlay() {
   }
   if (game.game_mode === 'elemental_wager') {
     return <ElementalWagerGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
+  }
+  if (game.game_mode === 'arena') {
+    return <ArenaGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
   }
   return <ClassicGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
 }

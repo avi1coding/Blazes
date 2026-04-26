@@ -36,6 +36,19 @@ export default function TeacherMonitoringDashboard() {
     return () => audio.stop();
   }, []);
 
+  // Arena: trigger random world events on a timer (host-only, controlled by setting)
+  useEffect(() => {
+    if (!game || game.game_mode !== 'arena' || gameStatus !== 'started') return;
+    const settings = typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {});
+    const interval = (settings.eventInterval || 60) * 1000;
+    if (!interval) return;
+    const id = setInterval(() => {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+      fetch(`${baseUrl}/api/games/${gameCode}/arena/event`, { method: 'POST' }).catch(() => {});
+    }, interval);
+    return () => clearInterval(id);
+  }, [game, gameStatus, gameCode]);
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     if (!user) {

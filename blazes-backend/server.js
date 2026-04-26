@@ -148,28 +148,8 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             });
           });
         };
-        if (accessToken) {
-          fetch('https://people.googleapis.com/v1/people/me?personFields=birthdays', {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          })
-            .then(r => r.json())
-            .then(bData => {
-              const bday = bData.birthdays?.find(b => b.date?.year)?.date;
-              if (bday) {
-                const birthDate = new Date(bday.year, (bday.month || 1) - 1, bday.day || 1);
-                const today = new Date();
-                let age = today.getFullYear() - birthDate.getFullYear();
-                const m = today.getMonth() - birthDate.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-                createUser(age >= 18 ? 'teacher' : 'student');
-              } else {
-                createUser('pending');
-              }
-            })
-            .catch((e) => { console.error('[Auth] Birthday API error:', e.message); createUser('pending'); });
-        } else {
-          createUser('pending');
-        }
+        // Always create new users as pending — they'll pick teacher/student on first sign-in
+        createUser('pending');
       });
     } catch (e) {
       console.error('[Auth] Google strategy error:', e);
@@ -182,7 +162,7 @@ app.get('/auth/google', (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID) {
     return res.redirect(`${FRONTEND_URL}/login?error=google_not_configured`);
   }
-  passport.authenticate('google', { scope: ['profile', 'email', 'https://www.googleapis.com/auth/user.birthday.read'] })(req, res, next);
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
 });
 
 app.get('/auth/google/callback',
@@ -6255,17 +6235,12 @@ app.put('/api/settings/:userId', async (req, res) => {
 // Set role based on birthday (for new Google sign-ups)
 app.post('/api/auth/set-role', async (req, res) => {
   try {
-    const { userId, birthday } = req.body;
-    if (!userId || !birthday) return res.status(400).json({ error: 'Missing userId or birthday' });
+    const { userId, role } = req.body;
+    if (!userId || !role) return res.status(400).json({ error: 'Missing userId or role' });
+    if (role !== 'teacher' && role !== 'student') return res.status(400).json({ error: 'Invalid role' });
     const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.role !== 'pending') return res.status(400).json({ error: 'Role already set' });
-    const birthDate = new Date(birthday);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
-    const role = age >= 18 ? 'teacher' : 'student';
     await dbRun('UPDATE users SET role = ? WHERE id = ?', [role, userId]);
     res.json({ role });
   } catch (err) { res.status(500).json({ error: err.message }); }

@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Flame } from 'lucide-react';
+import { Flame, GraduationCap, BookOpen } from 'lucide-react';
 
 export default function AuthCallback() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [showBirthday, setShowBirthday] = useState(false);
-  const [birthday, setBirthday] = useState('');
+  const [showRolePicker, setShowRolePicker] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,7 +26,7 @@ export default function AuthCallback() {
 
       if (isNew && parsed.role === 'pending') {
         setUser(parsed);
-        setShowBirthday(true);
+        setShowRolePicker(true);
       } else {
         localStorage.setItem('user', JSON.stringify(parsed));
         navigate(parsed.role === 'teacher' ? '/home/teacher' : '/home/student');
@@ -37,8 +36,8 @@ export default function AuthCallback() {
     }
   }, []);
 
-  const handleSubmit = async () => {
-    if (!birthday || !user) return;
+  const pickRole = async (role) => {
+    if (!user) return;
     setLoading(true);
     setError('');
     try {
@@ -46,7 +45,7 @@ export default function AuthCallback() {
       const res = await fetch(`${base}/api/auth/set-role`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, birthday }),
+        body: JSON.stringify({ userId: user.id, role }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -55,45 +54,54 @@ export default function AuthCallback() {
         navigate(data.role === 'teacher' ? '/home/teacher' : '/home/student');
       } else {
         setError(data.error || 'Something went wrong');
+        setLoading(false);
       }
     } catch {
       setError('Could not connect to server');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  if (showBirthday) {
+  if (showRolePicker) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl text-center">
-          <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Flame className="w-7 h-7 text-red-600" strokeWidth={2.5} />
+        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
+          <div className="text-center mb-6">
+            <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Flame className="w-7 h-7 text-red-600" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Welcome to Blazes!</h2>
+            <p className="text-gray-600 text-sm">How will you be using Blazes?</p>
           </div>
-          <h2 className="text-xl font-black text-gray-900 mb-2">Welcome to Blazes!</h2>
-          <p className="text-gray-600 text-sm mb-6">Enter your date of birth to get started.</p>
 
-          <input
-            type="date"
-            value={birthday}
-            onChange={(e) => setBirthday(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition-colors text-gray-700 mb-4"
-          />
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
+            <button
+              onClick={() => pickRole('student')}
+              disabled={loading}
+              className="bg-white border-2 border-gray-200 hover:border-red-500 hover:bg-red-50 rounded-2xl p-5 transition-all disabled:opacity-50 group"
+            >
+              <BookOpen className="w-10 h-10 text-red-600 mx-auto mb-3 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
+              <div className="font-black text-gray-900 mb-1">Student</div>
+              <div className="text-xs text-gray-500">Join games, study, and play</div>
+            </button>
+
+            <button
+              onClick={() => pickRole('teacher')}
+              disabled={loading}
+              className="bg-white border-2 border-gray-200 hover:border-orange-500 hover:bg-orange-50 rounded-2xl p-5 transition-all disabled:opacity-50 group"
+            >
+              <GraduationCap className="w-10 h-10 text-orange-500 mx-auto mb-3 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
+              <div className="font-black text-gray-900 mb-1">Teacher</div>
+              <div className="text-xs text-gray-500">Create games and classrooms</div>
+            </button>
+          </div>
 
           {error && (
-            <p className="text-red-600 text-sm font-semibold mb-4">{error}</p>
+            <p className="text-red-600 text-sm font-semibold text-center mb-2">{error}</p>
           )}
 
-          <button
-            onClick={handleSubmit}
-            disabled={!birthday || loading}
-            className="w-full bg-red-600 text-white py-3 rounded-xl font-black hover:bg-red-700 transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Setting up...' : 'Continue'}
-          </button>
-
-          <p className="text-xs text-gray-400 mt-4">
-            This helps us set up the right experience for you.
+          <p className="text-xs text-gray-400 text-center mt-4">
+            You can't change this later — pick what fits you best.
           </p>
         </div>
       </div>

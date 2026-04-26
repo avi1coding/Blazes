@@ -43,11 +43,11 @@ export default function VolumeControl({ audioRef }) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+        className="p-2 rounded-lg hover:bg-black/10 transition-colors"
       >
         {muted || volume === 0
-          ? <VolumeX className="w-5 h-5 text-white/70" />
-          : <Volume2 className="w-5 h-5 text-white/70" />
+          ? <VolumeX className="w-5 h-5 opacity-70" />
+          : <Volume2 className="w-5 h-5 opacity-70" />
         }
       </button>
 

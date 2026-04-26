@@ -6235,12 +6235,22 @@ app.put('/api/settings/:userId', async (req, res) => {
 // Set role based on birthday (for new Google sign-ups)
 app.post('/api/auth/set-role', async (req, res) => {
   try {
-    const { userId, role } = req.body;
+    const { userId, role, birthday } = req.body;
     if (!userId || !role) return res.status(400).json({ error: 'Missing userId or role' });
     if (role !== 'teacher' && role !== 'student') return res.status(400).json({ error: 'Invalid role' });
     const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.role !== 'pending') return res.status(400).json({ error: 'Role already set' });
+    // Teachers must be 18+
+    if (role === 'teacher') {
+      if (!birthday) return res.status(400).json({ error: 'Birthday required for teacher accounts' });
+      const birthDate = new Date(birthday);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+      if (age < 18) return res.status(400).json({ error: 'You must be 18 or older to create a teacher account' });
+    }
     await dbRun('UPDATE users SET role = ? WHERE id = ?', [role, userId]);
     res.json({ role });
   } catch (err) { res.status(500).json({ error: err.message }); }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Volume1 } from 'lucide-react';
 
 export default function VolumeControl({ audioRef }) {
   const [open, setOpen] = useState(false);
@@ -39,32 +39,41 @@ export default function VolumeControl({ audioRef }) {
     localStorage.setItem('blazes_settings', JSON.stringify(s));
   };
 
+  const Icon = muted || volume === 0 ? VolumeX : volume < 50 ? Volume1 : Volume2;
+
   return (
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="p-2 rounded-lg hover:bg-black/10 transition-colors"
+        aria-label="Volume"
+        className="p-2 rounded-lg hover:bg-black/10 transition-colors flex items-center justify-center"
       >
-        {muted || volume === 0
-          ? <VolumeX className="w-5 h-5 opacity-70" />
-          : <Volume2 className="w-5 h-5 opacity-70" />
-        }
+        <Icon className="w-5 h-5 opacity-80" />
       </button>
 
       {open && (
-        <div className="absolute bottom-12 right-0 bg-gray-900 border border-white/10 rounded-xl p-3 shadow-xl w-48 z-50">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-white text-xs font-bold">Music</span>
-            <button onClick={toggleMute} className="text-white/50 hover:text-white text-xs font-bold">
+        <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 w-64 max-w-[calc(100vw-1rem)] z-50">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-gray-900 text-sm font-bold">Music Volume</span>
+            <button
+              onClick={toggleMute}
+              className={`text-xs font-bold px-2.5 py-1 rounded-md transition-colors ${
+                muted ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
               {muted ? 'Unmute' : 'Mute'}
             </button>
           </div>
-          <input
-            type="range" min="0" max="100" value={muted ? 0 : volume}
-            onChange={(e) => handleChange(parseInt(e.target.value, 10))}
-            className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-red-500"
-          />
-          <div className="text-white/40 text-[10px] text-right mt-1">{muted ? 'Muted' : `${volume}%`}</div>
+          <div className="flex items-center gap-3">
+            <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <input
+              type="range" min="0" max="100" value={muted ? 0 : volume}
+              onChange={(e) => handleChange(parseInt(e.target.value, 10))}
+              disabled={muted}
+              className="flex-1 h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            <span className="text-gray-500 text-xs font-bold w-8 text-right">{muted ? '—' : `${volume}`}</span>
+          </div>
         </div>
       )}
     </div>

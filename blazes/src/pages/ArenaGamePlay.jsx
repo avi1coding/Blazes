@@ -1,18 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Coins, Shield, Zap, Flame, ShoppingBag, Sparkles, Clock, Trophy, X, Crown, Target, BarChart3, Backpack } from 'lucide-react';
+import { Shield, Zap, Flame, ShoppingBag, Sparkles, Clock, Trophy, X, Crown, Target, BarChart3, Backpack } from 'lucide-react';
 import { AvatarPreview, isBlazesPlusCached } from './SkinsPage';
 import { rankParticipants } from '../utils/ranking';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
 const ITEMS = [
-  { key: 'lightning',  name: 'Lightning Strike', cost: 50,  desc: '-30 to one player',         icon: Zap,      color: 'yellow' },
-  { key: 'fireball',   name: 'Fireball',         cost: 100, desc: '-50 to 3 random players',   icon: Flame,    color: 'red' },
-  { key: 'shield',     name: 'Shield',           cost: 75,  desc: 'Block next attack',         icon: Shield,   color: 'blue' },
-  { key: 'mirror',     name: 'Mirror',           cost: 150, desc: 'Reflect next attack',       icon: Shield,   color: 'cyan' },
-  { key: 'doubleDown', name: 'Double Down',      cost: 100, desc: 'Next correct = 2x points',  icon: Sparkles, color: 'purple' },
-  { key: 'scoreBoost', name: 'Score Boost',      cost: 200, desc: '+50 score instantly',       icon: Trophy,   color: 'green' },
+  { key: 'lightning',  name: 'Lightning Strike', cost: 20, desc: '-15 to one player',         icon: Zap,      color: 'yellow' },
+  { key: 'fireball',   name: 'Fireball',         cost: 40, desc: '-20 to 3 random players',   icon: Flame,    color: 'red' },
+  { key: 'shield',     name: 'Shield',           cost: 25, desc: 'Block next attack',         icon: Shield,   color: 'blue' },
+  { key: 'mirror',     name: 'Mirror',           cost: 50, desc: 'Reflect next attack',       icon: Shield,   color: 'cyan' },
+  { key: 'doubleDown', name: 'Double Down',      cost: 30, desc: 'Next correct = 2x points',  icon: Sparkles, color: 'purple' },
 ];
 
 export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
@@ -33,7 +32,6 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
   const [timeLeft, setTimeLeft] = useState(null);
   const [gameTimeLeft, setGameTimeLeft] = useState(null);
 
-  const [coins, setCoins] = useState(0);
   const [combo, setCombo] = useState(0);
   const [score, setScore] = useState(0);
   const [shields, setShields] = useState(0);
@@ -123,7 +121,6 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
       ]);
       const partRes = resultsRes?.participants || [];
       if (stateRes) {
-        setCoins(stateRes.coins || 0);
         setCombo(stateRes.combo || 0);
         setShields(stateRes.shields || 0);
         setDoubleDown(stateRes.doubleDown || 0);
@@ -251,13 +248,9 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
 
           {/* Center: stats */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="flex items-center gap-1 bg-yellow-500/20 border border-yellow-400/40 rounded-lg px-2 py-1.5">
-              <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-300" />
-              <span className="font-black text-xs sm:text-sm">{coins}</span>
-            </div>
-            <div className="flex items-center gap-1 bg-white/10 border border-white/20 rounded-lg px-2 py-1.5">
+            <div className="flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-400/40 rounded-lg px-3 py-1.5">
               <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-300" />
-              <span className="font-black text-xs sm:text-sm">{fogOfWar ? '???' : score}</span>
+              <span className="font-black text-sm sm:text-base">{fogOfWar ? '???' : score}</span>
             </div>
             {gameTimeLeft !== null && (
               <div className={`flex items-center gap-1 border rounded-lg px-2 py-1.5 ${gameTimeLeft < 30 ? 'bg-red-500/20 border-red-400/40 animate-pulse' : 'bg-white/10 border-white/20'}`}>
@@ -296,7 +289,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
           <div className="max-w-7xl mx-auto mt-2 text-center">
             <span className="inline-flex items-center gap-1.5 bg-orange-500/20 border border-orange-400/40 rounded-full px-3 py-1 text-xs font-black text-orange-200">
               <Flame className="w-3.5 h-3.5" /> {combo} streak
-              {combo >= 10 ? ' — ULTIMATE!' : combo >= 7 ? ' — +10 bonus per answer' : combo >= 5 ? ' — Free item earned!' : combo >= 3 ? ' — +50 coin bonus' : ''}
+              {combo >= 10 ? ' — ULTIMATE! -10 to all opponents' : combo >= 7 ? ' — +10 score per answer' : combo >= 5 ? ' — Free item earned!' : combo >= 3 ? ' — +5 score bonus' : ''}
             </span>
           </div>
         )}
@@ -449,7 +442,13 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
               <h2 className="text-xl sm:text-2xl font-black flex items-center gap-2"><ShoppingBag className="w-6 h-6" /> Shop</h2>
               <button onClick={() => setShowShop(false)} className="p-2 hover:bg-white/10 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
-            <div className="text-center text-yellow-300 font-black mb-4 flex items-center justify-center gap-1.5"><Coins className="w-4 h-4" /> {coins}</div>
+            <div className="text-center mb-4">
+              <p className="text-xs text-white/60 mb-1">Your Score</p>
+              <div className="text-yellow-300 font-black text-2xl flex items-center justify-center gap-1.5">
+                <Trophy className="w-5 h-5" /> {score}
+              </div>
+              <p className="text-[10px] text-white/40 mt-1">Items cost score — spend wisely</p>
+            </div>
             {(stockCrash || inflation) && (
               <p className={`text-center text-sm font-bold mb-4 ${stockCrash ? 'text-green-300' : 'text-red-300'}`}>
                 {stockCrash ? '🎉 Stock Crash — 50% off!' : '💸 Inflation — prices 3x!'}
@@ -459,7 +458,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
               {ITEMS.map(item => {
                 const Icon = item.icon;
                 const cost = adjustCost(item.cost);
-                const canAfford = coins >= cost;
+                const canAfford = score >= cost;
                 return (
                   <button key={item.key} onClick={() => handleBuy(item.key)} disabled={!canAfford}
                     className={`text-left p-4 rounded-2xl border-2 transition-all ${canAfford ? 'bg-white/5 border-white/20 hover:bg-white/15 hover:border-purple-400' : 'bg-white/5 border-white/5 opacity-50 cursor-not-allowed'}`}>
@@ -469,7 +468,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
                         <span className="font-black text-sm">{item.name}</span>
                       </div>
                       <span className={`text-sm font-black flex items-center gap-1 ${stockCrash ? 'text-green-300' : inflation ? 'text-red-300' : 'text-yellow-300'}`}>
-                        <Coins className="w-3.5 h-3.5" /> {cost}
+                        <Trophy className="w-3.5 h-3.5" /> {cost}
                       </span>
                     </div>
                     <p className="text-xs text-white/60">{item.desc}</p>

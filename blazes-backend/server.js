@@ -2151,24 +2151,26 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
     });
     if (!question) return res.status(404).json({ error: 'Question not found' });
 
-    // Time-based scoring: faster = more points (only for timed questions)
-    // Formula: points = 50 + 50 * (1 - timeTaken / questionTimeLimit)
-    // Answer instantly = 100 pts, answer at the buzzer = 50 pts (min for correct)
-    // Over time limit = 0 pts (shouldn't be able to answer past the timer)
-    // Wrong answer = 0 pts
+    // Scoring:
+    // Arena mode: flat 10 points per correct (no time pressure — answer at your own pace)
+    // Other timed modes: 50-100 based on speed
+    // Wrong answer: 0
     let pointsEarned = 0;
     if (isCorrect) {
-      const questionTimeLimit = question.time_limit || 0;
-      if (questionTimeLimit > 0 && typeof timeTaken === 'number' && timeTaken >= 0) {
-        if (timeTaken > questionTimeLimit) {
-          pointsEarned = 0;
-        } else {
-          const ratio = timeTaken / questionTimeLimit;
-          pointsEarned = Math.round(50 + 50 * (1 - ratio));
-        }
-      } else {
-        // Untimed question — flat 10 (legacy scoring)
+      if (game.game_mode === 'arena') {
         pointsEarned = 10;
+      } else {
+        const questionTimeLimit = question.time_limit || 0;
+        if (questionTimeLimit > 0 && typeof timeTaken === 'number' && timeTaken >= 0) {
+          if (timeTaken > questionTimeLimit) {
+            pointsEarned = 0;
+          } else {
+            const ratio = timeTaken / questionTimeLimit;
+            pointsEarned = Math.round(50 + 50 * (1 - ratio));
+          }
+        } else {
+          pointsEarned = 10;
+        }
       }
     }
 
@@ -2372,16 +2374,6 @@ app.put('/api/games/:gameCode/start', (req, res) => {
         [gameCode],
         async (err) => {
           if (err) return res.status(500).json({ error: err.message });
-
-          // Arena: give starting coins from settings
-          if (row.game_mode === 'arena') {
-            try {
-              const game = await dbGet('SELECT id, settings FROM games WHERE game_code = ?', [gameCode]);
-              const settings = typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {});
-              const starting = settings.startingCoins || 100;
-              await dbRun('UPDATE game_participants SET arena_coins = ? WHERE game_id = ?', [starting, game.id]);
-            } catch (e) { console.error('[arena] starting coins error:', e); }
-          }
 
           // Elemental Clash: assign teams
           if (row.game_mode === 'elemental_clash') {

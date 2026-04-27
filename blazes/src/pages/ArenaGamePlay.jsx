@@ -103,33 +103,14 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game]);
 
-  // Per-question timer — keyed on questionTick so it resets every question
+  // Reset answer state when question changes (no per-question timer in Arena)
   useEffect(() => {
     if (!questions.length) return;
-    const q = questions[currentQ];
-    if (!q) return;
-    let limit = q.time_limit || 30;
-    const tc = activeEvents.find(e => e.key === 'timeCrunch');
-    if (tc) limit = Math.max(5, Math.floor(limit / 2));
-
-    setTimeLeft(limit);
     setSelected(null);
     setAnswered(false);
     setFeedback(null);
+    setTimeLeft(null);
     startTimeRef.current = Date.now();
-
-    const id = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(id);
-          handleTimeUp();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questionTick, questions]);
 
   const fetchState = useCallback(async () => {
@@ -174,12 +155,6 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
     setQuestionTick(t => t + 1);
   }, []);
 
-  const handleTimeUp = useCallback(() => {
-    if (answered) return;
-    setAnswered(true);
-    setFeedback({ isCorrect: false, correct: questions[currentQ]?.correct_answer, timedOut: true });
-    advanceTimeoutRef.current = setTimeout(advanceQuestion, 2000);
-  }, [answered, questions, currentQ, advanceQuestion]);
 
   const submitAnswer = async (answer) => {
     if (answered) return;
@@ -201,7 +176,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
       if (data.arenaInfo) setCombo(data.arenaInfo.combo || 0);
     } catch (_) {}
 
-    advanceTimeoutRef.current = setTimeout(advanceQuestion, 2000);
+    advanceTimeoutRef.current = setTimeout(advanceQuestion, 800);
     fetchState();
   };
 
@@ -344,17 +319,9 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
           </div>
         ) : (
           <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto">
-            {/* Timer + question number */}
+            {/* Question number */}
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <span className="text-sm font-bold text-purple-300">Question {questionTick + 1}</span>
-              {timeLeft !== null && (
-                <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full font-black ${
-                  timeLeft <= 5 ? 'bg-red-500/30 text-red-200 animate-pulse' : 'bg-white/10 text-white/80'
-                }`}>
-                  <Clock className="w-4 h-4" />
-                  {timeLeft}s
-                </div>
-              )}
             </div>
 
             {/* Question card — fills the space */}

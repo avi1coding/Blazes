@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Settings, Clock, Coins, Sparkles, Play, Swords } from 'lucide-react';
+import { Clock, Play, Swords } from 'lucide-react';
 import HostPlaysToggle from '../components/HostPlaysToggle';
 
 export default function ArenaSetupPage() {
@@ -10,8 +10,6 @@ export default function ArenaSetupPage() {
 
   const [gameName, setGameName] = useState(`${kit?.title || 'Arena'} Battle`);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(10);
-  const [startingCoins, setStartingCoins] = useState(100);
-  const [eventInterval, setEventInterval] = useState(60);
   const [hostPlays, setHostPlays] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,7 +42,7 @@ export default function ArenaSetupPage() {
     setLoading(true);
     setError('');
     const gameCode = generateGameCode();
-    const settings = { gameName, timeLimit: timeLimitMinutes * 60, startingCoins, eventInterval, hostName: user.name, hostPlays };
+    const settings = { gameName, timeLimit: timeLimitMinutes * 60, hostName: user.name, hostPlays };
     try {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const res = await fetch(`${base}/api/games/create`, {
@@ -91,62 +89,23 @@ export default function ArenaSetupPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="timeLimit" className="block text-sm font-medium text-gray-700 mb-1">
-                  Time Limit (minutes)
-                </label>
-                <div className="relative">
-                  <Clock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="number"
-                    id="timeLimit"
-                    value={timeLimitMinutes}
-                    onChange={(e) => setTimeLimitMinutes(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
-                    min={1}
-                    max={60}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-gray-400">Between 1 and 60 minutes</p>
-              </div>
-
-              <div>
-                <label htmlFor="startingCoins" className="block text-sm font-medium text-gray-700 mb-1">
-                  Starting Coins
-                </label>
-                <div className="relative">
-                  <Coins className="w-5 h-5 text-yellow-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="number"
-                    id="startingCoins"
-                    value={startingCoins}
-                    onChange={(e) => setStartingCoins(Math.max(0, Number(e.target.value) || 0))}
-                    min={0}
-                    step={25}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-                  />
-                </div>
-              </div>
-            </div>
-
             <div>
-              <label htmlFor="eventInterval" className="block text-sm font-medium text-gray-700 mb-1">
-                World Event Frequency (seconds)
+              <label htmlFor="timeLimit" className="block text-sm font-medium text-gray-700 mb-1">
+                Time Limit (minutes)
               </label>
               <div className="relative">
-                <Sparkles className="w-5 h-5 text-purple-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Clock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="number"
-                  id="eventInterval"
-                  value={eventInterval}
-                  onChange={(e) => setEventInterval(Math.max(0, Number(e.target.value) || 0))}
-                  min={0}
-                  step={15}
+                  id="timeLimit"
+                  value={timeLimitMinutes}
+                  onChange={(e) => setTimeLimitMinutes(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
+                  min={1}
+                  max={60}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-400">Set to 0 to disable world events</p>
+              <p className="mt-1 text-xs text-gray-400">Between 1 and 60 minutes</p>
             </div>
 
             <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />

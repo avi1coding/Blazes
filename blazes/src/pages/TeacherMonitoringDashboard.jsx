@@ -36,17 +36,22 @@ export default function TeacherMonitoringDashboard() {
     return () => audio.stop();
   }, []);
 
-  // Arena: trigger random world events on a timer (host-only, controlled by setting)
+  // Arena: trigger random world events between 50-70 seconds (host-only)
   useEffect(() => {
     if (!game || game.game_mode !== 'arena' || gameStatus !== 'started') return;
-    const settings = typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {});
-    const interval = (settings.eventInterval || 60) * 1000;
-    if (!interval) return;
-    const id = setInterval(() => {
+    let cancelled = false;
+    const fireEvent = () => {
+      if (cancelled) return;
       const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       fetch(`${baseUrl}/api/games/${gameCode}/arena/event`, { method: 'POST' }).catch(() => {});
-    }, interval);
-    return () => clearInterval(id);
+      // Schedule next: random 50-70s
+      const nextDelay = (50 + Math.random() * 20) * 1000;
+      setTimeout(fireEvent, nextDelay);
+    };
+    // Initial trigger after 50-70s
+    const firstDelay = (50 + Math.random() * 20) * 1000;
+    const id = setTimeout(fireEvent, firstDelay);
+    return () => { cancelled = true; clearTimeout(id); };
   }, [game, gameStatus, gameCode]);
 
   useEffect(() => {

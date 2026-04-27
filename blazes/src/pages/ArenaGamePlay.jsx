@@ -7,12 +7,15 @@ import { rankParticipants } from '../utils/ranking';
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
 const ITEMS = [
-  { key: 'lightning',  name: 'Lightning Strike', cost: 20, desc: '-15 to one player',         icon: Zap,      color: 'yellow' },
-  { key: 'fireball',   name: 'Fireball',         cost: 40, desc: '-20 to 3 random players',   icon: Flame,    color: 'red' },
-  { key: 'shield',     name: 'Shield',           cost: 25, desc: 'Block next attack',         icon: Shield,   color: 'blue' },
-  { key: 'mirror',     name: 'Mirror',           cost: 50, desc: 'Reflect next attack',       icon: Shield,   color: 'cyan' },
-  { key: 'doubleDown', name: 'Double Down',      cost: 30, desc: 'Next correct = 2x points',  icon: Sparkles, color: 'purple' },
+  { key: 'lightning',  name: 'Lightning Strike', cost: 15, desc: '-25 to one player',          icon: Zap,      color: 'yellow' },
+  { key: 'fireball',   name: 'Fireball',         cost: 30, desc: '-15 to 3 random players',    icon: Flame,    color: 'red' },
+  { key: 'shield',     name: 'Shield',           cost: 15, desc: 'Block next attack',          icon: Shield,   color: 'blue' },
+  { key: 'mirror',     name: 'Mirror',           cost: 30, desc: 'Reflect next attack fully',  icon: Shield,   color: 'cyan' },
+  { key: 'doubleDown', name: 'Double Down',      cost: 20, desc: 'Next correct = 20 score',    icon: Sparkles, color: 'purple' },
 ];
+
+// Ultimate is only awarded by combo 10, not buyable. Special rendering.
+const ULTIMATE_ITEM = { key: 'ultimate', name: 'Ultimate Strike', desc: '-30 to one player (pierces shields!)', icon: Sparkles };
 
 export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
   const params = useParams();
@@ -289,7 +292,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
           <div className="max-w-7xl mx-auto mt-2 text-center">
             <span className="inline-flex items-center gap-1.5 bg-orange-500/20 border border-orange-400/40 rounded-full px-3 py-1 text-xs font-black text-orange-200">
               <Flame className="w-3.5 h-3.5" /> {combo} streak
-              {combo >= 10 ? ' — ULTIMATE! -10 to all opponents' : combo >= 7 ? ' — +10 score per answer' : combo >= 5 ? ' — Free item earned!' : combo >= 3 ? ' — +5 score bonus' : ''}
+              {combo >= 10 ? ' — ULTIMATE STRIKE earned!' : combo >= 7 ? ' — +5 score per answer (perm)' : combo >= 5 ? ' — Free attack earned!' : combo >= 3 ? ' — +5 bonus score' : ''}
             </span>
           </div>
         )}
@@ -406,25 +409,29 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
             ) : (
               <div className="space-y-2">
                 {inventory.map((inv) => {
-                  const item = ITEMS.find(i => i.key === inv.item_key);
+                  const item = inv.item_key === 'ultimate'
+                    ? ULTIMATE_ITEM
+                    : ITEMS.find(i => i.key === inv.item_key);
                   if (!item) return null;
                   const Icon = item.icon;
-                  const needsTarget = ['lightning', 'fireball', 'mirror'].includes(inv.item_key);
+                  const needsTarget = ['lightning', 'fireball', 'mirror', 'ultimate'].includes(inv.item_key);
+                  const isUltimate = inv.item_key === 'ultimate';
                   return (
                     <button key={inv.item_key}
                       onClick={() => needsTarget ? setAttackTarget({ itemKey: inv.item_key, multi: inv.item_key === 'fireball' }) : null}
                       disabled={!needsTarget}
                       className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-colors ${
+                        isUltimate ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-400/60 hover:from-yellow-500/30 hover:to-orange-500/30 cursor-pointer' :
                         needsTarget ? 'bg-white/5 hover:bg-white/15 border-white/20 cursor-pointer' : 'bg-white/5 border-white/10 cursor-default'
                       }`}>
-                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-5 h-5" />
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isUltimate ? 'bg-yellow-500/30' : 'bg-white/10'}`}>
+                        <Icon className={`w-5 h-5 ${isUltimate ? 'text-yellow-200' : ''}`} />
                       </div>
                       <div className="flex-1 text-left">
-                        <div className="font-black text-sm">{item.name}</div>
+                        <div className={`font-black text-sm ${isUltimate ? 'text-yellow-200' : ''}`}>{item.name}</div>
                         <div className="text-xs text-white/60">{item.desc}</div>
                       </div>
-                      <span className="font-black text-yellow-300">×{inv.qty}</span>
+                      <span className={`font-black ${isUltimate ? 'text-yellow-200' : 'text-yellow-300'}`}>×{inv.qty}</span>
                     </button>
                   );
                 })}

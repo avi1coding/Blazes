@@ -2208,16 +2208,31 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
         combo = 0;
       }
 
-      // Combo milestones — bonuses now go straight into score
-      const milestones = { 3: { bonus: 5 }, 5: { freeItem: true }, 7: { permBonus: 10 }, 10: { ultimate: true } };
+      // Combo milestones — bonuses go into score
+      // permBonus is capped at 5 (one-time at streak 7, no stacking on later 7s)
+      // Ultimate ready flag: client picks target, server applies via attack endpoint
+      const milestones = { 3: { bonus: 5 }, 5: { freeItem: true }, 7: { permBonus: 5 }, 10: { ultimate: true } };
       const milestone = milestones[combo];
       let extraPermBonus = 0;
+      let ultimateReady = false;
+      let freeItemKey = null;
       if (milestone) {
         if (milestone.bonus) pointsEarned += milestone.bonus;
-        if (milestone.permBonus) extraPermBonus = milestone.permBonus;
+        if (milestone.permBonus && permBonus < 5) {
+          // Cap perm bonus at 5 — only awarded the first time you hit streak 7
+          extraPermBonus = Math.min(milestone.permBonus, 5 - permBonus);
+        }
+        if (milestone.freeItem) {
+          // Award random attack item (lightning or fireball)
+          freeItemKey = Math.random() < 0.5 ? 'lightning' : 'fireball';
+          await dbRun('INSERT INTO arena_attacks (game_id, attacker_id, target_id, item_key, score_delta) VALUES (?, ?, ?, ?, 0)', [game.id, userId, userId, freeItemKey]);
+        }
         if (milestone.ultimate) {
-          // Ultimate: -10 to all opponents' scores
-          await dbRun('UPDATE game_participants SET score = MAX(0, score - 10) WHERE game_id = ? AND user_id != ?', [game.id, userId]);
+          ultimateReady = true;
+          // Award an Ultimate Strike to inventory (pick target via shop UI)
+          await dbRun('INSERT INTO arena_attacks (game_id, attacker_id, target_id, item_key, score_delta) VALUES (?, ?, ?, ?, 0)', [game.id, userId, userId, 'ultimate']);
+          // Reset combo so they have to rebuild for the next ultimate
+          combo = 0;
         }
       }
 
@@ -2226,7 +2241,12 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
         [combo, maxCombo, extraPermBonus, game.id, userId]
       );
 
-      arenaInfo = { combo, milestone: milestone ? Object.keys(milestones).find(k => milestones[k] === milestone) : null };
+      arenaInfo = {
+        combo,
+        milestone: milestone ? Object.keys(milestones).find(k => milestones[k] === milestone) : null,
+        freeItem: freeItemKey,
+        ultimateReady,
+      };
     }
 
     // Update participant's score
@@ -6492,30 +6512,34 @@ app.post('/api/contact', async (req, res) => {
 });
 
 // =========== ARENA MODE ===========
-// Costs in score (the only currency now). Earn ~10/correct, so prices are tuned to that.
+// Costs in score (only currency). Earn 10/correct → prices tuned for ~2-4 question commitments.
+// Damage > cost so attacks profit you relative to target — but absolute spend hurts.
 const ARENA_ITEMS = {
-  lightning:  { name: 'Lightning Strike', cost: 20, damage: 15 },
-  fireball:   { name: 'Fireball',         cost: 40, damage: 20, multiTarget: 3 },
-  shield:     { name: 'Shield',           cost: 25, effect: 'shield' },
-  mirror:     { name: 'Mirror',           cost: 50, effect: 'mirror' },
-  doubleDown: { name: 'Double Down',      cost: 30, effect: 'doubleDown' },
+  lightning:  { name: 'Lightning Strike', cost: 15, damage: 25 },
+  fireball:   { name: 'Fireball',         cost: 30, damage: 15, multiTarget: 3 },
+  shield:     { name: 'Shield',           cost: 15, effect: 'shield' },
+  mirror:     { name: 'Mirror',           cost: 30, effect: 'mirror' },
+  doubleDown: { name: 'Double Down',      cost: 20, effect: 'doubleDown' },
+  // Ultimate is awarded by combo 10, not buyable. Pierces shields.
+  ultimate:   { name: 'Ultimate Strike',  cost: 0,  damage: 30, piercesShield: true },
 };
 
 const ARENA_EVENTS = {
-  // Good
-  scoreShower:   { type: 'good', name: 'Score Shower',   desc: 'Everyone gets +20 score!',           duration: 0 },
-  lightningRound:{ type: 'good', name: 'Lightning Round',desc: 'Answers worth 2x for 30s',           duration: 30 },
-  stockCrash:    { type: 'good', name: 'Stock Crash',    desc: 'Shop items 50% off for 30s',         duration: 30 },
-  bonusRound:    { type: 'good', name: 'Bonus Round',    desc: 'Free random item for everyone!',     duration: 0 },
-  mentorsGift:   { type: 'good', name: "Mentor's Gift",  desc: 'Top 3 each get +30 score',           duration: 0 },
-  underdogBoost: { type: 'good', name: 'Underdog Boost', desc: 'Bottom 3 each get +25 score',        duration: 0 },
-  // Bad
-  taxDay:        { type: 'bad',  name: 'Tax Day',        desc: 'Everyone loses 10% of their score',  duration: 0 },
-  shopClosed:    { type: 'bad',  name: 'Shop Closed',    desc: 'Shop disabled for 30s',              duration: 30 },
-  fogOfWar:      { type: 'bad',  name: 'Fog of War',     desc: 'Scores hidden for 60s',              duration: 60 },
-  inflation:     { type: 'bad',  name: 'Inflation',      desc: 'Shop prices 3x for 60s',             duration: 60 },
+  // Good (everyone benefits)
+  scoreShower:   { type: 'good', name: 'Score Shower',   desc: 'Everyone gets +15 score!',                  duration: 0 },
+  bonusRound:    { type: 'good', name: 'Bonus Round',    desc: 'Free random attack for everyone!',          duration: 0 },
+  stockCrash:    { type: 'good', name: 'Stock Crash',    desc: 'Shop items 50% off for 30s',                duration: 30 },
+  // Comeback-friendly (helps the underdog more than the leader)
+  underdogBoost: { type: 'good', name: 'Underdog Boost', desc: 'Bottom 3 each get +30 score',               duration: 0 },
+  mentorsGift:   { type: 'good', name: "Mentor's Gift",  desc: 'Top 3 each get +20 score',                  duration: 0 },
+  // Bad (creates tension)
+  taxDay:        { type: 'bad',  name: 'Tax Day',        desc: 'Everyone loses 8% of their score',          duration: 0 },
+  shopClosed:    { type: 'bad',  name: 'Shop Closed',    desc: 'Shop disabled for 25s',                     duration: 25 },
+  fogOfWar:      { type: 'bad',  name: 'Fog of War',     desc: 'Scores hidden for 30s',                     duration: 30 },
+  inflation:     { type: 'bad',  name: 'Inflation',      desc: 'Shop prices doubled for 30s',               duration: 30 },
   // Chaotic
-  mysteryBox:    { type: 'chaos',name: 'Mystery Box',    desc: 'Random item delivered to everyone',  duration: 0 },
+  mysteryBox:    { type: 'chaos',name: 'Mystery Box',    desc: 'Random attack delivered to everyone',       duration: 0 },
+  bountyHunt:    { type: 'chaos',name: 'Bounty Hunt',    desc: 'Leader takes -20 score!',                   duration: 0 },
 };
 const ARENA_EVENT_KEYS = Object.keys(ARENA_EVENTS);
 
@@ -6621,10 +6645,9 @@ app.post('/api/games/:gameCode/arena/attack', async (req, res) => {
     }
 
     for (const tid of targets) {
-      // Check shield
       const target = await dbGet('SELECT arena_shields FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, tid]);
-      if (target && target.arena_shields > 0) {
-        // Shield blocks
+      // Ultimate Strike pierces shields
+      if (target && target.arena_shields > 0 && !item.piercesShield) {
         await dbRun('UPDATE game_participants SET arena_shields = arena_shields - 1 WHERE game_id = ? AND user_id = ?', [game.id, tid]);
         await dbRun('INSERT INTO arena_attacks (game_id, attacker_id, target_id, item_key, score_delta) VALUES (?, ?, ?, ?, 0)', [game.id, userId, tid, 'blocked_' + itemKey]);
       } else {
@@ -6653,15 +6676,19 @@ app.post('/api/games/:gameCode/arena/event', async (req, res) => {
 
     // Apply instant effects (score is the only currency)
     if (eventKey === 'scoreShower') {
-      await dbRun('UPDATE game_participants SET score = score + 20 WHERE game_id = ?', [game.id]);
+      await dbRun('UPDATE game_participants SET score = score + 15 WHERE game_id = ?', [game.id]);
     } else if (eventKey === 'taxDay') {
-      await dbRun('UPDATE game_participants SET score = MAX(0, score - (score / 10)) WHERE game_id = ?', [game.id]);
+      await dbRun('UPDATE game_participants SET score = MAX(0, score - CAST(score * 0.08 AS INTEGER)) WHERE game_id = ?', [game.id]);
     } else if (eventKey === 'mentorsGift') {
       const top = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score DESC LIMIT 3', [game.id]);
-      for (const t of top) await dbRun('UPDATE game_participants SET score = score + 30 WHERE game_id = ? AND user_id = ?', [game.id, t.user_id]);
+      for (const t of top) await dbRun('UPDATE game_participants SET score = score + 20 WHERE game_id = ? AND user_id = ?', [game.id, t.user_id]);
     } else if (eventKey === 'underdogBoost') {
       const bottom = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score ASC LIMIT 3', [game.id]);
-      for (const b of bottom) await dbRun('UPDATE game_participants SET score = score + 25 WHERE game_id = ? AND user_id = ?', [game.id, b.user_id]);
+      for (const b of bottom) await dbRun('UPDATE game_participants SET score = score + 30 WHERE game_id = ? AND user_id = ?', [game.id, b.user_id]);
+    } else if (eventKey === 'bountyHunt') {
+      // Hit the leader (single user) for -20
+      const leader = await dbGet('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score DESC LIMIT 1', [game.id]);
+      if (leader) await dbRun('UPDATE game_participants SET score = MAX(0, score - 20) WHERE game_id = ? AND user_id = ?', [game.id, leader.user_id]);
     } else if (eventKey === 'bonusRound' || eventKey === 'mysteryBox') {
       // Give random attack item to everyone
       const players = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ?', [game.id]);

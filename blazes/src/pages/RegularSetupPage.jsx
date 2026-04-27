@@ -94,15 +94,21 @@ export default function RegularSetupPage() {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="timeLimit" className="text-sm font-bold text-gray-600">Time Limit (seconds)</label>
+            <label htmlFor="timeLimit" className="text-sm font-bold text-gray-600">Time Limit (minutes)</label>
             <input
               id="timeLimit"
               type="number"
-              value={timeLimit}
-              onChange={(e) => setTimeLimit(parseInt(e.target.value, 10))}
+              value={Math.round(timeLimit / 60)}
+              onChange={(e) => {
+                const v = Math.min(60, Math.max(1, Number(e.target.value) || 1));
+                setTimeLimit(v * 60);
+              }}
+              min={1}
+              max={60}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               required
             />
+            <p className="text-xs text-gray-400">Between 1 and 60 minutes</p>
           </div>
 
           <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />

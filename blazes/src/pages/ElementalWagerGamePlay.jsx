@@ -257,7 +257,7 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
             </div>
 
             <div className="bg-gray-800/80 rounded-2xl sm:rounded-3xl p-6 sm:p-10 border border-gray-700 mb-5 sm:mb-8 text-center shadow-lg">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-snug">{currentQ.text || currentQ.question_text}</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-snug whitespace-pre-line">{currentQ.text || currentQ.question_text}</h2>
               {imgUrl && <img src={imgUrl} alt="" className="mt-4 max-h-48 mx-auto rounded-xl object-contain" />}
             </div>
 

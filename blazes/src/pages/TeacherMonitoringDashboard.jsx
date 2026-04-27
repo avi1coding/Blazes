@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair } from 'lucide-react';
+import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair, X } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
 import VolumeControl from '../components/VolumeControl';
 import { createSeamlessLoop } from '../utils/seamlessAudio';
@@ -603,6 +603,7 @@ export default function TeacherMonitoringDashboard() {
               {participants.map((player, index) => {
                 const isSurvival = game?.game_mode === 'survival';
                 const isEliminated = isSurvival && player.eliminated;
+                const hasLeft = !!player.left_at;
                 const livesTotal = game?.settings?.livesPerPlayer || 3;
                 const livesLeft = player.lives ?? livesTotal;
                 return (
@@ -610,12 +611,19 @@ export default function TeacherMonitoringDashboard() {
                     key={player.id}
                     onClick={() => handleViewStudent(player.user_id)}
                     className={`p-4 sm:p-6 rounded-xl transition-all border-2 text-left relative ${
-                      isEliminated
+                      hasLeft
+                        ? 'bg-red-50 border-red-200 opacity-70 cursor-default'
+                        : isEliminated
                         ? 'bg-gray-100 border-gray-200 opacity-60 cursor-default'
                         : 'bg-gradient-to-br from-blue-50 to-purple-50 hover:shadow-lg border-gray-200 hover:border-blue-500'
                     }`}
                   >
-                    {isEliminated && (
+                    {hasLeft && (
+                      <div className="absolute top-3 right-3 bg-red-600 text-white text-xs font-black px-2 py-1 rounded-full flex items-center gap-1">
+                        <X className="w-3 h-3" /> LEFT
+                      </div>
+                    )}
+                    {!hasLeft && isEliminated && (
                       <div className="absolute top-3 right-3 bg-gray-600 text-white text-xs font-black px-2 py-1 rounded-full">
                         ELIMINATED
                       </div>

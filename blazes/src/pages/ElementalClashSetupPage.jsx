@@ -102,18 +102,22 @@ export default function ElementalClashSetupPage() {
 
             {/* Game Duration */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 <Clock className="w-4 h-4 inline mr-1 text-purple-500" />
-                Game Duration
+                Game Duration (minutes)
               </label>
-              <div className="flex flex-wrap gap-2">
-                {timeLimitOptions.map(opt => (
-                  <button key={opt.value} type="button" onClick={() => setTimeLimit(opt.value)}
-                    className={`px-4 py-2 rounded-lg font-bold text-sm border-2 transition-all ${timeLimit === opt.value ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-200 hover:border-purple-300'}`}>
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              <input
+                type="number"
+                value={Math.round(timeLimit / 60)}
+                onChange={(e) => {
+                  const v = Math.min(60, Math.max(1, Number(e.target.value) || 1));
+                  setTimeLimit(v * 60);
+                }}
+                min={1}
+                max={60}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+              />
+              <p className="mt-1 text-xs text-gray-400">Between 1 and 60 minutes</p>
             </div>
 
             {/* How it works */}

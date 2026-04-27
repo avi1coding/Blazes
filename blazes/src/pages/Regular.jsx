@@ -209,7 +209,7 @@ export default function Regular() {
         <div className="max-w-4xl mx-auto px-6 py-12">
           {/* Question */}
           <div className="bg-white rounded-2xl p-8 mb-8 shadow-xl">
-            <h2 className="text-3xl font-black text-gray-900 mb-2">
+            <h2 className="text-3xl font-black text-gray-900 mb-2 whitespace-pre-line">
               {currentQuestion.question_text}
             </h2>
           </div>

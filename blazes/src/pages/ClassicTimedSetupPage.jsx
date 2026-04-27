@@ -156,11 +156,16 @@ export default function ClassicTimedSetupPage() {
                     type="number"
                     id="timeLimit"
                     value={timeLimit / 60}
-                    onChange={(e) => setTimeLimit(Number(e.target.value) * 60)}
-                    min="1"
+                    onChange={(e) => {
+                      const v = Math.min(60, Math.max(1, Number(e.target.value) || 1));
+                      setTimeLimit(v * 60);
+                    }}
+                    min={1}
+                    max={60}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+                <p className="mt-1 text-xs text-gray-400">Between 1 and 60 minutes</p>
               </div>
             </div>
           </div>

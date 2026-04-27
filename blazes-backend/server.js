@@ -2167,8 +2167,8 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
           pointsEarned = Math.round(50 + 50 * (1 - ratio));
         }
       } else {
-        // Untimed question — flat 100 for correct
-        pointsEarned = 100;
+        // Untimed question — flat 10 (legacy scoring)
+        pointsEarned = 10;
       }
     }
 
@@ -2327,6 +2327,19 @@ app.post('/api/games/:gameCode/join', (req, res) => {
       }
     });
   });
+});
+
+// Mark a participant as left (called when student closes tab/leaves)
+app.post('/api/games/:gameCode/leave', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    const game = await dbGet('SELECT id FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    await dbRun(`UPDATE game_participants SET left_at = datetime('now') WHERE game_id = ? AND user_id = ?`, [game.id, userId]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Start a game (ONLY the host who must be a teacher can start - students can NEVER start)
@@ -2843,7 +2856,7 @@ app.get('/api/games/:gameCode/results', (req, res) => {
     if (!game) return res.status(404).json({ error: 'Game not found' });
 
     db.all(
-      `SELECT gp.user_id, gp.player_name, gp.score, gp.lives, gp.eliminated, gp.eliminated_at_round,
+      `SELECT gp.user_id, gp.player_name, gp.score, gp.lives, gp.eliminated, gp.eliminated_at_round, gp.left_at,
               u.name, u.role,
               (SELECT COUNT(*) FROM game_answers WHERE game_id = gp.game_id AND user_id = gp.user_id AND is_correct = 1) AS correct_answers,
               (SELECT AVG(time_taken) FROM game_answers WHERE game_id = gp.game_id AND user_id = gp.user_id) AS avg_time
@@ -7277,6 +7290,7 @@ async function initSchema() {
     `ALTER TABLE game_participants ADD COLUMN arena_shields INTEGER DEFAULT 0`,
     `ALTER TABLE game_participants ADD COLUMN arena_double_down INTEGER DEFAULT 0`,
     `ALTER TABLE game_participants ADD COLUMN arena_perm_bonus INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN left_at DATETIME`,
   ];
 
   console.log('[Schema] Creating tables...');

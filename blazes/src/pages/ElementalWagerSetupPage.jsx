@@ -77,17 +77,21 @@ export default function ElementalWagerSetupPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                <Clock className="w-4 h-4 inline mr-1 text-amber-500" /> Game Duration
+              <label className="block text-sm font-bold text-gray-700 mb-1">
+                <Clock className="w-4 h-4 inline mr-1 text-amber-500" /> Game Duration (minutes)
               </label>
-              <div className="flex flex-wrap gap-2">
-                {durations.map(d => (
-                  <button key={d.value} type="button" onClick={() => setTimeLimit(d.value)}
-                    className={`px-4 py-2 rounded-lg font-bold text-sm border-2 transition-all ${timeLimit === d.value ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 border-gray-200 hover:border-amber-300'}`}>
-                    {d.label}
-                  </button>
-                ))}
-              </div>
+              <input
+                type="number"
+                value={Math.round(timeLimit / 60)}
+                onChange={(e) => {
+                  const v = Math.min(60, Math.max(1, Number(e.target.value) || 1));
+                  setTimeLimit(v * 60);
+                }}
+                min={1}
+                max={60}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"
+              />
+              <p className="mt-1 text-xs text-gray-400">Between 1 and 60 minutes</p>
             </div>
 
             <div className="bg-amber-50 border-2 border-amber-100 rounded-xl p-4">

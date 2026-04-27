@@ -58,6 +58,19 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
   const stockCrash = activeEvents.some(e => e.key === 'stockCrash');
   const inflation = activeEvents.some(e => e.key === 'inflation');
 
+  // Notify server when player leaves
+  useEffect(() => {
+    if (!user?.id) return;
+    const sendLeave = () => {
+      try {
+        navigator.sendBeacon(`${BASE}/api/games/${gameCode}/leave`,
+          new Blob([JSON.stringify({ userId: user.id })], { type: 'application/json' }));
+      } catch (_) {}
+    };
+    window.addEventListener('beforeunload', sendLeave);
+    return () => window.removeEventListener('beforeunload', sendLeave);
+  }, [gameCode, user]);
+
   // Load game
   useEffect(() => {
     fetch(`${BASE}/api/games/${gameCode}`).then(r => r.json()).then(setGame).catch(() => {});
@@ -346,7 +359,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
 
             {/* Question card — fills the space */}
             <div className="flex-1 bg-white/[0.07] backdrop-blur-sm border border-white/10 rounded-3xl p-5 sm:p-8 md:p-10 flex flex-col">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-6 sm:mb-8 leading-tight">{q.question_text}</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-6 sm:mb-8 leading-tight whitespace-pre-line">{q.question_text}</h2>
 
               {q.image_url && (
                 <div className="flex justify-center mb-6 sm:mb-8">

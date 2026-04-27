@@ -272,7 +272,7 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
       {/* Question */}
       <div className="max-w-4xl mx-auto">
         <div className="bg-gray-800 rounded-2xl p-5 sm:p-8 border border-gray-700 mb-4 text-center">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white">{currentQ.text || currentQ.question_text}</h2>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white whitespace-pre-line">{currentQ.text || currentQ.question_text}</h2>
           {imgUrl && <img src={imgUrl} alt="" className="mt-4 max-h-48 mx-auto rounded-xl object-contain" />}
         </div>
 

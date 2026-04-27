@@ -33,6 +33,20 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   const userSettings = JSON.parse(localStorage.getItem('blazes_settings') || '{}');
   const timerWarnings = userSettings.timer_warnings !== 0;
 
+  // Notify server when player leaves (tab close, navigate away)
+  useEffect(() => {
+    if (!user?.id) return;
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+    const sendLeave = () => {
+      try {
+        navigator.sendBeacon(`${base}/api/games/${gameCode}/leave`,
+          new Blob([JSON.stringify({ userId: user.id })], { type: 'application/json' }));
+      } catch (_) {}
+    };
+    window.addEventListener('beforeunload', sendLeave);
+    return () => window.removeEventListener('beforeunload', sendLeave);
+  }, [gameCode, user]);
+
   const [game, setGame] = useState(initialGame);
   const [questions, setQuestions] = useState(initialGame?.questions || []);
   const [questionQueue, setQuestionQueue] = useState([]);
@@ -423,7 +437,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
           <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs sm:text-sm font-bold mb-3 sm:mb-4">
             Question {questionNumber}{currentQuestion.answerType && currentQuestion.answerType !== 'multiple_choice' ? ` · ${currentQuestion.answerType.replace(/_/g, ' ')}` : ''}
           </span>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 mb-2">{currentQuestion.text || currentQuestion.question_text}</h2>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 mb-2 whitespace-pre-line">{currentQuestion.text || currentQuestion.question_text}</h2>
           {currentQuestion.answerType === 'audio' && imgUrl && (
             <audio controls className="mx-auto mt-4" src={imgUrl}>Your browser does not support audio.</audio>
           )}
@@ -994,7 +1008,7 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
           <span className="inline-block px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-xs sm:text-sm font-bold mb-3 sm:mb-4">
             Question {(survivalData.current_question_index || 0) + 1}
           </span>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white">{currentQ.text || currentQ.question_text}</h2>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white whitespace-pre-line">{currentQ.text || currentQ.question_text}</h2>
           {imgUrl && <img src={imgUrl} alt="" className="mt-4 max-h-48 mx-auto rounded-xl object-contain" />}
         </div>
 

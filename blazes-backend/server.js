@@ -6526,12 +6526,8 @@ const ARENA_ITEMS = {
 };
 
 const ARENA_EVENTS = {
-  // Good (everyone benefits)
-  scoreShower:   { type: 'good', name: 'Score Shower',   desc: 'Everyone gets +15 score!',                  duration: 0 },
-  bonusRound:    { type: 'good', name: 'Bonus Round',    desc: 'Free random attack for everyone!',          duration: 0 },
+  // Good
   stockCrash:    { type: 'good', name: 'Stock Crash',    desc: 'Shop items 50% off for 30s',                duration: 30 },
-  // Comeback-friendly (helps the underdog more than the leader)
-  underdogBoost: { type: 'good', name: 'Underdog Boost', desc: 'Bottom 3 each get +30 score',               duration: 0 },
   mentorsGift:   { type: 'good', name: "Mentor's Gift",  desc: 'Top 3 each get +20 score',                  duration: 0 },
   // Bad (creates tension)
   taxDay:        { type: 'bad',  name: 'Tax Day',        desc: 'Everyone loses 8% of their score',          duration: 0 },
@@ -6540,7 +6536,6 @@ const ARENA_EVENTS = {
   inflation:     { type: 'bad',  name: 'Inflation',      desc: 'Shop prices doubled for 30s',               duration: 30 },
   // Chaotic
   mysteryBox:    { type: 'chaos',name: 'Mystery Box',    desc: 'Random attack delivered to everyone',       duration: 0 },
-  bountyHunt:    { type: 'chaos',name: 'Bounty Hunt',    desc: 'Leader takes -20 score!',                   duration: 0 },
 };
 const ARENA_EVENT_KEYS = Object.keys(ARENA_EVENTS);
 
@@ -6676,21 +6671,12 @@ app.post('/api/games/:gameCode/arena/event', async (req, res) => {
     await dbRun('INSERT INTO arena_events (game_id, event_key, ends_at) VALUES (?, ?, ?)', [game.id, eventKey, endsAt]);
 
     // Apply instant effects (score is the only currency)
-    if (eventKey === 'scoreShower') {
-      await dbRun('UPDATE game_participants SET score = score + 15 WHERE game_id = ?', [game.id]);
-    } else if (eventKey === 'taxDay') {
+    if (eventKey === 'taxDay') {
       await dbRun('UPDATE game_participants SET score = MAX(0, score - CAST(score * 0.08 AS INTEGER)) WHERE game_id = ?', [game.id]);
     } else if (eventKey === 'mentorsGift') {
       const top = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score DESC LIMIT 3', [game.id]);
       for (const t of top) await dbRun('UPDATE game_participants SET score = score + 20 WHERE game_id = ? AND user_id = ?', [game.id, t.user_id]);
-    } else if (eventKey === 'underdogBoost') {
-      const bottom = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score ASC LIMIT 3', [game.id]);
-      for (const b of bottom) await dbRun('UPDATE game_participants SET score = score + 30 WHERE game_id = ? AND user_id = ?', [game.id, b.user_id]);
-    } else if (eventKey === 'bountyHunt') {
-      // Hit the leader (single user) for -20
-      const leader = await dbGet('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score DESC LIMIT 1', [game.id]);
-      if (leader) await dbRun('UPDATE game_participants SET score = MAX(0, score - 20) WHERE game_id = ? AND user_id = ?', [game.id, leader.user_id]);
-    } else if (eventKey === 'bonusRound' || eventKey === 'mysteryBox') {
+    } else if (eventKey === 'mysteryBox') {
       // Give random attack item to everyone
       const players = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ?', [game.id]);
       const itemKeys = Object.keys(ARENA_ITEMS).filter(k => ARENA_ITEMS[k].damage || ARENA_ITEMS[k].effect === 'mirror');

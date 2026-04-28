@@ -328,100 +328,22 @@ export default function TeacherHome() {
             const allDone = a.total_count > 0 && a.completed_count === a.total_count;
             return !allDone;
           });
-          const totalStudentsAcrossClassrooms = classrooms.reduce((sum, c) => sum + (c.student_count || 0), 0);
           return (
           <>
-            {/* Big Home Heading */}
+            {/* Heading */}
             <div className="mb-8">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900">Home</h1>
             </div>
 
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-2">
-                Welcome back, {userName}
-              </h1>
-              <p className="text-gray-600">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
-            </div>
-
-            {/* Stats row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <div className="bg-white rounded-2xl p-5 border border-gray-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Users className="w-4 h-4 text-blue-600" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-500">Students</span>
+            {/* Assignments */}
+            <div className="mb-10">
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mb-4">Assignments</h2>
+              {teacherAssignments.length === 0 ? (
+                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 sm:p-8 md:p-12 text-center">
+                  <ClipboardList className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-semibold">No assignments yet.</p>
                 </div>
-                <div className="text-2xl font-black text-gray-900">{totalStudentsAcrossClassrooms}</div>
-              </div>
-              <div className="bg-white rounded-2xl p-5 border border-gray-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-9 h-9 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <GraduationCap className="w-4 h-4 text-orange-600" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-500">Classrooms</span>
-                </div>
-                <div className="text-2xl font-black text-gray-900">{classrooms.length}</div>
-              </div>
-              <div className="bg-white rounded-2xl p-5 border border-gray-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-4 h-4 text-purple-600" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-500">Question Kits</span>
-                </div>
-                <div className="text-2xl font-black text-gray-900">{kits.length}</div>
-              </div>
-              <div className="bg-white rounded-2xl p-5 border border-gray-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Play className="w-4 h-4 text-green-600" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-500">Games Hosted</span>
-                </div>
-                <div className="text-2xl font-black text-gray-900">{teacherStats.totalGames}</div>
-              </div>
-            </div>
-
-            {/* Quick actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-8">
-              <button onClick={() => setActiveTab('createKit')}
-                className="bg-red-600 text-white rounded-2xl p-5 text-left hover:bg-red-700 transition-all">
-                <Plus className="w-6 h-6 mb-2" strokeWidth={2.5} />
-                <div className="font-black">Create Kit</div>
-                <div className="text-white/70 text-xs mt-0.5">Build new questions</div>
-              </button>
-              <button onClick={() => {
-                if (kits.length > 0) navigate('/game/mode-select', { state: { kit: kits[0], user } });
-                else setActiveTab('createKit');
-              }}
-                className="bg-blue-600 text-white rounded-2xl p-5 text-left hover:bg-blue-700 transition-all">
-                <Play className="w-6 h-6 mb-2" strokeWidth={2.5} />
-                <div className="font-black">Start Game</div>
-                <div className="text-white/70 text-xs mt-0.5">{kits.length > 0 ? 'Pick a kit & play' : 'Create a kit first'}</div>
-              </button>
-              <button onClick={() => setActiveTab('classrooms')}
-                className="bg-gray-900 text-white rounded-2xl p-5 text-left hover:bg-gray-800 transition-all">
-                <GraduationCap className="w-6 h-6 mb-2" strokeWidth={2.5} />
-                <div className="font-black">Classrooms</div>
-                <div className="text-white/70 text-xs mt-0.5">{classrooms.length} class{classrooms.length !== 1 ? 'es' : ''}</div>
-              </button>
-            </div>
-
-            {/* Assignment tracker */}
-            {teacherAssignments.length > 0 && (
-              <div className="bg-white rounded-2xl p-6 border border-gray-200 mb-8">
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                    <ClipboardList className="w-5 h-5 text-red-600" />
-                    Assignment Tracker
-                    {activeAssignments.length > 0 && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">{activeAssignments.length} active</span>}
-                  </h2>
-                  <button onClick={() => setActiveTab('classrooms')} className="text-xs text-blue-600 font-bold hover:text-blue-700 flex items-center gap-1">
-                    View all <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
+              ) : (
                 <div className="space-y-3">
                   {(activeAssignments.length > 0 ? activeAssignments : teacherAssignments).slice(0, 5).map(a => {
                     const pct = a.total_count > 0 ? Math.round((a.completed_count / a.total_count) * 100) : 0;
@@ -429,7 +351,7 @@ export default function TeacherHome() {
                     const overdue = a.due_date && new Date(a.due_date) < new Date() && !allDone;
                     return (
                       <div key={a.id} onClick={() => navigate(`/classroom/${a.classroom_id}`)}
-                        className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-gray-50 transition-colors ${overdue ? 'border-red-200 bg-red-50/50' : allDone ? 'border-green-200 bg-green-50/50' : 'border-gray-200'}`}>
+                        className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-gray-50 transition-colors ${overdue ? 'border-red-200 bg-red-50/50' : allDone ? 'border-green-200 bg-green-50/50' : 'border-gray-200 bg-white'}`}>
                         {allDone ? (
                           <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
                             <Check className="w-5 h-5 text-white" strokeWidth={3} />
@@ -448,6 +370,7 @@ export default function TeacherHome() {
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-gray-900 text-sm truncate">{a.title}</span>
                             {overdue && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold flex-shrink-0">OVERDUE</span>}
+                            {allDone && <span className="text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded font-bold flex-shrink-0">DONE</span>}
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5">
                             {a.classroom_name}{a.due_date ? ` · Due ${new Date(a.due_date).toLocaleDateString()}` : ''}
@@ -461,69 +384,39 @@ export default function TeacherHome() {
                     );
                   })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Two columns: top performers + needs attention */}
-            <div className="grid lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-yellow-500" />
-                  Top Performers
-                </h3>
-                <div className="space-y-2">
-                  {topPerformers.length > 0 ? (
-                    topPerformers.slice(0, 5).map((student, index) => (
-                      <div key={student.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs ${index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                          index === 1 ? 'bg-gray-300 text-gray-700' :
-                            index === 2 ? 'bg-orange-400 text-orange-900' :
-                              'bg-gray-100 text-gray-500'
-                          }`}>
-                          {index + 1}
-                        </div>
-                        <AvatarPreview skinId={studentSkins[student.id] || 'default'} initial={student.name?.[0]?.toUpperCase() || 'S'} size={34} isPlus={studentTiers[student.id] === 'blazes_plus'} />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-gray-900 text-sm truncate">{student.name}</div>
-                          <div className="text-xs text-gray-500">{student.gamesPlayed || 0} games · {student.totalXP || 0} pts</div>
-                        </div>
-                        <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">{student.accuracy || 0}%</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <Trophy className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-                      <p className="text-gray-400 text-sm font-semibold">No student data yet</p>
-                    </div>
-                  )}
+            {/* Classes */}
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mb-4">Classes</h2>
+              {classrooms.length === 0 ? (
+                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 sm:p-8 md:p-12 text-center">
+                  <GraduationCap className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-semibold mb-4">No classes yet.</p>
+                  <button onClick={() => setActiveTab('classrooms')} className="bg-red-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors text-sm">
+                    Create your first class
+                  </button>
                 </div>
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-red-500" />
-                  Needs Attention
-                </h3>
-                <div className="space-y-2">
-                  {studentsNeedingHelp.length > 0 ? (
-                    studentsNeedingHelp.slice(0, 5).map((student) => (
-                      <div key={student.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-red-50 border border-red-100">
-                        <AvatarPreview skinId={studentSkins[student.id] || 'default'} initial={student.name?.[0]?.toUpperCase() || 'S'} size={34} isPlus={studentTiers[student.id] === 'blazes_plus'} />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-gray-900 text-sm truncate">{student.name}</div>
-                          <div className="text-xs text-gray-500">Low accuracy</div>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {classrooms.map(c => (
+                    <div key={c.id} onClick={() => navigate(`/classroom/${c.id}`)}
+                      className="bg-white rounded-2xl p-5 border border-gray-200 hover:shadow-md hover:border-red-300 transition-all cursor-pointer">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <GraduationCap className="w-5 h-5 text-red-600" strokeWidth={2.5} />
                         </div>
-                        <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded-lg">{student.avgAccuracy || 0}%</span>
+                        <h3 className="font-black text-gray-900 truncate">{c.name}</h3>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <Check className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-                      <p className="text-gray-400 text-sm font-semibold">All students are doing well</p>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {c.student_count || 0} students</span>
+                        {c.subject && <span className="bg-gray-100 px-2 py-0.5 rounded-full font-bold">{c.subject}</span>}
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           </>
           );

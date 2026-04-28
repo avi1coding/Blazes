@@ -384,36 +384,113 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
                 </div>
               )}
 
-              {/* Answers — fill remaining space */}
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 content-center">
-                {['option_a', 'option_b', 'option_c', 'option_d'].map((key, i) => {
-                  const opt = q[key];
-                  if (!opt) return null;
-                  const letter = ['A', 'B', 'C', 'D'][i];
-                  const isSelected = selected === letter;
-                  const isCorrect = feedback && letter === q.correct_answer;
-                  const isWrong = feedback && isSelected && !feedback.isCorrect;
+              {/* Answers — render based on question type */}
+              <div className="flex-1 flex flex-col">
+                {(() => {
+                  const type = q.answer_type || 'multiple_choice';
                   const colors = ['from-red-600 to-rose-600', 'from-blue-600 to-cyan-600', 'from-yellow-600 to-orange-600', 'from-green-600 to-emerald-600'];
+
+                  // True/False — render two big buttons
+                  if (type === 'true_false') {
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 content-center flex-1">
+                        {['True', 'False'].map((value, i) => {
+                          const isSelected = selected === value;
+                          const isCorrect = feedback && String(q.correct_answer).toLowerCase() === value.toLowerCase();
+                          const isWrong = feedback && isSelected && !feedback.isCorrect;
+                          return (
+                            <button key={value} onClick={() => { if (!answered) { setSelected(value); submitAnswer(value); } }}
+                              disabled={answered}
+                              className={`p-5 sm:p-6 rounded-2xl font-bold transition-all border-2 min-h-[80px] sm:min-h-[100px] flex items-center justify-center text-2xl ${
+                                isCorrect ? 'bg-green-600 border-green-400 scale-105' :
+                                isWrong ? 'bg-red-600 border-red-400' :
+                                isSelected ? `bg-gradient-to-br ${colors[i]} border-white/50` :
+                                `bg-gradient-to-br ${colors[i]} border-transparent hover:scale-[1.02] hover:border-white/30`
+                              } disabled:cursor-not-allowed`}>
+                              {value}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+
+                  // Short answer / fill blank — text input
+                  if (type === 'short_answer' || type === 'fill_blank' || type === 'math_equation') {
+                    return (
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        if (answered) return;
+                        const val = e.target.answer.value.trim();
+                        if (!val) return;
+                        setSelected(val);
+                        submitAnswer(val);
+                      }} className="flex flex-col gap-4 max-w-xl mx-auto w-full mt-8">
+                        <input name="answer" type="text" disabled={answered}
+                          placeholder="Type your answer..."
+                          className="w-full px-5 py-4 bg-white/10 border-2 border-white/20 rounded-2xl text-white placeholder-white/40 text-lg focus:border-purple-400 focus:outline-none disabled:opacity-60"
+                          autoFocus />
+                        <button type="submit" disabled={answered}
+                          className="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-2xl font-black disabled:opacity-50">
+                          Submit
+                        </button>
+                      </form>
+                    );
+                  }
+
+                  // Multiple choice / multi_select / audio — render A/B/C/D options
                   return (
-                    <button key={key} onClick={() => { if (!answered) { setSelected(letter); submitAnswer(letter); } }}
-                      disabled={answered}
-                      className={`p-5 sm:p-6 rounded-2xl text-left font-bold transition-all border-2 min-h-[80px] sm:min-h-[100px] flex items-center gap-3 ${
-                        isCorrect ? 'bg-green-600 border-green-400 scale-105' :
-                        isWrong ? 'bg-red-600 border-red-400' :
-                        isSelected ? `bg-gradient-to-br ${colors[i]} border-white/50` :
-                        `bg-gradient-to-br ${colors[i]} border-transparent hover:scale-[1.02] hover:border-white/30`
-                      } disabled:cursor-not-allowed`}>
-                      <span className="text-xl sm:text-2xl font-black opacity-70 flex-shrink-0">{letter}</span>
-                      <span className="text-base sm:text-lg flex-1">{opt}</span>
-                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 content-center flex-1">
+                      {['option_a', 'option_b', 'option_c', 'option_d'].map((key, i) => {
+                        const opt = q[key];
+                        if (!opt) return null;
+                        const letter = ['A', 'B', 'C', 'D'][i];
+                        const isMulti = type === 'multi_select';
+                        const isSelected = isMulti ? (selected || '').includes(letter) : selected === letter;
+                        const isCorrectLetter = isMulti
+                          ? String(q.correct_answer || '').toUpperCase().includes(letter)
+                          : String(q.correct_answer || '').toUpperCase() === letter;
+                        const isCorrect = feedback && isCorrectLetter;
+                        const isWrong = feedback && isSelected && !isCorrectLetter;
+                        return (
+                          <button key={key}
+                            onClick={() => {
+                              if (answered) return;
+                              if (isMulti) {
+                                const cur = selected || '';
+                                setSelected(cur.includes(letter) ? cur.replace(letter, '') : cur + letter);
+                              } else {
+                                setSelected(letter);
+                                submitAnswer(letter);
+                              }
+                            }}
+                            disabled={answered}
+                            className={`p-5 sm:p-6 rounded-2xl text-left font-bold transition-all border-2 min-h-[80px] sm:min-h-[100px] flex items-center gap-3 ${
+                              isCorrect ? 'bg-green-600 border-green-400 scale-105' :
+                              isWrong ? 'bg-red-600 border-red-400' :
+                              isSelected ? `bg-gradient-to-br ${colors[i]} border-white/50` :
+                              `bg-gradient-to-br ${colors[i]} border-transparent hover:scale-[1.02] hover:border-white/30`
+                            } disabled:cursor-not-allowed`}>
+                            <span className="text-xl sm:text-2xl font-black opacity-70 flex-shrink-0">{letter}</span>
+                            <span className="text-base sm:text-lg flex-1">{opt}</span>
+                          </button>
+                        );
+                      })}
+                      {type === 'multi_select' && !answered && (
+                        <button onClick={() => submitAnswer(selected || '')}
+                          className="sm:col-span-2 py-3 bg-purple-600 hover:bg-purple-500 rounded-2xl font-black">
+                          Submit Selection
+                        </button>
+                      )}
+                    </div>
                   );
-                })}
+                })()}
               </div>
 
               {feedback && (
                 <div className="mt-4 sm:mt-6 text-center">
                   <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-base sm:text-lg ${feedback.isCorrect ? 'bg-green-600' : 'bg-red-600'}`}>
-                    {feedback.isCorrect ? '✓ Correct!' : feedback.timedOut ? '⏱ Time\'s up!' : `✗ Answer: ${feedback.correct}`}
+                    {feedback.isCorrect ? 'Correct!' : feedback.timedOut ? "Time's up!" : `Answer: ${feedback.correct}`}
                   </div>
                 </div>
               )}

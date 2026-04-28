@@ -1676,50 +1676,63 @@ export default function TeacherHome() {
                           <Play className="w-4 h-4" strokeWidth={2.5} />
                           Play
                         </button>
-                        <button
-                          onClick={() => navigate(`/flashcards/${kit.id}`)}
-                          aria-label="Flashcards"
-                          title="Flashcards"
-                          className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-                        >
-                          <Layers className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={async () => {
-                            try {
-                              const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${kit.id}`);
-                              const kitDetails = await response.json();
-                              setSelectedKit(kitDetails);
-                              setShowQuestionsModal(true);
-                            } catch (error) {
-                              console.error('Error fetching kit details:', error);
-                            }
-                          }}
-                          aria-label="Questions"
-                          title="Questions"
-                          className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-                        >
-                          <BookOpen className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingKit(kit);
-                            setShowEditModal(true);
-                          }}
-                          aria-label="Edit"
-                          title="Edit"
-                          className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-                        >
-                          <Settings className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(kit.id)}
-                          aria-label="Delete"
-                          title="Delete"
-                          className="p-2.5 bg-gray-100 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="relative group">
+                          <button
+                            onClick={() => navigate(`/flashcards/${kit.id}`)}
+                            aria-label="Flashcards"
+                            className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                          >
+                            <Layers className="w-4 h-4" />
+                          </button>
+                          <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            Flashcards
+                          </span>
+                        </div>
+                        <div className="relative group">
+                          <button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${kit.id}`);
+                                const kitDetails = await response.json();
+                                setSelectedKit(kitDetails);
+                                setShowQuestionsModal(true);
+                              } catch (error) {
+                                console.error('Error fetching kit details:', error);
+                              }
+                            }}
+                            aria-label="Questions"
+                            className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                          >
+                            <BookOpen className="w-4 h-4" />
+                          </button>
+                          <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            Questions
+                          </span>
+                        </div>
+                        <div className="relative group">
+                          <button
+                            onClick={() => { setEditingKit(kit); setShowEditModal(true); }}
+                            aria-label="Edit"
+                            className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </button>
+                          <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            Edit
+                          </span>
+                        </div>
+                        <div className="relative group">
+                          <button
+                            onClick={() => setDeleteConfirm(kit.id)}
+                            aria-label="Delete"
+                            className="p-2.5 bg-gray-100 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            Delete
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}

@@ -1,5 +1,16 @@
-import { useState } from 'react';
-import { Plus, Lock, Music } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Lock, Music, Sigma } from 'lucide-react';
+
+const MATH_SYMBOLS = [
+  '+', '−', '×', '÷', '=', '≠', '≤', '≥', '<', '>',
+  '±', '∓', '·', '∗', '√', '∛', '∜', '∞', 'π', 'τ',
+  '°', '′', '″', 'Δ', '∑', '∏', '∫', '∮', '∂', '∇',
+  '²', '³', '½', '¼', '¾', '⅓', '⅔', '⅛', '⅜', '⅝',
+  '⁰', '¹', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹', '⁻', '⁺',
+  '₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉',
+  'α', 'β', 'γ', 'δ', 'ε', 'θ', 'λ', 'μ', 'σ', 'φ', 'ω',
+  '∈', '∉', '⊂', '⊃', '∪', '∩', '∅', '→', '↔', '⇒',
+];
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -19,6 +30,20 @@ export default function AddQuestionForm({
   const [newImagePreview, setNewImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
+  const [showMathPicker, setShowMathPicker] = useState(false);
+  const questionTextRef = useRef(null);
+
+  const insertMathSymbol = (symbol) => {
+    const el = questionTextRef.current;
+    if (!el) return;
+    const start = el.selectionStart || 0;
+    const end = el.selectionEnd || 0;
+    const newValue = el.value.slice(0, start) + symbol + el.value.slice(end);
+    el.value = newValue;
+    // Restore cursor position after the inserted symbol
+    const pos = start + symbol.length;
+    setTimeout(() => { el.focus(); el.setSelectionRange(pos, pos); }, 0);
+  };
 
   const hasPremium = ['blazes_plus', 'teacher_pro', 'school'].includes(tier);
 
@@ -146,8 +171,39 @@ export default function AddQuestionForm({
         <Plus className="w-4 h-4 text-blue-600" /> Add New Question
       </h4>
       <form onSubmit={handleSubmit} className="space-y-3">
-        <input name="question_text" required placeholder="Question text"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none" />
+        <div>
+          <div className="flex gap-2">
+            <input
+              ref={questionTextRef}
+              name="question_text" required placeholder="Question text"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setShowMathPicker(!showMathPicker)}
+              aria-label="Insert math symbol"
+              className={`px-3 py-2 rounded-lg border text-sm font-bold transition-colors flex items-center gap-1.5 ${
+                showMathPicker ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+              }`}
+            >
+              <Sigma className="w-4 h-4" /> Math
+            </button>
+          </div>
+          {showMathPicker && (
+            <div className="mt-2 bg-white border border-gray-200 rounded-lg p-2">
+              <p className="text-[10px] font-bold text-gray-500 mb-1.5 px-1">Click to insert into question</p>
+              <div className="grid grid-cols-10 gap-1">
+                {MATH_SYMBOLS.map(sym => (
+                  <button key={sym} type="button"
+                    onClick={() => insertMathSymbol(sym)}
+                    className="text-sm font-bold w-8 h-8 rounded hover:bg-blue-50 hover:text-blue-700 transition-colors text-gray-700 border border-transparent hover:border-blue-200">
+                    {sym}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Type selector */}
         <div className="flex flex-wrap gap-1.5">

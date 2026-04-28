@@ -252,21 +252,42 @@ export default function StudentLobby() {
 
                 {/* Fellow Players */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                    {(() => {
+                      const settingsObj = (() => {
+                        try { return typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {}); }
+                        catch { return {}; }
+                      })();
+                      const hostPlaysAndNotInList = !!settingsObj.hostPlays && !participants.some(p => p.user_id === game.host_id);
+                      const totalPlayers = participants.length + (hostPlaysAndNotInList ? 1 : 0);
+                      return (
+                        <>
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-black text-gray-900">Players ({participants.length})</h3>
+                        <h3 className="text-lg font-black text-gray-900">Players ({totalPlayers})</h3>
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                             <span className="text-sm text-gray-600 font-semibold">Live</span>
                         </div>
                     </div>
 
-                    {participants.length === 0 ? (
+                    {participants.length === 0 && !hostPlaysAndNotInList ? (
                         <div className="text-center py-8">
                             <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                             <p className="text-gray-500">Waiting for players to join...</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {hostPlaysAndNotInList && (
+                                <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+                                    <AvatarPreview skinId="default" initial={(settingsObj.hostName || 'T')[0].toUpperCase()} size={48} />
+                                    <div className="flex-1">
+                                        <div className="font-bold text-purple-900 flex items-center gap-1.5">
+                                            {settingsObj.hostName || 'Teacher'}
+                                            <Crown className="w-4 h-4 text-yellow-500" strokeWidth={2.5} />
+                                        </div>
+                                        <div className="text-xs text-purple-600 font-bold">Teacher (Playing)</div>
+                                    </div>
+                                </div>
+                            )}
                             {participants.map((player, index) => (
                                 <div
                                     key={player.id}
@@ -298,6 +319,9 @@ export default function StudentLobby() {
                             ))}
                         </div>
                     )}
+                        </>
+                      );
+                    })()}
                 </div>
             </div>
 

@@ -241,37 +241,38 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-950 to-fuchsia-950 text-white flex flex-col">
-      {/* Hit effect — flash + shake + label */}
-      {hitEffect && (
-        <>
-          <div className={`fixed inset-0 z-[60] pointer-events-none animate-pulse ${
-            hitEffect.blocked ? 'bg-blue-500/30' :
-            hitEffect.itemKey === 'lightning' ? 'bg-yellow-500/40' :
-            hitEffect.itemKey === 'fireball' ? 'bg-red-600/40' :
-            hitEffect.itemKey === 'ultimate' ? 'bg-orange-500/50' :
-            hitEffect.itemKey === 'mirror' ? 'bg-cyan-500/40' :
-            'bg-red-500/30'
-          }`} />
-          <div className="fixed inset-0 z-[61] pointer-events-none flex items-center justify-center">
-            <div className="bg-black/80 backdrop-blur-sm border-2 border-white/30 rounded-2xl px-6 py-4 text-center animate-bounce">
-              <div className="text-4xl mb-1">
-                {hitEffect.blocked ? '🛡️' :
-                 hitEffect.itemKey === 'lightning' ? '⚡' :
-                 hitEffect.itemKey === 'fireball' ? '🔥' :
-                 hitEffect.itemKey === 'ultimate' ? '💥' :
-                 hitEffect.itemKey === 'mirror' ? '🪞' : '💥'}
-              </div>
-              <div className="text-white font-black text-lg">
-                {hitEffect.blocked ? 'BLOCKED!' :
-                 hitEffect.itemKey === 'lightning' ? 'STRUCK!' :
-                 hitEffect.itemKey === 'fireball' ? 'BURNED!' :
-                 hitEffect.itemKey === 'ultimate' ? 'ULTIMATE HIT!' :
-                 'HIT!'}
+      {/* Hit effect — flash + label */}
+      {hitEffect && (() => {
+        const HitIcon = hitEffect.blocked ? Shield :
+          hitEffect.itemKey === 'lightning' ? Zap :
+          hitEffect.itemKey === 'fireball' ? Flame :
+          hitEffect.itemKey === 'ultimate' ? Sparkles :
+          hitEffect.itemKey === 'mirror' ? Shield : Zap;
+        return (
+          <>
+            <div className={`fixed inset-0 z-[60] pointer-events-none animate-pulse ${
+              hitEffect.blocked ? 'bg-blue-500/30' :
+              hitEffect.itemKey === 'lightning' ? 'bg-yellow-500/40' :
+              hitEffect.itemKey === 'fireball' ? 'bg-red-600/40' :
+              hitEffect.itemKey === 'ultimate' ? 'bg-orange-500/50' :
+              hitEffect.itemKey === 'mirror' ? 'bg-cyan-500/40' :
+              'bg-red-500/30'
+            }`} />
+            <div className="fixed inset-0 z-[61] pointer-events-none flex items-center justify-center">
+              <div className="bg-black/80 backdrop-blur-sm border-2 border-white/30 rounded-2xl px-6 py-4 text-center animate-bounce flex flex-col items-center gap-2">
+                <HitIcon className="w-12 h-12 text-white" strokeWidth={2.5} />
+                <div className="text-white font-black text-lg">
+                  {hitEffect.blocked ? 'BLOCKED!' :
+                   hitEffect.itemKey === 'lightning' ? 'STRUCK!' :
+                   hitEffect.itemKey === 'fireball' ? 'BURNED!' :
+                   hitEffect.itemKey === 'ultimate' ? 'ULTIMATE HIT!' :
+                   'HIT!'}
+                </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        );
+      })()}
 
       {/* Event toast */}
       {eventToast && (
@@ -353,7 +354,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
         {/* Status badges */}
         {(shields > 0 || doubleDown > 0 || permBonus > 0) && (
           <div className="max-w-7xl mx-auto mt-2 flex flex-wrap items-center justify-center gap-1.5">
-            {shields > 0 && <span className="text-[10px] font-black bg-blue-500/30 border border-blue-400/40 rounded-full px-2 py-0.5">🛡 {shields} shield</span>}
+            {shields > 0 && <span className="inline-flex items-center gap-1 text-[10px] font-black bg-blue-500/30 border border-blue-400/40 rounded-full px-2 py-0.5"><Shield className="w-3 h-3" /> {shields} shield</span>}
             {doubleDown > 0 && <span className="text-[10px] font-black bg-purple-500/30 border border-purple-400/40 rounded-full px-2 py-0.5">2x next answer</span>}
             {permBonus > 0 && <span className="text-[10px] font-black bg-green-500/30 border border-green-400/40 rounded-full px-2 py-0.5">+{permBonus} bonus</span>}
           </div>
@@ -511,7 +512,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
             </div>
             {(stockCrash || inflation) && (
               <p className={`text-center text-sm font-bold mb-4 ${stockCrash ? 'text-green-300' : 'text-red-300'}`}>
-                {stockCrash ? '🎉 Stock Crash — 50% off!' : '💸 Inflation — prices 3x!'}
+                {stockCrash ? 'Stock Crash — 50% off!' : 'Inflation — prices 3x!'}
               </p>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -576,8 +577,9 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
                 <h3 className="font-black text-pink-300 mb-1 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> World Events</h3>
                 <p className="text-white/70">Random events fire every 50-70 seconds. Watch for the toast banner at the top.</p>
               </div>
-              <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-3 mt-3">
-                <p className="text-yellow-200 text-xs font-bold">💡 Tip: Spending lowers your rank temporarily. Attack the leader to close the gap, defend with shields when you're in front.</p>
+              <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-3 mt-3 flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-yellow-300 mt-0.5 flex-shrink-0" />
+                <p className="text-yellow-200 text-xs font-bold">Tip: Spending lowers your rank temporarily. Attack the leader to close the gap, defend with shields when you're in front.</p>
               </div>
             </div>
           </div>

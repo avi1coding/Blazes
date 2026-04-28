@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SkinsPage, { AvatarPreview, isBlazesPlusCached, cacheTier } from './SkinsPage';
 import CreateKit from '../components/CreateKit';
+import AddQuestionForm from '../components/AddQuestionForm';
 import NotificationDropdown from '../components/NotificationDropdown';
 import SubjectPicker, { GradePicker } from '../components/SubjectPicker';
 import { getGameModeName } from '../utils/gameModeName';
@@ -2084,127 +2085,17 @@ export default function TeacherHome() {
                       </div>
                     )}
 
-                    {/* Add Question Form */}
-                    <div className="mt-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-                      <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                        <Plus className="w-4 h-4 text-blue-600" /> Add New Question
-                      </h4>
-                      <form onSubmit={async (e) => {
-                        e.preventDefault();
-                        if (!newCorrect) return;
-                        const form = e.target;
-                        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-                        try {
-                          const res = await fetch(`${base}/api/kits/${selectedKit.id}/questions`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              question_text: form.question_text.value,
-                              answer_type: 'multiple_choice',
-                              correct_answer: newCorrect,
-                              option_a: form.option_a.value,
-                              option_b: form.option_b.value,
-                              option_c: form.option_c.value || '',
-                              option_d: form.option_d.value || '',
-                              image_url: newImageUrl || '',
-                            })
-                          });
-                          if (res.ok) {
-                            setNewImageUrl('');
-                            setNewImagePreview('');
-                            const kitRes = await fetch(`${base}/api/kits/${selectedKit.id}`);
-                            const kitData = await kitRes.json();
-                            setSelectedKit(kitData);
-                            const kitsRes = await fetch(`${base}/api/kits/teacher/${user.id}`);
-                            setKits(await kitsRes.json());
-                            form.reset();
-                            setNewCorrect('');
-                          }
-                        } catch (_) { }
-                      }} className="space-y-3">
-                        <input name="question_text" required placeholder="Question text" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none" />
-
-                        {/* Image (optional) */}
-                        <div className="bg-white border border-gray-200 rounded-lg p-3">
-                          <p className="text-xs font-bold text-gray-500 mb-2">Image (optional)</p>
-                          {newImagePreview && (
-                            <div className="relative mb-2">
-                              <img src={newImagePreview} alt="Preview" className="w-full max-h-32 object-contain rounded-lg bg-gray-100" />
-                              <button type="button" onClick={() => { setNewImageUrl(''); setNewImagePreview(''); }}
-                                className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-black hover:bg-red-600">×</button>
-                            </div>
-                          )}
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={newImageUrl}
-                              onChange={(e) => { setNewImageUrl(e.target.value); setNewImagePreview(e.target.value); }}
-                              placeholder="Paste image URL..."
-                              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:border-blue-500 focus:outline-none"
-                            />
-                            <label className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-colors ${uploadingImage ? 'bg-gray-300 text-gray-500' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                              {uploadingImage ? '...' : 'Upload'}
-                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                setUploadingImage(true);
-                                try {
-                                  const reader = new FileReader();
-                                  reader.onload = async () => {
-                                    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-                                    const res = await fetch(`${base}/api/upload-image`, {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ imageData: reader.result })
-                                    });
-                                    const data = await res.json();
-                                    if (data.url) {
-                                      setNewImageUrl(data.url);
-                                      setNewImagePreview(data.url);
-                                    }
-                                    setUploadingImage(false);
-                                  };
-                                  reader.readAsDataURL(file);
-                                } catch (_) { setUploadingImage(false); }
-                                e.target.value = '';
-                              }} />
-                            </label>
-                          </div>
-                        </div>
-
-                        <p className="text-xs font-bold text-gray-500">Click an option to mark it as the correct answer</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {['A', 'B', 'C', 'D'].map(letter => (
-                            <div key={letter} className="relative">
-                              <input
-                                name={`option_${letter.toLowerCase()}`}
-                                required={letter === 'A' || letter === 'B'}
-                                placeholder={`Option ${letter}${letter === 'C' || letter === 'D' ? ' (optional)' : ''}`}
-                                className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none border-2 transition-all cursor-text ${
-                                  newCorrect === letter
-                                    ? 'border-green-500 bg-green-50 ring-2 ring-green-200'
-                                    : 'border-gray-300 bg-white hover:border-gray-400'
-                                }`}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setNewCorrect(newCorrect === letter ? '' : letter)}
-                                className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all ${
-                                  newCorrect === letter
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
-                                }`}
-                              >
-                                {newCorrect === letter ? '✓' : letter}
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        {!newCorrect && <p className="text-xs text-red-500 font-semibold">Select the correct answer by clicking an option</p>}
-                        <button type="submit" disabled={!newCorrect} className="w-full py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed">
-                          Add Question
-                        </button>
-                      </form>
+                    {/* Add Question Form (shared component — supports all 7 question types) */}
+                    <div className="mt-6">
+                      <AddQuestionForm
+                        kit={selectedKit}
+                        tier={teacherTier}
+                        ownerEndpoint={`kits/teacher/${user.id}`}
+                        onQuestionAdded={(kitData, kitsList) => {
+                          setSelectedKit(kitData);
+                          if (kitsList) setKits(kitsList);
+                        }}
+                      />
                     </div>
 
                     <div className="mt-4">

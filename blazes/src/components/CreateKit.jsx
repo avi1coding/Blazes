@@ -23,6 +23,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'error' });
+  const [publishing, setPublishing] = useState(false);
   const [labelPins, setLabelPins] = useState([]);
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiNotes, setAiNotes] = useState('');
@@ -105,15 +106,17 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
   };
 
   const handlePublishKit = async () => {
+    if (publishing) return; // prevent double-click double-create
     if (!kitDetails.title || !kitDetails.subject) { setToast({ show: true, message: 'Please fill in kit title and subject', type: 'error' }); return; }
     if (questions.length === 0) { setToast({ show: true, message: 'Please add at least one question', type: 'error' }); return; }
+    setPublishing(true);
     try {
       const kitRes = await fetch(`${base}/api/kits/create`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teacherId: user.id, title: kitDetails.title, subject: kitDetails.subject, gradeLevel: kitDetails.gradeLevel, description: kitDetails.description })
       });
       const kitData = await kitRes.json();
-      if (!kitRes.ok) { setToast({ show: true, message: 'Error: ' + kitData.error, type: 'error' }); return; }
+      if (!kitRes.ok) { setToast({ show: true, message: 'Error: ' + kitData.error, type: 'error' }); setPublishing(false); return; }
       for (const q of questions) {
         await fetch(`${base}/api/kits/${kitData.kitId}/questions`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -127,7 +130,11 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
       setKitDetails({ title: '', subject: '', gradeLevel: '', description: '' });
       setQuestions([]);
       if (onKitCreated) onKitCreated(); else if (onBack) onBack();
-    } catch (_) { setToast({ show: true, message: 'Failed to publish kit.', type: 'error' }); }
+    } catch (_) {
+      setToast({ show: true, message: 'Failed to publish kit.', type: 'error' });
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const letters = ['A', 'B', 'C', 'D'];
@@ -299,9 +306,9 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
           className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-xl font-bold hover:bg-gray-200 transition-colors">
           Back
         </button>
-        <button onClick={handlePublishKit}
-          className="flex-1 bg-gradient-to-r from-red-600 to-orange-500 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all">
-          Publish Kit
+        <button onClick={handlePublishKit} disabled={publishing}
+          className="flex-1 bg-gradient-to-r from-red-600 to-orange-500 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+          {publishing ? 'Publishing...' : 'Publish Kit'}
         </button>
       </div>
 

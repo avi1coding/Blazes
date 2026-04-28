@@ -5,7 +5,7 @@ import AddQuestionForm from '../components/AddQuestionForm';
 import NotificationDropdown from '../components/NotificationDropdown';
 import SubjectPicker, { GradePicker } from '../components/SubjectPicker';
 import { getGameModeName } from '../utils/gameModeName';
-import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown } from 'lucide-react';
+import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown, Layers } from 'lucide-react';
 import Toast from '../components/Toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -257,105 +257,70 @@ export default function TeacherHome() {
     <div className="min-h-screen bg-gray-50">
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
-              <Flame className="w-6 h-6 text-white" strokeWidth={2.5} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2">
+          {/* Left: logo + main tabs */}
+          <div className="flex items-center gap-2 sm:gap-4 md:gap-6 min-w-0">
+            <div className="flex items-center gap-2 mr-2 flex-shrink-0">
+              <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+                <Flame className="w-5 h-5 text-white" strokeWidth={2.5} />
+              </div>
+              <span className="text-xl font-black text-gray-900 hidden sm:inline">Blazes</span>
             </div>
-            <span className="text-2xl font-black text-gray-900">Blazes</span>
+            <div className="flex items-center gap-1 overflow-x-auto">
+              {[
+                { id: 'dashboard', icon: Home, label: 'Home' },
+                { id: 'myKits', icon: BookOpen, label: 'Kits' },
+                { id: 'classrooms', icon: GraduationCap, label: 'Classes' },
+                { id: 'stats', icon: BarChart3, label: 'Stats' },
+                { id: 'collection', icon: Shirt, label: 'Skins' },
+              ].map(t => {
+                const Icon = t.icon;
+                const isActive = t.id === 'collection'
+                  ? activeTab === 'skins'
+                  : t.id === 'myKits'
+                  ? ['myKits', 'createKit'].includes(activeTab)
+                  : activeTab === t.id;
+                return (
+                  <button key={t.id}
+                    onClick={() => setActiveTab(t.id === 'collection' ? 'skins' : t.id)}
+                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${isActive
+                      ? 'bg-red-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" strokeWidth={2.5} />
+                    <span className="hidden sm:inline">{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          {/* Right: utilities + profile */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <NotificationDropdown userId={user?.id} />
             <button onClick={() => navigate('/upgrade')}
-              className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 border ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 border ${
                 teacherTier === 'teacher_pro' ? 'bg-red-50 border-red-200 hover:bg-red-100' : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
               }`}>
               <Crown className={`w-4 h-4 ${teacherTier === 'teacher_pro' ? 'text-red-600' : 'text-yellow-600'}`} />
-              <span className={`text-xs font-bold hidden sm:inline ${teacherTier === 'teacher_pro' ? 'text-red-700' : 'text-yellow-700'}`}>
+              <span className={`text-xs font-bold hidden md:inline ${teacherTier === 'teacher_pro' ? 'text-red-700' : 'text-yellow-700'}`}>
                 {teacherTier === 'teacher_pro' ? 'Teacher Pro' : 'Upgrade'}
               </span>
             </button>
             <button onClick={() => navigate('/settings')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <Settings className="w-5 h-5 text-gray-600" />
             </button>
-            <button onClick={() => navigate('/profile')} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={36} isPlus={teacherTier === 'teacher_pro'} />
-              <div className="text-left hidden sm:block">
-                <div className="text-sm font-bold text-gray-900">{userName}</div>
-                <div className="text-xs text-gray-500">Level {seasonProgress?.level || 1} • Teacher</div>
+            <button onClick={() => navigate('/profile')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={32} isPlus={teacherTier === 'teacher_pro'} />
+              <div className="text-left hidden lg:block">
+                <div className="text-xs font-bold text-gray-900 leading-tight">{userName}</div>
+                <div className="text-[10px] text-gray-500 leading-tight">Lv {seasonProgress?.level || 1} • Teacher</div>
               </div>
             </button>
           </div>
         </div>
       </nav>
-
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center gap-1 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'dashboard'
-                ? 'border-red-600 text-red-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-            >
-              <Home className="w-5 h-5" strokeWidth={2.5} />
-              <span className="hidden sm:inline">Dashboard</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('myKits')}
-              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'myKits'
-                ? 'border-red-600 text-red-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-            >
-              <BookOpen className="w-5 h-5" strokeWidth={2.5} />
-              <span className="hidden sm:inline">My Kits</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('stats')}
-              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'stats'
-                ? 'border-red-600 text-red-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-            >
-              <BarChart3 className="w-5 h-5" strokeWidth={2.5} />
-              <span className="hidden sm:inline">Analytics</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('classrooms')}
-              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'classrooms'
-                ? 'border-red-600 text-red-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-            >
-              <GraduationCap className="w-5 h-5" strokeWidth={2.5} />
-              <span className="hidden sm:inline">Classrooms</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('createKit')}
-              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'createKit'
-                ? 'border-red-600 text-red-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-            >
-              <Plus className="w-5 h-5" strokeWidth={2.5} />
-              <span className="hidden sm:inline">Create Kit</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('skins')}
-              className={`flex items-center gap-2 px-3 sm:px-6 py-4 font-bold transition-colors border-b-4 whitespace-nowrap ${activeTab === 'skins'
-                ? 'border-red-600 text-red-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-            >
-              <Shirt className="w-5 h-5" strokeWidth={2.5} />
-              <span className="hidden sm:inline">Skins</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {activeTab === 'dashboard' && (() => {
@@ -1817,6 +1782,14 @@ export default function TeacherHome() {
                         >
                           <Play className="w-4 h-4" strokeWidth={2.5} />
                           Play
+                        </button>
+                        <button
+                          onClick={() => navigate(`/flashcards/${kit.id}`)}
+                          aria-label="Flashcards"
+                          title="Flashcards"
+                          className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          <Layers className="w-4 h-4" />
                         </button>
                         <button
                           onClick={async () => {

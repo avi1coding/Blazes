@@ -316,7 +316,7 @@ export default function StudentHome() {
                 })}
                 <button
                   onClick={() => setShowJoinModal(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold text-gray-600 hover:bg-gray-100 transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-black text-white bg-red-600 hover:bg-red-700 shadow-sm transition-all"
                 >
                   <Play className="w-4 h-4" strokeWidth={2.5} />
                   <span className="hidden sm:inline">Join Game</span>

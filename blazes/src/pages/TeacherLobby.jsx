@@ -251,11 +251,11 @@ export default function TeacherLobby() {
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
                             <Users className="w-6 h-6" />
-                            Players ({participants.length})
+                            Players ({participants.length + (hostPlays ? 1 : 0)})
                         </h2>
                     </div>
 
-                    {participants.length === 0 ? (
+                    {participants.length === 0 && !hostPlays ? (
                         <div className="text-center py-12">
                             <Zap className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                             <p className="text-gray-500">Waiting for students to join...</p>
@@ -263,6 +263,19 @@ export default function TeacherLobby() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                            {hostPlays && (
+                                <div className="bg-gradient-to-br from-purple-50 to-fuchsia-50 border-2 border-purple-300 rounded-lg p-4 relative">
+                                    <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">HOST</div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <CheckCircle className="w-4 h-4 text-purple-600" />
+                                        <span className="font-bold text-purple-900 text-sm">Playing</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <AvatarPreview skinId="default" initial={user?.name?.[0]?.toUpperCase() || 'H'} size={32} />
+                                        <p className="font-black truncate text-purple-900">{user?.name || 'Host'}</p>
+                                    </div>
+                                </div>
+                            )}
                             {participants.map((participant) => (
                                 <div key={participant.id} className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
                                     <div className="flex items-center justify-between mb-2">

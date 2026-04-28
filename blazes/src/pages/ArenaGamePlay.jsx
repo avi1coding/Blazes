@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Shield, Zap, Flame, ShoppingBag, Sparkles, Clock, Trophy, X, Crown, Target, BarChart3, Backpack } from 'lucide-react';
+import { Shield, Zap, Flame, ShoppingBag, Sparkles, Clock, Trophy, X, Crown, Target, BarChart3, Backpack, HelpCircle } from 'lucide-react';
 import { AvatarPreview, isBlazesPlusCached } from './SkinsPage';
 import { rankParticipants } from '../utils/ranking';
 
@@ -44,10 +44,13 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
   const [participants, setParticipants] = useState([]);
   const [activeEvents, setActiveEvents] = useState([]);
   const [eventToast, setEventToast] = useState(null);
+  const [hitEffect, setHitEffect] = useState(null); // { itemKey, blocked }
+  const seenAttackIdsRef = useRef(new Set());
 
   const [showShop, setShowShop] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [attackTarget, setAttackTarget] = useState(null);
 
   const startTimeRef = useRef(Date.now());
@@ -135,6 +138,19 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
           setTimeout(() => setEventToast(null), 4000);
         }
         setActiveEvents(newEvents);
+
+        // Detect new incoming attacks → trigger hit effect
+        const incoming = stateRes.incomingAttacks || [];
+        for (const atk of incoming) {
+          if (!seenAttackIdsRef.current.has(atk.id)) {
+            seenAttackIdsRef.current.add(atk.id);
+            // Skip the very first poll (we don't want stale attacks to trigger)
+            if (seenAttackIdsRef.current.size > incoming.length) {
+              setHitEffect({ itemKey: atk.itemKey, blocked: atk.blocked });
+              setTimeout(() => setHitEffect(null), 1200);
+            }
+          }
+        }
       }
       if (invRes?.items) setInventory(invRes.items);
       if (Array.isArray(partRes)) setParticipants(partRes);
@@ -225,6 +241,38 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-950 to-fuchsia-950 text-white flex flex-col">
+      {/* Hit effect — flash + shake + label */}
+      {hitEffect && (
+        <>
+          <div className={`fixed inset-0 z-[60] pointer-events-none animate-pulse ${
+            hitEffect.blocked ? 'bg-blue-500/30' :
+            hitEffect.itemKey === 'lightning' ? 'bg-yellow-500/40' :
+            hitEffect.itemKey === 'fireball' ? 'bg-red-600/40' :
+            hitEffect.itemKey === 'ultimate' ? 'bg-orange-500/50' :
+            hitEffect.itemKey === 'mirror' ? 'bg-cyan-500/40' :
+            'bg-red-500/30'
+          }`} />
+          <div className="fixed inset-0 z-[61] pointer-events-none flex items-center justify-center">
+            <div className="bg-black/80 backdrop-blur-sm border-2 border-white/30 rounded-2xl px-6 py-4 text-center animate-bounce">
+              <div className="text-4xl mb-1">
+                {hitEffect.blocked ? '🛡️' :
+                 hitEffect.itemKey === 'lightning' ? '⚡' :
+                 hitEffect.itemKey === 'fireball' ? '🔥' :
+                 hitEffect.itemKey === 'ultimate' ? '💥' :
+                 hitEffect.itemKey === 'mirror' ? '🪞' : '💥'}
+              </div>
+              <div className="text-white font-black text-lg">
+                {hitEffect.blocked ? 'BLOCKED!' :
+                 hitEffect.itemKey === 'lightning' ? 'STRUCK!' :
+                 hitEffect.itemKey === 'fireball' ? 'BURNED!' :
+                 hitEffect.itemKey === 'ultimate' ? 'ULTIMATE HIT!' :
+                 'HIT!'}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Event toast */}
       {eventToast && (
         <div className={`fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 px-4 sm:px-6 py-3 rounded-2xl shadow-2xl border-2 font-black text-center max-w-md mx-4 ${
@@ -265,6 +313,11 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
 
           {/* Right: nav buttons */}
           <div className="flex items-center gap-1.5">
+            <button onClick={() => setShowHelp(true)}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              title="How to play">
+              <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
             <button onClick={() => setShowLeaderboard(true)}
               className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
               title="Leaderboard">
@@ -482,6 +535,50 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help modal */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4" onClick={() => setShowHelp(false)}>
+          <div className="bg-purple-950 border border-white/20 rounded-3xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 sm:p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-black flex items-center gap-2"><HelpCircle className="w-5 h-5" /> How to Play</h2>
+              <button onClick={() => setShowHelp(false)} className="p-2 hover:bg-white/10 rounded-lg"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-4 text-sm">
+              <div>
+                <h3 className="font-black text-yellow-300 mb-1 flex items-center gap-1.5"><Trophy className="w-4 h-4" /> Score = your only currency</h3>
+                <p className="text-white/70">Earn 10 score per correct answer. Spend score to buy items. The leader is whoever has the most score.</p>
+              </div>
+              <div>
+                <h3 className="font-black text-orange-300 mb-1 flex items-center gap-1.5"><Flame className="w-4 h-4" /> Build a combo</h3>
+                <ul className="text-white/70 space-y-0.5 ml-1">
+                  <li>• 3 correct in a row: <span className="text-white">+5 score</span></li>
+                  <li>• 5 in a row: <span className="text-white">free attack</span></li>
+                  <li>• 7 in a row: <span className="text-white">+5 per future answer</span></li>
+                  <li>• 10 in a row: <span className="text-yellow-200">Ultimate Strike (-30 to one player, ignores shields)</span></li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-black text-purple-300 mb-1 flex items-center gap-1.5"><ShoppingBag className="w-4 h-4" /> Shop items</h3>
+                <ul className="text-white/70 space-y-0.5 ml-1">
+                  <li>• <span className="text-white">Lightning</span> (15) — pick a target, deal -25</li>
+                  <li>• <span className="text-white">Fireball</span> (30) — -15 to 3 random players</li>
+                  <li>• <span className="text-white">Shield</span> (15) — block one attack against you</li>
+                  <li>• <span className="text-white">Mirror</span> (30) — reflect next attack back</li>
+                  <li>• <span className="text-white">Double Down</span> (20) — next correct = 20</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-black text-pink-300 mb-1 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> World Events</h3>
+                <p className="text-white/70">Random events fire every 50-70 seconds. Watch for the toast banner at the top.</p>
+              </div>
+              <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-xl p-3 mt-3">
+                <p className="text-yellow-200 text-xs font-bold">💡 Tip: Spending lowers your rank temporarily. Attack the leader to close the gap, defend with shields when you're in front.</p>
+              </div>
             </div>
           </div>
         </div>

@@ -6557,6 +6557,15 @@ app.get('/api/games/:gameCode/arena/state/:userId', async (req, res) => {
       [game.id]
     );
 
+    // Recent incoming attacks (last 10s) — for screen-effect notifications
+    const incomingAttacks = await dbAll(
+      `SELECT id, attacker_id, item_key, score_delta, created_at FROM arena_attacks
+       WHERE game_id = ? AND target_id = ? AND attacker_id != target_id
+         AND datetime(created_at) > datetime('now', '-10 seconds')
+       ORDER BY created_at DESC`,
+      [game.id, userId]
+    );
+
     res.json({
       combo: me?.arena_combo || 0,
       maxCombo: me?.arena_max_combo || 0,
@@ -6569,6 +6578,14 @@ app.get('/api/games/:gameCode/arena/state/:userId', async (req, res) => {
         info: ARENA_EVENTS[e.event_key],
         startedAt: e.started_at,
         endsAt: e.ends_at,
+      })),
+      incomingAttacks: incomingAttacks.map(a => ({
+        id: a.id,
+        attackerId: a.attacker_id,
+        itemKey: a.item_key,
+        scoreDelta: a.score_delta,
+        blocked: a.item_key.startsWith('blocked_'),
+        createdAt: a.created_at,
       })),
     });
   } catch (err) { res.status(500).json({ error: err.message }); }

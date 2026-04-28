@@ -1812,9 +1812,9 @@ export default function TeacherHome() {
                       <div className="flex gap-2 pt-4 border-t border-gray-200">
                         <button
                           onClick={() => navigate('/game/mode-select', { state: { kit, user } })}
-                          className="flex-1 flex items-center justify-center gap-2 bg-blue-100 text-blue-600 py-2 rounded-lg font-bold hover:bg-blue-200 transition-colors text-sm"
+                          className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white py-2.5 rounded-lg font-black hover:bg-red-700 transition-colors text-sm"
                         >
-                          <Play className="w-4 h-4" />
+                          <Play className="w-4 h-4" strokeWidth={2.5} />
                           Play
                         </button>
                         <button
@@ -1828,27 +1828,30 @@ export default function TeacherHome() {
                               console.error('Error fetching kit details:', error);
                             }
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 bg-purple-100 text-purple-600 py-2 rounded-lg font-bold hover:bg-purple-200 transition-colors text-sm"
+                          aria-label="Questions"
+                          title="Questions"
+                          className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
                         >
                           <BookOpen className="w-4 h-4" />
-                          Questions
                         </button>
                         <button
                           onClick={() => {
                             setEditingKit(kit);
                             setShowEditModal(true);
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 bg-green-100 text-green-600 py-2 rounded-lg font-bold hover:bg-green-200 transition-colors text-sm"
+                          aria-label="Edit"
+                          title="Edit"
+                          className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
                         >
                           <Settings className="w-4 h-4" />
-                          Edit
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(kit.id)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-red-100 text-red-600 py-2 rounded-lg font-bold hover:bg-red-200 transition-colors text-sm"
+                          aria-label="Delete"
+                          title="Delete"
+                          className="p-2.5 bg-gray-100 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
-                          Delete
                         </button>
                       </div>
                     </div>

@@ -86,10 +86,16 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
     fetch(`${BASE}/api/kits/${game.kit_id}`).then(r => r.json()).then(data => {
       setQuestions(Array.isArray(data?.questions) ? data.questions : []);
     }).catch(() => {});
-    if (game.started_at) gameStartedRef.current = new Date(game.started_at).getTime();
+    // SQLite stores datetime as 'YYYY-MM-DD HH:MM:SS' (UTC) but JS parses it as
+    // local time. Normalize to ISO-with-Z so it's parsed as UTC correctly.
+    if (game.started_at) {
+      const s = game.started_at;
+      const iso = s.includes('T') ? s : s.replace(' ', 'T') + (s.endsWith('Z') ? '' : 'Z');
+      gameStartedRef.current = new Date(iso).getTime();
+    }
   }, [game]);
 
-  // Game-time countdown
+  // Game-time countdown — tick at 4Hz so the seconds change crisply on the boundary
   useEffect(() => {
     if (!game?.settings) return;
     const settings = typeof game.settings === 'string' ? JSON.parse(game.settings) : game.settings;
@@ -97,12 +103,12 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
     const tick = () => {
       if (!gameStartedRef.current) { setGameTimeLeft(totalSec); return; }
       const elapsed = (Date.now() - gameStartedRef.current) / 1000;
-      const left = Math.max(0, Math.round(totalSec - elapsed));
-      setGameTimeLeft(left);
+      const left = Math.max(0, Math.ceil(totalSec - elapsed));
+      setGameTimeLeft(prev => prev !== left ? left : prev);
       if (left === 0) handleGameOver();
     };
     tick();
-    const id = setInterval(tick, 1000);
+    const id = setInterval(tick, 250);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game]);
@@ -287,54 +293,67 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
       )}
 
       {/* Header / Nav */}
-      <header className="sticky top-0 z-30 bg-purple-900/90 backdrop-blur-md border-b border-white/10 px-3 sm:px-4 py-2.5 flex-shrink-0">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          {/* Left: avatar + name */}
-          <div className="flex items-center gap-2 min-w-0">
-            <AvatarPreview skinId="default" initial={user?.name?.[0] || '?'} size={32} isPlus={isBlazesPlusCached()} />
+      <header className="sticky top-0 z-30 bg-gradient-to-r from-purple-950/95 via-indigo-950/95 to-fuchsia-950/95 backdrop-blur-xl border-b border-white/5 shadow-lg shadow-purple-950/50 px-3 sm:px-4 py-3 flex-shrink-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          {/* Left: avatar + name + rank */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative flex-shrink-0">
+              <AvatarPreview skinId="default" initial={user?.name?.[0] || '?'} size={36} isPlus={isBlazesPlusCached()} />
+              {myRank && myRank <= 3 && (
+                <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-purple-950 ${
+                  myRank === 1 ? 'bg-yellow-400 text-yellow-950' :
+                  myRank === 2 ? 'bg-gray-300 text-gray-800' :
+                  'bg-orange-400 text-orange-950'
+                }`}>{myRank}</div>
+              )}
+            </div>
             <div className="hidden sm:flex flex-col min-w-0">
-              <span className="font-bold text-sm truncate">{user?.name}</span>
-              {myRank && <span className="text-[10px] font-bold text-purple-300">Rank #{myRank}</span>}
+              <span className="font-black text-sm truncate leading-tight">{user?.name}</span>
+              <span className="text-[10px] font-bold text-purple-300/80 leading-tight">{myRank ? `Rank #${myRank}` : 'Arena'}</span>
             </div>
           </div>
 
-          {/* Center: stats */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-400/40 rounded-lg px-3 py-1.5">
-              <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-300" />
-              <span className="font-black text-sm sm:text-base">{fogOfWar ? '???' : score}</span>
+          {/* Center: score + timer */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-gradient-to-br from-yellow-500/25 to-orange-500/15 border border-yellow-400/30 rounded-xl px-3 sm:px-4 py-2 shadow-inner shadow-yellow-500/10">
+              <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300" strokeWidth={2.5} />
+              <span className="font-black text-base sm:text-lg tabular-nums leading-none">{fogOfWar ? '???' : score}</span>
             </div>
             {gameTimeLeft !== null && (
-              <div className={`flex items-center gap-1 border rounded-lg px-2 py-1.5 ${gameTimeLeft < 30 ? 'bg-red-500/20 border-red-400/40 animate-pulse' : 'bg-white/10 border-white/20'}`}>
-                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="font-black text-xs sm:text-sm">{formatTime(gameTimeLeft)}</span>
+              <div className={`flex items-center gap-2 border rounded-xl px-3 sm:px-4 py-2 transition-all ${
+                gameTimeLeft <= 10 ? 'bg-red-500/30 border-red-400/60 animate-pulse shadow-lg shadow-red-500/30' :
+                gameTimeLeft < 60 ? 'bg-orange-500/20 border-orange-400/40' :
+                'bg-white/5 border-white/15'
+              }`}>
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                <span className="font-black text-base sm:text-lg tabular-nums leading-none">{formatTime(gameTimeLeft)}</span>
               </div>
             )}
           </div>
 
           {/* Right: nav buttons */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <button onClick={() => setShowHelp(true)}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2.5 bg-white/5 hover:bg-white/15 rounded-xl transition-colors border border-white/5"
               title="How to play">
               <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button onClick={() => setShowLeaderboard(true)}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2.5 bg-white/5 hover:bg-white/15 rounded-xl transition-colors border border-white/5"
               title="Leaderboard">
               <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button onClick={() => setShowInventory(true)}
-              className="relative p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              className="relative p-2.5 bg-white/5 hover:bg-white/15 rounded-xl transition-colors border border-white/5"
               title="Inventory">
               <Backpack className="w-4 h-4 sm:w-5 sm:h-5" />
               {inventoryCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">{inventoryCount}</span>
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-purple-950">{inventoryCount}</span>
               )}
             </button>
             <button onClick={() => setShowShop(true)} disabled={isShopClosed}
-              className={`p-2 rounded-lg transition-all ${
-                isShopClosed ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white'
+              className={`p-2.5 rounded-xl transition-all border ${
+                isShopClosed ? 'bg-gray-800/50 text-gray-500 cursor-not-allowed border-white/5' : 'bg-gradient-to-br from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white border-purple-400/40 shadow-lg shadow-purple-500/30'
               }`} title="Shop">
               <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -369,14 +388,16 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
           </div>
         ) : (
           <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto">
-            {/* Question number */}
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <span className="text-sm font-bold text-purple-300">Question {questionTick + 1}</span>
+            {/* Question number badge */}
+            <div className="flex items-center justify-center mb-4 sm:mb-6">
+              <span className="inline-flex items-center gap-1.5 bg-purple-500/20 border border-purple-400/30 text-purple-200 text-xs font-black uppercase tracking-wider rounded-full px-3 py-1">
+                Question {questionTick + 1}
+              </span>
             </div>
 
             {/* Question card — fills the space */}
-            <div className="flex-1 bg-white/[0.07] backdrop-blur-sm border border-white/10 rounded-3xl p-5 sm:p-8 md:p-10 flex flex-col">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-6 sm:mb-8 leading-tight whitespace-pre-line">{q.question_text}</h2>
+            <div className="flex-1 bg-gradient-to-br from-white/[0.08] to-white/[0.03] backdrop-blur-sm border border-white/10 rounded-3xl p-6 sm:p-8 md:p-10 flex flex-col shadow-2xl shadow-purple-950/30">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-6 sm:mb-8 leading-tight whitespace-pre-line bg-gradient-to-br from-white to-purple-100 bg-clip-text text-transparent">{q.question_text}</h2>
 
               {q.image_url && (
                 <div className="flex justify-center mb-6 sm:mb-8">

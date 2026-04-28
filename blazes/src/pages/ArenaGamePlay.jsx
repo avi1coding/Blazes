@@ -45,7 +45,12 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
   const [activeEvents, setActiveEvents] = useState([]);
   const [eventToast, setEventToast] = useState(null);
   const [hitEffect, setHitEffect] = useState(null); // { itemKey, blocked }
+  const [scorePop, setScorePop] = useState(null); // { delta, isCorrect }
+  const [comboBreakFlash, setComboBreakFlash] = useState(null); // { lostStreak }
+  const [rankChange, setRankChange] = useState(null); // { type: 'gained' | 'lost', from, to }
   const seenAttackIdsRef = useRef(new Set());
+  const prevRankRef = useRef(null);
+  const prevScoreRef = useRef(null);
 
   const [showShop, setShowShop] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -178,7 +183,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
   }, []);
 
 
-  const submitAnswer = async (answer) => {
+  const submitAnswer = (answer) => {
     if (answered) return;
     setAnswered(true);
     const q = questions[currentQ];
@@ -188,18 +193,36 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
 
     setFeedback({ isCorrect, correct: correctAnswer });
 
-    try {
-      const res = await fetch(`${BASE}/api/games/${gameCode}/answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, questionId: q.id, selectedAnswer: answer || '', isCorrect, timeTaken }),
-      });
-      const data = await res.json();
-      if (data.arenaInfo) setCombo(data.arenaInfo.combo || 0);
-    } catch (_) {}
+    // Combo break screen flash for psychological sting
+    if (!isCorrect && combo >= 3) {
+      setComboBreakFlash({ lostStreak: combo });
+      setTimeout(() => setComboBreakFlash(null), 1500);
+    }
 
+    // Floating score popup (instant, not waiting for server)
+    if (isCorrect) {
+      setScorePop({ delta: '+10', isCorrect: true, ts: Date.now() });
+      setTimeout(() => setScorePop(null), 1100);
+    } else {
+      setScorePop({ delta: 'MISS', isCorrect: false, ts: Date.now() });
+      setTimeout(() => setScorePop(null), 1100);
+    }
+
+    // Schedule advance IMMEDIATELY — don't wait for the server roundtrip
     advanceTimeoutRef.current = setTimeout(advanceQuestion, 800);
-    fetchState();
+
+    // Fire the answer submission in the background
+    fetch(`${BASE}/api/games/${gameCode}/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, questionId: q.id, selectedAnswer: answer || '', isCorrect, timeTaken }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.arenaInfo) setCombo(data.arenaInfo.combo || 0);
+        fetchState();
+      })
+      .catch(() => {});
   };
 
   const handleBuy = async (itemKey) => {
@@ -245,8 +268,43 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
   const myRank = sortedPlayers.find(p => p.user_id === user?.id)?.rank;
   const inventoryCount = inventory.reduce((sum, i) => sum + i.qty, 0);
 
+  // Detect rank changes (psychology: loss aversion + smug victory)
+  useEffect(() => {
+    if (!myRank || !user?.id) return;
+    if (prevRankRef.current !== null && prevRankRef.current !== myRank && participants.length > 1) {
+      if (myRank < prevRankRef.current) {
+        setRankChange({ type: 'gained', from: prevRankRef.current, to: myRank });
+      } else {
+        setRankChange({ type: 'lost', from: prevRankRef.current, to: myRank });
+      }
+      setTimeout(() => setRankChange(null), 2500);
+    }
+    prevRankRef.current = myRank;
+  }, [myRank, participants.length, user?.id]);
+
+  // Detect score-decreasing changes (got attacked by something other than direct hit)
+  useEffect(() => {
+    if (prevScoreRef.current !== null && score < prevScoreRef.current) {
+      const lost = prevScoreRef.current - score;
+      if (lost >= 5) {
+        // Pop a "-X" briefly (only if not already showing a hit overlay)
+        if (!hitEffect) {
+          setScorePop({ delta: `-${lost}`, isCorrect: false, ts: Date.now() });
+          setTimeout(() => setScorePop(null), 1100);
+        }
+      }
+    }
+    prevScoreRef.current = score;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [score]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-950 to-fuchsia-950 text-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-950 to-fuchsia-950 text-white flex flex-col relative">
+      {/* Critical-time red vignette */}
+      {gameTimeLeft !== null && gameTimeLeft <= 10 && gameTimeLeft > 0 && (
+        <div className="fixed inset-0 pointer-events-none z-[20] animate-pulse"
+          style={{ boxShadow: 'inset 0 0 200px rgba(239, 68, 68, 0.6), inset 0 0 80px rgba(239, 68, 68, 0.3)' }} />
+      )}
       {/* Hit effect — flash + label */}
       {hitEffect && (() => {
         const HitIcon = hitEffect.blocked ? Shield :
@@ -279,6 +337,46 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
           </>
         );
       })()}
+
+      {/* Floating score pop — appears near the score badge */}
+      {scorePop && (
+        <div key={scorePop.ts} className="fixed top-16 left-1/2 -translate-x-1/2 z-[55] pointer-events-none">
+          <div className={`text-3xl sm:text-4xl font-black animate-bounce ${
+            scorePop.isCorrect ? 'text-green-300 drop-shadow-[0_0_12px_rgba(34,197,94,0.8)]' :
+            scorePop.delta === 'MISS' ? 'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)]' :
+            'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)]'
+          }`}>
+            {scorePop.delta}
+          </div>
+        </div>
+      )}
+
+      {/* Combo break — angry red flash */}
+      {comboBreakFlash && (
+        <>
+          <div className="fixed inset-0 z-[60] pointer-events-none bg-red-600/40 animate-pulse" />
+          <div className="fixed inset-0 z-[61] pointer-events-none flex items-center justify-center">
+            <div className="bg-red-600 border-4 border-red-300 rounded-2xl px-8 py-5 text-center animate-bounce shadow-2xl shadow-red-900">
+              <Flame className="w-12 h-12 text-yellow-300 mx-auto mb-1" strokeWidth={2.5} />
+              <div className="text-white font-black text-2xl">COMBO BROKEN</div>
+              <div className="text-red-100 font-bold text-sm mt-1">Lost {comboBreakFlash.lostStreak} streak</div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Rank change banner */}
+      {rankChange && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[58] pointer-events-none px-5 py-2.5 rounded-2xl shadow-2xl border-2 font-black animate-bounce ${
+          rankChange.type === 'gained'
+            ? 'bg-gradient-to-r from-green-600 to-emerald-600 border-green-300 text-white'
+            : 'bg-gradient-to-r from-red-600 to-rose-600 border-red-300 text-white'
+        }`}>
+          {rankChange.type === 'gained'
+            ? `MOVED UP TO #${rankChange.to}`
+            : `DROPPED TO #${rankChange.to}`}
+        </div>
+      )}
 
       {/* Event toast */}
       {eventToast && (

@@ -1,20 +1,7 @@
 import { useState } from 'react';
-import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap, Crown, Dice5, Rocket, Sparkles, ImageIcon } from 'lucide-react';
+import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap, Crown, Dice5, Rocket } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-// Renders a screenshot, with a graceful fallback if the file isn't there yet
-function ScreenshotImage({ src, alt, fallbackIcon: Fallback }) {
-  const [errored, setErrored] = useState(false);
-  if (errored) {
-    return (
-      <div className="text-white/50 flex flex-col items-center gap-2">
-        {Fallback && <Fallback className="w-16 h-16 opacity-40" strokeWidth={1.5} />}
-        <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">Preview coming soon</span>
-      </div>
-    );
-  }
-  return <img src={src} alt={alt} onError={() => setErrored(true)} className="absolute inset-0 w-full h-full object-cover" />;
-}
+import GameplayMockup from './GameplayMockup';
 
 export default function GameModeSelect({ kit, user, onBack }) {
   const navigate = useNavigate();
@@ -248,17 +235,17 @@ export default function GameModeSelect({ kit, user, onBack }) {
         <div className="md:col-span-2 lg:col-span-3">
           {selected ? (
             <div className="bg-white rounded-2xl border-2 border-gray-100 overflow-hidden h-full flex flex-col">
-              {/* Screenshot preview at top */}
-              <div className={`relative ${selected.solid} h-48 sm:h-56 flex items-center justify-center overflow-hidden`}>
-                <ScreenshotImage src={selected.screenshot} alt={`${selected.name} gameplay`} fallbackIcon={selected.icon} />
+              {/* Gameplay mockup preview at top */}
+              <div className="relative h-48 sm:h-56 overflow-hidden bg-gray-100">
+                <GameplayMockup mode={selected.id} />
                 {/* Mode title overlay */}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-4">
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
                   <div className="flex items-end justify-between gap-3">
                     <div className="min-w-0">
-                      <h2 className="text-2xl sm:text-3xl font-black text-white">{selected.name}</h2>
+                      <h2 className="text-2xl sm:text-3xl font-black text-white drop-shadow-lg">{selected.name}</h2>
                       <p className="text-white/90 text-sm font-semibold mt-0.5">{selected.tagline}</p>
                     </div>
-                    <div className={`w-12 h-12 ${selected.solid} ring-4 ring-white/20 rounded-xl flex items-center justify-center flex-shrink-0`}>
+                    <div className={`w-12 h-12 ${selected.solid} ring-4 ring-white/30 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}>
                       <selected.icon className="w-6 h-6 text-white" strokeWidth={2.5} />
                     </div>
                   </div>

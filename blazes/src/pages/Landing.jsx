@@ -1,6 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Flame, Play, Hash, Lightbulb, Trophy, Users, Zap, Target, FileText, BarChart3, Settings, Printer } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+
+const GameplayMockup = lazy(() => import('../components/GameplayMockup'));
+
+function LazyMockup({ mode }) {
+  return (
+    <Suspense fallback={<div className="absolute inset-0 bg-gray-200 animate-pulse" />}>
+      <GameplayMockup mode={mode} />
+    </Suspense>
+  );
+}
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -134,6 +144,35 @@ export default function Landing() {
               <h3 className="text-2xl font-black text-gray-900 mb-3">Win & Learn</h3>
               <p className="text-gray-600">Climb the leaderboard, earn rewards, and master your subjects.</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* See It In Action — gameplay mockups */}
+      <section className="py-16 sm:py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10 sm:mb-14">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-3">See It In Action</h2>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600">5 unique game modes. Each one feels different.</p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            {[
+              { id: 'classic_timed', name: 'Classic Quiz', desc: 'The standard.' },
+              { id: 'elemental_clash', name: 'Elemental Clash', desc: 'Team battles.' },
+              { id: 'elemental_wager', name: 'Risk & Reward', desc: 'Bet your knowledge.' },
+              { id: 'arena', name: 'Arena', desc: 'Strategic warfare.' },
+              { id: 'race', name: 'Race', desc: 'First to finish.' },
+            ].map(m => (
+              <div key={m.id} className="bg-gray-100 rounded-xl overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
+                <div className="aspect-[4/3] relative">
+                  <LazyMockup mode={m.id} />
+                </div>
+                <div className="p-2.5 sm:p-3">
+                  <div className="font-black text-xs sm:text-sm text-gray-900 truncate">{m.name}</div>
+                  <div className="text-[10px] sm:text-xs text-gray-500 truncate">{m.desc}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

@@ -120,7 +120,7 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
     {
       id: 'race',
       name: 'Race',
-      tagline: 'First to the finish wins.',
+      tagline: 'Run laps. Most laps wins.',
       icon: Rocket,
       gradient: 'from-cyan-500 to-blue-600',
       solid: 'bg-cyan-600',
@@ -128,15 +128,15 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
       accent: 'cyan',
       screenshot: '/screenshots/race.png',
       tags: ['solo', 'multi'],
-      description: 'Sprint around the lap track. Each correct answer moves you forward. First to reach the finish line wins. Watch your competitors live as everyone races at their own pace.',
+      description: 'Run laps around the track. Each correct answer moves you forward. When time runs out, the player with the most total progress wins. See exactly where everyone is in real time.',
       difficulty: 'Easy',
       players: '1-50',
       duration: '5-15 min',
       features: [
-        'Race around a live lap track',
-        'See exactly where everyone is in real time',
-        'No skips — wrong answers stay in place',
-        'First to the finish line wins'
+        'Live lap track shows everyone in real time',
+        'No skips — wrong answers cost you progress',
+        'Multi-lap racing — get lapped or lap them',
+        'Game ends when time runs out or host stops it'
       ],
       available: true
     }

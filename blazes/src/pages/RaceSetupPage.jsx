@@ -82,19 +82,19 @@ export default function RaceSetupPage() {
                     min={1} max={60}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500" />
                 </div>
-                <p className="mt-1 text-xs text-gray-400">If nobody finishes, longest distance wins</p>
+                <p className="mt-1 text-xs text-gray-400">Game ends when time runs out or host stops it</p>
               </div>
 
               <div>
-                <label htmlFor="distance" className="block text-sm font-medium text-gray-700 mb-1">Distance (correct answers to win)</label>
+                <label htmlFor="distance" className="block text-sm font-medium text-gray-700 mb-1">Lap Length (correct answers per lap)</label>
                 <div className="relative">
                   <Flag className="w-5 h-5 text-cyan-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input type="number" id="distance" value={distance}
-                    onChange={(e) => setDistance(Math.min(100, Math.max(5, Number(e.target.value) || 5)))}
-                    min={5} max={100}
+                    onChange={(e) => setDistance(Math.min(50, Math.max(5, Number(e.target.value) || 5)))}
+                    min={5} max={50}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500" />
                 </div>
-                <p className="mt-1 text-xs text-gray-400">First to reach this many correct answers wins</p>
+                <p className="mt-1 text-xs text-gray-400">Players run laps until time runs out — most laps wins</p>
               </div>
             </div>
 

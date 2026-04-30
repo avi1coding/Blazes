@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Clock, Flag, Trophy, Users, Crown, Rocket } from 'lucide-react';
+import { Clock, Flag, Trophy, Users, Rocket } from 'lucide-react';
 import { AvatarPreview } from './SkinsPage';
 import { rankParticipants } from '../utils/ranking';
 
@@ -40,7 +40,8 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
 
   const [myCorrect, setMyCorrect] = useState(0);
   const [participants, setParticipants] = useState([]);
-  const [winner, setWinner] = useState(null);
+  const [lapToast, setLapToast] = useState(null);
+  const prevLapsRef = useRef(0);
 
   const startTimeRef = useRef(Date.now());
   const gameStartedRef = useRef(null);
@@ -128,30 +129,26 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
       const data = await res.json();
       const parts = data?.participants || [];
       setParticipants(parts);
-      // Find me
       const me = parts.find(p => p.user_id === user?.id);
       if (me) setMyCorrect(me.correct_answers || 0);
-      // Find winner (anyone who hit the distance)
-      const finished = parts.filter(p => (p.correct_answers || 0) >= distance);
-      if (finished.length > 0 && !winner) {
-        // The one with the most correct, then fastest avg
-        const topFinisher = [...finished].sort((a, b) => {
-          if (b.correct_answers !== a.correct_answers) return b.correct_answers - a.correct_answers;
-          return (a.avg_time || 999) - (b.avg_time || 999);
-        })[0];
-        setWinner(topFinisher);
-        // Auto-end after 3 seconds
-        setTimeout(() => handleGameOver(), 3000);
-      }
     } catch (_) {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameCode, user?.id, distance, winner]);
+  }, [gameCode, user?.id]);
 
   useEffect(() => {
     fetchParticipants();
     const id = setInterval(fetchParticipants, 1500);
     return () => clearInterval(id);
   }, [fetchParticipants]);
+
+  // Detect lap completion locally (for the toast)
+  useEffect(() => {
+    const newLaps = Math.floor(myCorrect / distance);
+    if (newLaps > prevLapsRef.current && prevLapsRef.current >= 0) {
+      setLapToast({ lap: newLaps, ts: Date.now() });
+      setTimeout(() => setLapToast(null), 2000);
+    }
+    prevLapsRef.current = newLaps;
+  }, [myCorrect, distance]);
 
   const advanceQuestion = useCallback(() => {
     if (advanceTimeoutRef.current) {
@@ -190,11 +187,10 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
 
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-  // Position a player on the track
+  // Position a player on the track. progress is 0-1 within the current lap.
   const getPositionAt = (progress) => {
     if (!trackPathRef.current || !pathLength) return { x: 100, y: 60 };
-    // Start at the bottom-left and go around. Adjust offset so 0% is at the start line.
-    const offset = pathLength * 0.5; // visual: start line at the right side of the bottom
+    const offset = pathLength * 0.5; // start line at the bottom of the oval
     const adjusted = (offset + (progress * pathLength)) % pathLength;
     return trackPathRef.current.getPointAtLength(adjusted);
   };
@@ -204,18 +200,11 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-100 flex flex-col">
-      {/* Winner overlay */}
-      {winner && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl">
-            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
-              <Crown className="w-10 h-10 text-white" strokeWidth={2.5} />
-            </div>
-            <h2 className="text-3xl font-black text-gray-900 mb-2">
-              {winner.user_id === user?.id ? 'You Won!' : `${winner.player_name || 'Winner'} Won!`}
-            </h2>
-            <p className="text-gray-600">First to {distance} correct answers</p>
-          </div>
+      {/* Lap completion toast */}
+      {lapToast && (
+        <div key={lapToast.ts} className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-black px-6 py-3 rounded-2xl shadow-2xl border-2 border-yellow-300 animate-bounce flex items-center gap-2">
+          <Flag className="w-5 h-5" strokeWidth={2.5} />
+          <span className="text-lg">LAP {lapToast.lap} COMPLETE!</span>
         </div>
       )}
 
@@ -235,7 +224,9 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
           <div className="flex items-center gap-2">
             <div className="bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2 flex items-center gap-2">
               <Flag className="w-4 h-4 text-cyan-600" />
-              <span className="font-black text-cyan-900 tabular-nums">{myCorrect} / {distance}</span>
+              <span className="font-black text-cyan-900 tabular-nums">
+                Lap {Math.floor(myCorrect / distance)} · {myCorrect % distance}/{distance}
+              </span>
             </div>
             {gameTimeLeft !== null && (
               <div className={`flex items-center gap-2 border rounded-lg px-3 py-2 ${
@@ -300,8 +291,10 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
               })()}
               {/* Players */}
               {pathLength > 0 && participants.map((p, i) => {
-                const progress = Math.min(1, (p.correct_answers || 0) / distance);
-                const pos = getPositionAt(progress);
+                const correct = p.correct_answers || 0;
+                const lap = Math.floor(correct / distance);
+                const progressInLap = (correct % distance) / distance; // 0-1 within current lap
+                const pos = getPositionAt(progressInLap);
                 const isMe = p.user_id === user?.id;
                 const color = isMe ? '#06b6d4' : PLAYER_COLORS[(i + 1) % PLAYER_COLORS.length];
                 return (
@@ -310,8 +303,17 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
                     <text x={pos.x} y={pos.y + 4} textAnchor="middle" fontSize="10" fontWeight="900" fill="white">
                       {(p.player_name || '?')[0].toUpperCase()}
                     </text>
+                    {/* Lap badge */}
+                    {lap > 0 && (
+                      <g>
+                        <circle cx={pos.x + 11} cy={pos.y - 11} r="7" fill="#fbbf24" stroke="white" strokeWidth="1.5" />
+                        <text x={pos.x + 11} y={pos.y - 8} textAnchor="middle" fontSize="9" fontWeight="900" fill="#78350f">
+                          {lap}
+                        </text>
+                      </g>
+                    )}
                     {isMe && (
-                      <text x={pos.x} y={pos.y - 18} textAnchor="middle" fontSize="11" fontWeight="900" fill="#0e7490">YOU</text>
+                      <text x={pos.x} y={pos.y - 22} textAnchor="middle" fontSize="11" fontWeight="900" fill="#0e7490">YOU</text>
                     )}
                   </g>
                 );
@@ -323,6 +325,8 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {sortedPlayers.slice(0, 8).map((p, i) => {
               const isMe = p.user_id === user?.id;
+              const correct = p.correct_answers || 0;
+              const lap = Math.floor(correct / distance);
               return (
                 <div key={p.user_id} className={`flex items-center gap-2 p-1.5 rounded-lg text-xs ${
                   isMe ? 'bg-cyan-50 border border-cyan-200' : 'bg-gray-50'
@@ -336,7 +340,7 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
                   <span className={`flex-1 truncate font-bold ${isMe ? 'text-cyan-900' : 'text-gray-900'}`}>
                     {p.player_name || 'Player'}{isMe && ' (You)'}
                   </span>
-                  <span className="text-[10px] font-black text-gray-500 tabular-nums">{p.correct_answers || 0}</span>
+                  <span className="text-[10px] font-black text-gray-500 tabular-nums">L{lap}·{correct % distance}</span>
                 </div>
               );
             })}

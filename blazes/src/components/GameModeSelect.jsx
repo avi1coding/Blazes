@@ -1,12 +1,27 @@
-import { useState } from 'react';
-import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap, Crown, Dice5, Rocket } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap, Crown, Dice5, Rocket, X, BookOpen, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GameplayMockup from './GameplayMockup';
 
-export default function GameModeSelect({ kit, user, onBack }) {
+const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+
+export default function GameModeSelect({ kit: initialKit, user, onBack }) {
   const navigate = useNavigate();
+  const [kit, setKit] = useState(initialKit);
   const [selectedMode, setSelectedMode] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [showKitPicker, setShowKitPicker] = useState(false);
+  const [availableKits, setAvailableKits] = useState([]);
+
+  // Load other kits when the picker opens
+  useEffect(() => {
+    if (!showKitPicker || !user?.id) return;
+    const endpoint = user.role === 'teacher' ? 'teacher' : 'student';
+    fetch(`${BASE}/api/kits/${endpoint}/${user.id}`)
+      .then(r => r.json())
+      .then(d => setAvailableKits(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, [showKitPicker, user]);
 
   const gameModes = [
     {
@@ -155,7 +170,10 @@ export default function GameModeSelect({ kit, user, onBack }) {
             <p className="text-gray-400 text-sm">{kit.question_count} questions &middot; {kit.subject} &middot; {kit.grade_level}</p>
           </div>
         </div>
-        <button onClick={onBack} className="text-gray-400 text-sm font-bold hover:text-white transition-colors">Change Kit</button>
+        <button onClick={() => setShowKitPicker(true)}
+          className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-white/20">
+          Change Kit
+        </button>
       </div>
 
       {/* Split layout */}
@@ -309,6 +327,66 @@ export default function GameModeSelect({ kit, user, onBack }) {
       <button onClick={onBack} className="text-gray-500 font-bold hover:text-gray-700 transition-colors text-sm flex items-center gap-1">
         ← Back to Kit Selection
       </button>
+
+      {/* Kit picker modal */}
+      {showKitPicker && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowKitPicker(false)}>
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-red-600" /> Choose a Kit
+              </h2>
+              <button onClick={() => setShowKitPicker(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              {availableKits.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="font-semibold">No other kits available</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availableKits.map(k => {
+                    const isCurrent = k.id === kit.id;
+                    return (
+                      <button key={k.id}
+                        onClick={() => {
+                          if (!isCurrent) {
+                            setKit(k);
+                            setSelectedMode(null);
+                          }
+                          setShowKitPicker(false);
+                        }}
+                        className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                          isCurrent ? 'bg-red-50 border-red-300' : 'bg-white border-gray-100 hover:border-red-300 hover:bg-red-50'
+                        }`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <BookOpen className="w-5 h-5 text-white" strokeWidth={2.5} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-black text-sm text-gray-900 truncate">{k.title}</div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {k.question_count || 0} questions · {k.subject}{k.grade_level ? ` · ${k.grade_level}` : ''}
+                            </div>
+                          </div>
+                          {isCurrent && (
+                            <span className="text-[10px] font-black bg-red-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1 flex-shrink-0">
+                              <Check className="w-3 h-3" /> CURRENT
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

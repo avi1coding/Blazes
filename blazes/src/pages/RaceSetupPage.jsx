@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Clock, Play, Rocket, Flag } from 'lucide-react';
+import { Clock, Play, Rocket } from 'lucide-react';
 import HostPlaysToggle from '../components/HostPlaysToggle';
 
 export default function RaceSetupPage() {
@@ -10,8 +10,9 @@ export default function RaceSetupPage() {
 
   const [gameName, setGameName] = useState(`${kit?.title || 'Race'} Sprint`);
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(10);
-  const [distance, setDistance] = useState(20);
   const [hostPlays, setHostPlays] = useState(false);
+  // Fixed lap length — every Race game uses 10 correct answers per lap
+  const LAP_LENGTH = 10;
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -32,7 +33,7 @@ export default function RaceSetupPage() {
     setLoading(true);
     setError('');
     const gameCode = generateGameCode();
-    const settings = { gameName, timeLimit: timeLimitMinutes * 60, distance, hostName: user.name, hostPlays };
+    const settings = { gameName, timeLimit: timeLimitMinutes * 60, distance: LAP_LENGTH, hostName: user.name, hostPlays };
     try {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const res = await fetch(`${base}/api/games/create`, {
@@ -72,30 +73,16 @@ export default function RaceSetupPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="timeLimit" className="block text-sm font-medium text-gray-700 mb-1">Time Limit (minutes)</label>
-                <div className="relative">
-                  <Clock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input type="number" id="timeLimit" value={timeLimitMinutes}
-                    onChange={(e) => setTimeLimitMinutes(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
-                    min={1} max={60}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500" />
-                </div>
-                <p className="mt-1 text-xs text-gray-400">Game ends when time runs out or host stops it</p>
+            <div>
+              <label htmlFor="timeLimit" className="block text-sm font-medium text-gray-700 mb-1">Time Limit (minutes)</label>
+              <div className="relative">
+                <Clock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input type="number" id="timeLimit" value={timeLimitMinutes}
+                  onChange={(e) => setTimeLimitMinutes(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
+                  min={1} max={60}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500" />
               </div>
-
-              <div>
-                <label htmlFor="distance" className="block text-sm font-medium text-gray-700 mb-1">Lap Length (correct answers per lap)</label>
-                <div className="relative">
-                  <Flag className="w-5 h-5 text-cyan-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input type="number" id="distance" value={distance}
-                    onChange={(e) => setDistance(Math.min(50, Math.max(5, Number(e.target.value) || 5)))}
-                    min={5} max={50}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500" />
-                </div>
-                <p className="mt-1 text-xs text-gray-400">Players run laps until time runs out — most laps wins</p>
-              </div>
+              <p className="mt-1 text-xs text-gray-400">Each lap is 10 correct answers. Most laps wins when time ends.</p>
             </div>
 
             <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />

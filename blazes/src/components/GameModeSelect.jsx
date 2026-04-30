@@ -127,18 +127,18 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
       glow: 'shadow-cyan-500/30',
       accent: 'cyan',
       screenshot: '/screenshots/race.png',
-      tags: ['multi'],
-      description: 'Sprint to the finish. First player to answer all questions correctly wins. Speed and accuracy both matter.',
+      tags: ['solo', 'multi'],
+      description: 'Sprint around the lap track. Each correct answer moves you forward. First to reach the finish line wins. Watch your competitors live as everyone races at their own pace.',
       difficulty: 'Easy',
-      players: '2-50',
+      players: '1-50',
       duration: '5-15 min',
       features: [
-        'First to finish wins',
-        'Accuracy matters',
-        'Fast-paced action',
-        'Competitive racing'
+        'Race around a live lap track',
+        'See exactly where everyone is in real time',
+        'No skips — wrong answers stay in place',
+        'First to the finish line wins'
       ],
-      available: false
+      available: true
     }
   ];
 
@@ -147,6 +147,7 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
     else if (selectedMode === 'elemental_clash') navigate('/game/elemental-clash-setup', { state: { kit, user } });
     else if (selectedMode === 'elemental_wager') navigate('/game/elemental-wager-setup', { state: { kit, user } });
     else if (selectedMode === 'arena') navigate('/game/arena-setup', { state: { kit, user } });
+    else if (selectedMode === 'race') navigate('/game/race-setup', { state: { kit, user } });
   };
 
   const selected = gameModes.find(m => m.id === selectedMode);

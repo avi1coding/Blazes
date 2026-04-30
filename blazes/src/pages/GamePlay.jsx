@@ -5,6 +5,7 @@ import { Clock, Trophy, Check, X, Heart, Skull, Lock, Users, Flame } from 'lucid
 import ElementalClashGamePlay from './ElementalClashGamePlay';
 import ElementalWagerGamePlay from './ElementalWagerGamePlay';
 import ArenaGamePlay from './ArenaGamePlay';
+import RaceGamePlay from './RaceGamePlay';
 
 function getFullImageUrl(url) {
   if (!url) return null;
@@ -1089,6 +1090,9 @@ export default function GamePlay() {
   }
   if (game.game_mode === 'arena') {
     return <ArenaGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
+  }
+  if (game.game_mode === 'race') {
+    return <RaceGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
   }
   return <ClassicGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
 }

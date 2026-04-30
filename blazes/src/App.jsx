@@ -26,6 +26,7 @@ const TeacherGameResults = lazy(() => import("./pages/TeacherGameResults"));
 const ElementalClashSetupPage = lazy(() => import("./pages/ElementalClashSetupPage"));
 const ElementalWagerSetupPage = lazy(() => import("./pages/ElementalWagerSetupPage"));
 const ArenaSetupPage = lazy(() => import("./pages/ArenaSetupPage"));
+const RaceSetupPage = lazy(() => import("./pages/RaceSetupPage"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Pricing = lazy(() => import("./pages/Pricing"));
@@ -103,6 +104,7 @@ function App() {
           <Route path="/game/elemental-clash-setup" element={<ElementalClashSetupPage />} />
           <Route path="/game/elemental-wager-setup" element={<ElementalWagerSetupPage />} />
           <Route path="/game/arena-setup" element={<ArenaSetupPage />} />
+          <Route path="/game/race-setup" element={<RaceSetupPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

@@ -82,7 +82,7 @@ export default function RaceSetupPage() {
                   min={1} max={60}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500" />
               </div>
-              <p className="mt-1 text-xs text-gray-400">Each lap is 10 correct answers. Most laps wins when time ends.</p>
+              <p className="mt-1 text-xs text-gray-400">Each lap is 10 correct answers. Whoever goes furthest when time ends wins.</p>
             </div>
 
             <HostPlaysToggle value={hostPlays} onChange={setHostPlays} />

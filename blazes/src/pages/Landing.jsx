@@ -161,7 +161,7 @@ export default function Landing() {
               { id: 'elemental_clash', name: 'Elemental Clash', desc: 'Team battles.' },
               { id: 'elemental_wager', name: 'Risk & Reward', desc: 'Bet your knowledge.' },
               { id: 'arena', name: 'Arena', desc: 'Strategic warfare.' },
-              { id: 'race', name: 'Race', desc: 'First to finish.' },
+              { id: 'race', name: 'Race', desc: 'Go furthest to win.' },
             ].map(m => (
               <div key={m.id} className="bg-gray-100 rounded-xl overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
                 <div className="aspect-[4/3] relative">

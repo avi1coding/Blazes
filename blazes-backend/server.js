@@ -2453,7 +2453,29 @@ app.put('/api/games/:gameCode/end', (req, res) => {
           `SELECT user_id, score FROM game_participants WHERE game_id = ? ORDER BY score DESC`,
           [game.id],
           async (err, participants) => {
-            if (err || !participants || participants.length < 10) return;
+            if (err || !participants) return;
+
+            // Host BB: any host (teacher or student) gets BB for running a game ≥ 5 min with at least one non-host player
+            try {
+              const hostId = game.host_id;
+              if (hostId) {
+                const alreadyAwarded = await dbGet(
+                  `SELECT id FROM blazes_bucks_log WHERE user_id = ? AND game_code = ? AND reason = 'host_game' LIMIT 1`,
+                  [hostId, gameCode]
+                );
+                if (!alreadyAwarded) {
+                  const nonHostCount = participants.filter(p => p.user_id !== hostId).length;
+                  if (nonHostCount >= 1) {
+                    // 15 BB base + 3 per non-host player, capped at 60 BB per game
+                    const hostBB = Math.min(60, 15 + nonHostCount * 3);
+                    await awardBBWithCap(hostId, hostBB, 'host_game', gameCode);
+                    console.log(`[BB] Host bonus: +${hostBB} BB to user ${hostId} (${nonHostCount} players, game ${gameCode})`);
+                  }
+                }
+              }
+            } catch (hbErr) { console.error('[BB] host bonus error:', hbErr); }
+
+            if (participants.length < 10) return;
             const prizes = [50, 30, 20];
             const reasons = ['placement_1st', 'placement_2nd', 'placement_3rd'];
             for (let i = 0; i < Math.min(3, participants.length); i++) {
@@ -4382,7 +4404,7 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
   try {
     const { teacherId } = req.params;
 
-    // Get all classroom student IDs (owned + co-taught classrooms)
+    // Get all classroom student IDs first — most other queries depend on the studentIds list.
     const classroomStudents = await dbAll(`
       SELECT DISTINCT cs.student_id, u.name, u.email, c.name AS classroom_name, c.id AS classroom_id
       FROM classroom_students cs
@@ -4391,13 +4413,27 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
       WHERE c.teacher_id = ? OR c.id IN (SELECT ct.classroom_id FROM classroom_teachers ct WHERE ct.teacher_id = ?)
     `, [teacherId, teacherId]);
     const studentIds = classroomStudents.map(s => s.student_id);
-    const studentIdSet = new Set(studentIds);
+    const hasStudents = studentIds.length > 0;
+    const studentIdList = hasStudents ? studentIds.join(',') : '0';
+    const placeholders = hasStudents ? studentIds.map(() => '?').join(',') : '';
+    const teacherScope = `(g.host_id=${parseInt(teacherId)} OR g.kit_id IN (SELECT k.id FROM question_kits k WHERE k.teacher_id=${parseInt(teacherId)}))`;
 
-    // --- Per-student analytics (only from this teacher's games/kits) ---
-    let students = [];
-    if (studentIds.length > 0) {
-      const placeholders = studentIds.map(() => '?').join(',');
-      students = await dbAll(`
+    // Run every independent query in parallel — drops wall time from sum-of-queries to slowest-query.
+    const [
+      studentsRaw,
+      assignmentStats,
+      classPerformance,
+      subjectPerf,
+      questionTypePerf,
+      hardestQuestions,
+      kitPerf,
+      assignmentPerf,
+      recentGames,
+      assignmentDeadlines,
+      questionDifficultyMap,
+      classProgressTimeline,
+    ] = await Promise.all([
+      hasStudents ? dbAll(`
         SELECT
           u.id, u.name, u.email, u.subscription_tier,
           COUNT(ga.id) AS total_questions,
@@ -4414,20 +4450,9 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
         WHERE u.id IN (${placeholders})
         GROUP BY u.id
         ORDER BY u.name ASC
-      `, [teacherId, teacherId, ...studentIds]);
+      `, [teacherId, teacherId, ...studentIds]) : Promise.resolve([]),
 
-      // Attach classroom names
-      const studentClassMap = {};
-      classroomStudents.forEach(cs => {
-        if (!studentClassMap[cs.student_id]) studentClassMap[cs.student_id] = [];
-        if (!studentClassMap[cs.student_id].includes(cs.classroom_name)) {
-          studentClassMap[cs.student_id].push(cs.classroom_name);
-        }
-      });
-      students.forEach(s => { s.classrooms = studentClassMap[s.id] || []; });
-
-      // Attach assignment stats per student
-      const assignmentStats = await dbAll(`
+      hasStudents ? dbAll(`
         SELECT asub.student_id,
           COUNT(*) AS total_assignments,
           SUM(CASE WHEN asub.status = 'completed' THEN 1 ELSE 0 END) AS completed_assignments
@@ -4436,31 +4461,137 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
         JOIN classrooms c ON a.classroom_id = c.id
         WHERE (c.teacher_id = ? OR c.id IN (SELECT ct.classroom_id FROM classroom_teachers ct WHERE ct.teacher_id = ?)) AND asub.student_id IN (${placeholders})
         GROUP BY asub.student_id
-      `, [teacherId, teacherId, ...studentIds]);
-      const assignMap = {};
-      assignmentStats.forEach(a => { assignMap[a.student_id] = a; });
-      students.forEach(s => {
-        const a = assignMap[s.id];
-        s.total_assignments = a?.total_assignments || 0;
-        s.completed_assignments = a?.completed_assignments || 0;
-      });
-    }
+      `, [teacherId, teacherId, ...studentIds]) : Promise.resolve([]),
 
-    // --- Class overview (only classroom students' data) ---
-    const classPerformance = await dbAll(`
-      SELECT
-        c.id AS classroom_id,
-        c.name AS classroom_name,
-        COUNT(DISTINCT cs.student_id) AS student_count,
-        COUNT(DISTINCT a.id) AS assignment_count
-      FROM classrooms c
-      LEFT JOIN classroom_students cs ON cs.classroom_id = c.id
-      LEFT JOIN assignments a ON a.classroom_id = c.id
-      WHERE c.teacher_id = ? OR c.id IN (SELECT ct.classroom_id FROM classroom_teachers ct WHERE ct.teacher_id = ?)
-      GROUP BY c.id
-    `, [teacherId, teacherId]);
+      dbAll(`
+        SELECT
+          c.id AS classroom_id,
+          c.name AS classroom_name,
+          COUNT(DISTINCT cs.student_id) AS student_count,
+          COUNT(DISTINCT a.id) AS assignment_count
+        FROM classrooms c
+        LEFT JOIN classroom_students cs ON cs.classroom_id = c.id
+        LEFT JOIN assignments a ON a.classroom_id = c.id
+        WHERE c.teacher_id = ? OR c.id IN (SELECT ct.classroom_id FROM classroom_teachers ct WHERE ct.teacher_id = ?)
+        GROUP BY c.id
+      `, [teacherId, teacherId]),
 
-    // --- Accuracy distribution (classroom students only) ---
+      dbAll(`
+        SELECT qk.subject, COUNT(ga.id) as total, SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
+          AVG(ga.time_taken) as avg_time, COUNT(DISTINCT ga.user_id) as unique_students
+        FROM game_answers ga JOIN games g ON ga.game_id=g.id JOIN question_kits qk ON g.kit_id=qk.id
+        WHERE ${teacherScope} AND ga.user_id IN (${studentIdList})
+        GROUP BY qk.subject ORDER BY total DESC
+      `, []),
+
+      dbAll(`
+        SELECT q.answer_type, COUNT(*) as total, SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
+          AVG(ga.time_taken) as avg_time
+        FROM game_answers ga JOIN questions q ON ga.question_id=q.id JOIN games g ON ga.game_id=g.id
+        WHERE ${teacherScope} AND ga.user_id IN (${studentIdList})
+        GROUP BY q.answer_type ORDER BY total DESC
+      `, []),
+
+      dbAll(`
+        SELECT q.question_text, q.answer_type, k.title as kit_name,
+          COUNT(*) as times_answered, SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
+          AVG(ga.time_taken) as avg_time
+        FROM game_answers ga JOIN questions q ON ga.question_id=q.id JOIN games g ON ga.game_id=g.id
+        LEFT JOIN question_kits k ON q.kit_id=k.id
+        WHERE ${teacherScope} AND ga.user_id IN (${studentIdList})
+        GROUP BY ga.question_id HAVING times_answered>=3
+        ORDER BY CAST(correct AS FLOAT)/times_answered ASC LIMIT 15
+      `, []),
+
+      dbAll(`
+        SELECT k.title, k.subject, COUNT(DISTINCT gp.user_id) as unique_players,
+          COUNT(DISTINCT gp.game_id) as times_played, AVG(gp.score) as avg_score,
+          (SELECT COUNT(*) FROM game_answers ga2 JOIN games g2 ON ga2.game_id=g2.id WHERE g2.kit_id=k.id AND ga2.user_id IN (${studentIdList})) as q_total,
+          (SELECT SUM(CASE WHEN ga3.is_correct=1 THEN 1 ELSE 0 END) FROM game_answers ga3 JOIN games g3 ON ga3.game_id=g3.id WHERE g3.kit_id=k.id AND ga3.user_id IN (${studentIdList})) as q_correct
+        FROM game_participants gp JOIN games g ON gp.game_id=g.id JOIN question_kits k ON g.kit_id=k.id
+        WHERE ${teacherScope} AND gp.user_id IN (${studentIdList})
+        GROUP BY k.id ORDER BY times_played DESC LIMIT 30
+      `, []),
+
+      dbAll(`
+        SELECT a.title, c.name as classroom, a.due_date,
+          COUNT(asub.id) as total_students,
+          SUM(CASE WHEN asub.status='completed' THEN 1 ELSE 0 END) as completed,
+          AVG(CASE WHEN asub.status='completed' THEN asub.score END) as avg_score,
+          AVG(CASE WHEN asub.status='completed' AND asub.questions_answered>0 THEN CAST(asub.correct_answers AS FLOAT)/asub.questions_answered*100 END) as avg_accuracy
+        FROM assignments a JOIN classrooms c ON a.classroom_id=c.id
+        LEFT JOIN assignment_submissions asub ON asub.assignment_id=a.id
+        WHERE (c.teacher_id=? OR c.id IN (SELECT ct.classroom_id FROM classroom_teachers ct WHERE ct.teacher_id=?))
+        GROUP BY a.id ORDER BY a.due_date DESC LIMIT 20
+      `, [teacherId, teacherId]),
+
+      dbAll(`
+        SELECT g.game_code, g.game_mode, g.created_at, k.title as kit,
+          (SELECT COUNT(*) FROM game_participants gp WHERE gp.game_id=g.id) as players,
+          (SELECT AVG(gp2.score) FROM game_participants gp2 WHERE gp2.game_id=g.id) as avg_score,
+          (SELECT COUNT(*) FROM game_answers ga WHERE ga.game_id=g.id AND ga.is_correct=1) as correct,
+          (SELECT COUNT(*) FROM game_answers ga2 WHERE ga2.game_id=g.id) as total
+        FROM games g LEFT JOIN question_kits k ON g.kit_id=k.id
+        WHERE g.host_id=? ORDER BY g.created_at DESC LIMIT 10
+      `, [teacherId]),
+
+      dbAll(`
+        SELECT a.id, a.title, a.due_date, a.due_time, c.name as classroom,
+          (SELECT COUNT(*) FROM assignment_submissions asub WHERE asub.assignment_id=a.id) as total_students,
+          (SELECT COUNT(*) FROM assignment_submissions asub2 WHERE asub2.assignment_id=a.id AND asub2.status='completed') as completed,
+          (SELECT COUNT(*) FROM assignment_submissions asub3 WHERE asub3.assignment_id=a.id AND asub3.status='pending') as not_started,
+          (SELECT COUNT(*) FROM assignment_submissions asub4 WHERE asub4.assignment_id=a.id AND asub4.status='in_progress') as in_progress
+        FROM assignments a JOIN classrooms c ON a.classroom_id=c.id
+        WHERE (c.teacher_id=? OR c.id IN (SELECT ct.classroom_id FROM classroom_teachers ct WHERE ct.teacher_id=?)) AND (a.due_date >= date('now') OR a.due_date IS NULL)
+        ORDER BY a.due_date ASC, a.due_time ASC LIMIT 15
+      `, [teacherId, teacherId]),
+
+      dbAll(`
+        SELECT q.question_text, q.answer_type, k.title as kit_name, k.subject,
+          COUNT(*) as times_answered,
+          SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
+          COUNT(DISTINCT ga.user_id) as unique_students,
+          AVG(ga.time_taken) as avg_time
+        FROM game_answers ga JOIN questions q ON ga.question_id=q.id JOIN games g ON ga.game_id=g.id
+        LEFT JOIN question_kits k ON q.kit_id=k.id
+        WHERE ${teacherScope} AND ga.user_id IN (${studentIdList})
+        GROUP BY ga.question_id HAVING times_answered>=5
+        ORDER BY CAST(correct AS FLOAT)/times_answered ASC LIMIT 20
+      `, []),
+
+      dbAll(`
+        SELECT strftime('%Y-W%W', ga.answered_at) as week,
+          MIN(DATE(ga.answered_at)) as week_start,
+          COUNT(*) as questions,
+          SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
+          COUNT(DISTINCT ga.user_id) as active_students,
+          COUNT(DISTINCT ga.game_id) as games,
+          AVG(ga.time_taken) as avg_time
+        FROM game_answers ga JOIN games g ON ga.game_id=g.id
+        WHERE ${teacherScope} AND ga.user_id IN (${studentIdList})
+          AND ga.answered_at >= datetime('now', '-16 weeks')
+        GROUP BY week ORDER BY week ASC
+      `, []),
+    ]);
+
+    // --- Stitch per-student data: classrooms + assignment counts ---
+    const studentClassMap = {};
+    classroomStudents.forEach(cs => {
+      if (!studentClassMap[cs.student_id]) studentClassMap[cs.student_id] = [];
+      if (!studentClassMap[cs.student_id].includes(cs.classroom_name)) {
+        studentClassMap[cs.student_id].push(cs.classroom_name);
+      }
+    });
+    const assignMap = {};
+    (assignmentStats || []).forEach(a => { assignMap[a.student_id] = a; });
+    const students = (studentsRaw || []).map(s => ({
+      ...s,
+      classrooms: studentClassMap[s.id] || [],
+      total_assignments: assignMap[s.id]?.total_assignments || 0,
+      completed_assignments: assignMap[s.id]?.completed_assignments || 0,
+    }));
+
+    // --- Accuracy distribution ---
     const buckets = [
       { range: '0-20', min: 0, max: 20 },
       { range: '20-40', min: 20, max: 40 },
@@ -4473,34 +4604,21 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
       count: students.filter(s => s.accuracy >= b.min && s.accuracy < b.max && s.total_questions > 0).length
     }));
 
-    // --- Totals (from classroom students only) ---
     const totalQuestionsAnswered = students.reduce((sum, s) => sum + s.total_questions, 0);
     const totalCorrect = students.reduce((sum, s) => sum + s.correct_answers, 0);
     const overallAvgAccuracy = totalQuestionsAnswered > 0 ? Math.round(totalCorrect * 100.0 / totalQuestionsAnswered * 10) / 10 : 0;
 
-    const teacherScope = `(g.host_id=${teacherId} OR g.kit_id IN (SELECT k.id FROM question_kits k WHERE k.teacher_id=${teacherId}))`;
-
-    // --- Subject performance with categories ---
-    const subjectPerf = await dbAll(`
-      SELECT qk.subject, COUNT(ga.id) as total, SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
-        AVG(ga.time_taken) as avg_time, COUNT(DISTINCT ga.user_id) as unique_students
-      FROM game_answers ga JOIN games g ON ga.game_id=g.id JOIN question_kits qk ON g.kit_id=qk.id
-      WHERE ${teacherScope} AND ga.user_id IN (${studentIds.length > 0 ? studentIds.join(',') : '0'})
-      GROUP BY qk.subject ORDER BY total DESC
-    `, []);
-    // Add categories
+    // --- Category breakdown derived from subject performance ---
     const subjectWithCategories = (subjectPerf || []).map(s => ({
       ...s, category: getSubjectCategory(s.subject),
       accuracy: s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0
     }));
-    // Group by category
     const categoryPerf = {};
     subjectWithCategories.forEach(s => {
-      if (!categoryPerf[s.category]) categoryPerf[s.category] = { category: s.category, total: 0, correct: 0, subjects: [], students: new Set() };
+      if (!categoryPerf[s.category]) categoryPerf[s.category] = { category: s.category, total: 0, correct: 0, subjects: [] };
       categoryPerf[s.category].total += s.total;
       categoryPerf[s.category].correct += s.correct;
       categoryPerf[s.category].subjects.push(s);
-      if (s.unique_students) for (let i = 0; i < s.unique_students; i++) categoryPerf[s.category].students.add(i); // approximate
     });
     const categoryBreakdown = Object.values(categoryPerf).map(c => ({
       category: c.category, total: c.total, correct: c.correct,
@@ -4508,62 +4626,6 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
       subjectCount: c.subjects.length, subjects: c.subjects,
     })).sort((a, b) => b.total - a.total);
 
-    // --- Question type performance (across all students) ---
-    const questionTypePerf = await dbAll(`
-      SELECT q.answer_type, COUNT(*) as total, SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
-        AVG(ga.time_taken) as avg_time
-      FROM game_answers ga JOIN questions q ON ga.question_id=q.id JOIN games g ON ga.game_id=g.id
-      WHERE ${teacherScope} AND ga.user_id IN (${studentIds.length > 0 ? studentIds.join(',') : '0'})
-      GROUP BY q.answer_type ORDER BY total DESC
-    `, []);
-
-    // --- Hardest questions across all students ---
-    const hardestQuestions = await dbAll(`
-      SELECT q.question_text, q.answer_type, k.title as kit_name,
-        COUNT(*) as times_answered, SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
-        AVG(ga.time_taken) as avg_time
-      FROM game_answers ga JOIN questions q ON ga.question_id=q.id JOIN games g ON ga.game_id=g.id
-      LEFT JOIN question_kits k ON q.kit_id=k.id
-      WHERE ${teacherScope} AND ga.user_id IN (${studentIds.length > 0 ? studentIds.join(',') : '0'})
-      GROUP BY ga.question_id HAVING times_answered>=3
-      ORDER BY CAST(correct AS FLOAT)/times_answered ASC LIMIT 15
-    `, []);
-
-    // --- Kit performance ---
-    const kitPerf = await dbAll(`
-      SELECT k.title, k.subject, COUNT(DISTINCT gp.user_id) as unique_players,
-        COUNT(DISTINCT gp.game_id) as times_played, AVG(gp.score) as avg_score,
-        (SELECT COUNT(*) FROM game_answers ga2 JOIN games g2 ON ga2.game_id=g2.id WHERE g2.kit_id=k.id AND ga2.user_id IN (${studentIds.length > 0 ? studentIds.join(',') : '0'})) as q_total,
-        (SELECT SUM(CASE WHEN ga3.is_correct=1 THEN 1 ELSE 0 END) FROM game_answers ga3 JOIN games g3 ON ga3.game_id=g3.id WHERE g3.kit_id=k.id AND ga3.user_id IN (${studentIds.length > 0 ? studentIds.join(',') : '0'})) as q_correct
-      FROM game_participants gp JOIN games g ON gp.game_id=g.id JOIN question_kits k ON g.kit_id=k.id
-      WHERE ${teacherScope} AND gp.user_id IN (${studentIds.length > 0 ? studentIds.join(',') : '0'})
-      GROUP BY k.id ORDER BY times_played DESC LIMIT 30
-    `, []);
-
-    // --- Weekly trend (last 8 weeks) ---
-    const weeklyTrend = await dbAll(`
-      SELECT strftime('%Y-W%W', ga.answered_at) as week,
-        COUNT(*) as questions, SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
-        COUNT(DISTINCT ga.user_id) as active_students, COUNT(DISTINCT ga.game_id) as games
-      FROM game_answers ga JOIN games g ON ga.game_id=g.id
-      WHERE ${teacherScope} AND ga.user_id IN (${studentIds.length > 0 ? studentIds.join(',') : '0'})
-      GROUP BY week ORDER BY week DESC LIMIT 8
-    `, []);
-
-    // --- Assignment overview ---
-    const assignmentPerf = await dbAll(`
-      SELECT a.title, c.name as classroom, a.due_date,
-        COUNT(asub.id) as total_students,
-        SUM(CASE WHEN asub.status='completed' THEN 1 ELSE 0 END) as completed,
-        AVG(CASE WHEN asub.status='completed' THEN asub.score END) as avg_score,
-        AVG(CASE WHEN asub.status='completed' AND asub.questions_answered>0 THEN CAST(asub.correct_answers AS FLOAT)/asub.questions_answered*100 END) as avg_accuracy
-      FROM assignments a JOIN classrooms c ON a.classroom_id=c.id
-      LEFT JOIN assignment_submissions asub ON asub.assignment_id=a.id
-      WHERE (c.teacher_id=? OR c.id IN (SELECT ct.classroom_id FROM classroom_teachers ct WHERE ct.teacher_id=?))
-      GROUP BY a.id ORDER BY a.due_date DESC LIMIT 20
-    `, [teacherId, teacherId]);
-
-    // --- Students needing attention (low accuracy or inactive) ---
     const needsAttention = students.filter(s =>
       (s.total_questions >= 10 && s.accuracy < 50) ||
       (!s.last_active || new Date(s.last_active) < new Date(Date.now() - 7 * 86400000))
@@ -4575,19 +4637,7 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
         s.accuracy < 30 ? 'Very low accuracy' : 'Below 50% accuracy'
     }));
 
-    // --- Top performers ---
     const topPerformers = [...students].filter(s => s.total_questions >= 5).sort((a, b) => b.accuracy - a.accuracy).slice(0, 5);
-
-    // --- Recent games hosted ---
-    const recentGames = await dbAll(`
-      SELECT g.game_code, g.game_mode, g.created_at, k.title as kit,
-        (SELECT COUNT(*) FROM game_participants gp WHERE gp.game_id=g.id) as players,
-        (SELECT AVG(gp2.score) FROM game_participants gp2 WHERE gp2.game_id=g.id) as avg_score,
-        (SELECT COUNT(*) FROM game_answers ga WHERE ga.game_id=g.id AND ga.is_correct=1) as correct,
-        (SELECT COUNT(*) FROM game_answers ga2 WHERE ga2.game_id=g.id) as total
-      FROM games g LEFT JOIN question_kits k ON g.kit_id=k.id
-      WHERE g.host_id=? ORDER BY g.created_at DESC LIMIT 10
-    `, [teacherId]);
 
     res.json({
       students,
@@ -4595,58 +4645,17 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
       accuracyDistribution,
       totalQuestionsAnswered,
       overallAvgAccuracy,
-      // New advanced data
       categoryBreakdown,
-      subjectPerformance: subjectWithCategories,
       questionTypePerf,
       hardestQuestions,
       kitPerf,
-      weeklyTrend: (weeklyTrend || []).reverse(),
       assignmentPerf,
       needsAttention,
       topPerformers,
       recentGames,
-
-      // Assignment Deadlines (upcoming, with not-started counts)
-      assignmentDeadlines: await dbAll(`
-        SELECT a.id, a.title, a.due_date, a.due_time, c.name as classroom,
-          (SELECT COUNT(*) FROM assignment_submissions asub WHERE asub.assignment_id=a.id) as total_students,
-          (SELECT COUNT(*) FROM assignment_submissions asub2 WHERE asub2.assignment_id=a.id AND asub2.status='completed') as completed,
-          (SELECT COUNT(*) FROM assignment_submissions asub3 WHERE asub3.assignment_id=a.id AND asub3.status='pending') as not_started,
-          (SELECT COUNT(*) FROM assignment_submissions asub4 WHERE asub4.assignment_id=a.id AND asub4.status='in_progress') as in_progress
-        FROM assignments a JOIN classrooms c ON a.classroom_id=c.id
-        WHERE (c.teacher_id=? OR c.id IN (SELECT ct.classroom_id FROM classroom_teachers ct WHERE ct.teacher_id=?)) AND (a.due_date >= date('now') OR a.due_date IS NULL)
-        ORDER BY a.due_date ASC, a.due_time ASC LIMIT 15
-      `, [teacherId, teacherId]),
-
-      // Question Difficulty Map (lowest accuracy questions, 5+ answers)
-      questionDifficultyMap: await dbAll(`
-        SELECT q.question_text, q.answer_type, k.title as kit_name, k.subject,
-          COUNT(*) as times_answered,
-          SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
-          COUNT(DISTINCT ga.user_id) as unique_students,
-          AVG(ga.time_taken) as avg_time
-        FROM game_answers ga JOIN questions q ON ga.question_id=q.id JOIN games g ON ga.game_id=g.id
-        LEFT JOIN question_kits k ON q.kit_id=k.id
-        WHERE ${teacherScope} AND ga.user_id IN (${studentIds.length > 0 ? studentIds.join(',') : '0'})
-        GROUP BY ga.question_id HAVING times_answered>=5
-        ORDER BY CAST(correct AS FLOAT)/times_answered ASC LIMIT 20
-      `, []),
-
-      // Class Progress Timeline (weekly accuracy over last 16 weeks)
-      classProgressTimeline: await dbAll(`
-        SELECT strftime('%Y-W%W', ga.answered_at) as week,
-          MIN(DATE(ga.answered_at)) as week_start,
-          COUNT(*) as questions,
-          SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
-          COUNT(DISTINCT ga.user_id) as active_students,
-          COUNT(DISTINCT ga.game_id) as games,
-          AVG(ga.time_taken) as avg_time
-        FROM game_answers ga JOIN games g ON ga.game_id=g.id
-        WHERE ${teacherScope} AND ga.user_id IN (${studentIds.length > 0 ? studentIds.join(',') : '0'})
-          AND ga.answered_at >= datetime('now', '-16 weeks')
-        GROUP BY week ORDER BY week ASC
-      `, []),
+      assignmentDeadlines,
+      questionDifficultyMap,
+      classProgressTimeline,
     });
   } catch (err) {
     console.error('Teacher analytics error:', err);

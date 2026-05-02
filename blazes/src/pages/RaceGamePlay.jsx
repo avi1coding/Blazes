@@ -1,28 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Clock, Flag, Trophy, Users, Rocket } from 'lucide-react';
-import { AvatarPreview } from './SkinsPage';
-import { rankParticipants } from '../utils/ranking';
+import { Clock, Flag, Trophy, Rocket, BarChart3, X } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-
-// Stadium / oval track path. Uses an SVG rounded-rect path so we can use getPointAtLength.
-// viewBox: 0 0 800 240, track centerline radius/curve tuned to look like a real running track.
-const TRACK_PATH = 'M 100 60 L 700 60 A 60 60 0 0 1 700 180 L 100 180 A 60 60 0 0 1 100 60 Z';
-
-// Player colors (cycled through participants)
-const PLAYER_COLORS = [
-  '#06b6d4', // cyan
-  '#a855f7', // purple
-  '#f97316', // orange
-  '#10b981', // green
-  '#ef4444', // red
-  '#f59e0b', // amber
-  '#3b82f6', // blue
-  '#ec4899', // pink
-  '#84cc16', // lime
-  '#8b5cf6', // violet
-];
 
 export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
   const params = useParams();
@@ -41,20 +21,19 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
   const [myCorrect, setMyCorrect] = useState(0);
   const [participants, setParticipants] = useState([]);
   const [lapToast, setLapToast] = useState(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const prevLapsRef = useRef(0);
 
   const startTimeRef = useRef(Date.now());
   const gameStartedRef = useRef(null);
   const advanceTimeoutRef = useRef(null);
-  const trackPathRef = useRef(null);
-  const [pathLength, setPathLength] = useState(0);
 
   const settings = (() => {
     if (!game?.settings) return {};
     try { return typeof game.settings === 'string' ? JSON.parse(game.settings) : game.settings; }
     catch { return {}; }
   })();
-  const distance = settings.distance || 20;
+  const distance = settings.distance || 10;
 
   const currentQ = questions.length > 0 ? questionTick % questions.length : 0;
   const q = questions[currentQ];
@@ -79,7 +58,6 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
     if (!game) return;
     fetch(`${BASE}/api/kits/${game.kit_id}`).then(r => r.json()).then(data => {
       const qs = Array.isArray(data?.questions) ? data.questions : [];
-      // Shuffle once per player
       setQuestions([...qs].sort(() => Math.random() - 0.5));
     }).catch(() => {});
     if (game.started_at) {
@@ -114,13 +92,6 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
     setFeedback(null);
     startTimeRef.current = Date.now();
   }, [questionTick, questions]);
-
-  // Measure track length once
-  useEffect(() => {
-    if (trackPathRef.current) {
-      setPathLength(trackPathRef.current.getTotalLength());
-    }
-  }, []);
 
   // Poll participants
   const fetchParticipants = useCallback(async () => {
@@ -168,12 +139,11 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
 
     setFeedback({ isCorrect, correct: correctAnswer });
     if (isCorrect) {
-      setMyCorrect(c => c + 1); // optimistic update
+      setMyCorrect(c => c + 1);
     }
 
     advanceTimeoutRef.current = setTimeout(advanceQuestion, isCorrect ? 600 : 1200);
 
-    // Fire submission in background
     fetch(`${BASE}/api/games/${gameCode}/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -186,14 +156,6 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
   }, [gameCode, navigate, game, user]);
 
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-
-  // Position a player on the track. progress is 0-1 within the current lap.
-  const getPositionAt = (progress) => {
-    if (!trackPathRef.current || !pathLength) return { x: 100, y: 60 };
-    const offset = pathLength * 0.5; // start line at the bottom of the oval
-    const adjusted = (offset + (progress * pathLength)) % pathLength;
-    return trackPathRef.current.getPointAtLength(adjusted);
-  };
 
   const sortedPlayers = [...participants].sort((a, b) => (b.correct_answers || 0) - (a.correct_answers || 0));
   const myPosition = sortedPlayers.findIndex(p => p.user_id === user?.id) + 1;
@@ -217,14 +179,14 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
             </div>
             <div className="hidden sm:block">
               <div className="text-sm font-black text-gray-900">Race</div>
-              <div className="text-[10px] text-gray-500">First to {distance} wins</div>
+              <div className="text-[10px] text-gray-500">{distance} per lap · go furthest to win</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2 flex items-center gap-2">
               <Flag className="w-4 h-4 text-cyan-600" />
-              <span className="font-black text-cyan-900 tabular-nums">
+              <span className="font-black text-cyan-900 tabular-nums text-sm sm:text-base">
                 Lap {Math.floor(myCorrect / distance)} · {myCorrect % distance}/{distance}
               </span>
             </div>
@@ -235,118 +197,28 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
                 'bg-white border-gray-200'
               }`}>
                 <Clock className="w-4 h-4 text-gray-700" />
-                <span className="font-black text-gray-900 tabular-nums">{formatTime(gameTimeLeft)}</span>
+                <span className="font-black text-gray-900 tabular-nums text-sm sm:text-base">{formatTime(gameTimeLeft)}</span>
               </div>
             )}
             {myPosition > 0 && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 flex items-center gap-2">
+              <div className="hidden sm:flex bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 items-center gap-2">
                 <Trophy className="w-4 h-4 text-yellow-600" />
                 <span className="font-black text-yellow-900">#{myPosition}</span>
               </div>
             )}
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white rounded-lg px-3 py-2 font-black text-xs sm:text-sm transition-colors"
+              title="Leaderboard"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Leaderboard</span>
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-4">
-        {/* Lap track */}
-        <div className="bg-white rounded-2xl border-2 border-gray-100 p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-black uppercase tracking-widest text-gray-500 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" /> Track ({participants.length})
-            </h3>
-            <span className="text-[10px] font-bold text-gray-400">Live</span>
-          </div>
-          <div className="relative" style={{ paddingBottom: '30%' }}>
-            <svg viewBox="0 0 800 240" className="absolute inset-0 w-full h-full">
-              {/* Track outline (outer) */}
-              <path d="M 100 30 L 700 30 A 90 90 0 0 1 700 210 L 100 210 A 90 90 0 0 1 100 30 Z" fill="#10b981" />
-              {/* Inner field */}
-              <path d="M 130 60 L 670 60 A 60 60 0 0 1 670 180 L 130 180 A 60 60 0 0 1 130 60 Z" fill="#86efac" />
-              {/* The actual race line (centerline) */}
-              <path
-                ref={trackPathRef}
-                d={TRACK_PATH}
-                fill="none"
-                stroke="#fbbf24"
-                strokeWidth="2"
-                strokeDasharray="8 8"
-              />
-              {/* Finish line — vertical line at the start position */}
-              {pathLength > 0 && (() => {
-                const finishPoint = trackPathRef.current.getPointAtLength(pathLength * 0.5);
-                return (
-                  <g>
-                    <line x1={finishPoint.x} y1={finishPoint.y - 28} x2={finishPoint.x} y2={finishPoint.y + 28} stroke="white" strokeWidth="3" />
-                    {/* Checker pattern */}
-                    {[0, 1, 2, 3].map(i => (
-                      <rect key={i}
-                        x={finishPoint.x - 4 + (i % 2) * 4}
-                        y={finishPoint.y - 24 + i * 12}
-                        width="4" height="6"
-                        fill={i % 2 === 0 ? 'black' : 'white'} />
-                    ))}
-                  </g>
-                );
-              })()}
-              {/* Players */}
-              {pathLength > 0 && participants.map((p, i) => {
-                const correct = p.correct_answers || 0;
-                const lap = Math.floor(correct / distance);
-                const progressInLap = (correct % distance) / distance; // 0-1 within current lap
-                const pos = getPositionAt(progressInLap);
-                const isMe = p.user_id === user?.id;
-                const color = isMe ? '#06b6d4' : PLAYER_COLORS[(i + 1) % PLAYER_COLORS.length];
-                return (
-                  <g key={p.user_id} style={{ transition: 'all 600ms ease-out' }}>
-                    <circle cx={pos.x} cy={pos.y} r={isMe ? 12 : 10} fill={color} stroke="white" strokeWidth="3" />
-                    <text x={pos.x} y={pos.y + 4} textAnchor="middle" fontSize="10" fontWeight="900" fill="white">
-                      {(p.player_name || '?')[0].toUpperCase()}
-                    </text>
-                    {/* Lap badge */}
-                    {lap > 0 && (
-                      <g>
-                        <circle cx={pos.x + 11} cy={pos.y - 11} r="7" fill="#fbbf24" stroke="white" strokeWidth="1.5" />
-                        <text x={pos.x + 11} y={pos.y - 8} textAnchor="middle" fontSize="9" fontWeight="900" fill="#78350f">
-                          {lap}
-                        </text>
-                      </g>
-                    )}
-                    {isMe && (
-                      <text x={pos.x} y={pos.y - 22} textAnchor="middle" fontSize="11" fontWeight="900" fill="#0e7490">YOU</text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-
-          {/* Mini leaderboard */}
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {sortedPlayers.slice(0, 8).map((p, i) => {
-              const isMe = p.user_id === user?.id;
-              const correct = p.correct_answers || 0;
-              const lap = Math.floor(correct / distance);
-              return (
-                <div key={p.user_id} className={`flex items-center gap-2 p-1.5 rounded-lg text-xs ${
-                  isMe ? 'bg-cyan-50 border border-cyan-200' : 'bg-gray-50'
-                }`}>
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 ${
-                    i === 0 ? 'bg-yellow-400 text-yellow-900' :
-                    i === 1 ? 'bg-gray-300 text-gray-800' :
-                    i === 2 ? 'bg-orange-400 text-orange-900' :
-                    'bg-gray-200 text-gray-600'
-                  }`}>{i + 1}</span>
-                  <span className={`flex-1 truncate font-bold ${isMe ? 'text-cyan-900' : 'text-gray-900'}`}>
-                    {p.player_name || 'Player'}{isMe && ' (You)'}
-                  </span>
-                  <span className="text-[10px] font-black text-gray-500 tabular-nums">L{lap}·{correct % distance}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
+      <main className="flex-1 max-w-3xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-4">
         {/* Question */}
         {!q ? (
           <div className="flex-1 flex items-center justify-center text-gray-500">Loading questions...</div>
@@ -455,6 +327,60 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
           </div>
         )}
       </main>
+
+      {/* Leaderboard modal */}
+      {showLeaderboard && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowLeaderboard(false)}>
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-cyan-600" /> Leaderboard
+              </h2>
+              <button onClick={() => setShowLeaderboard(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              {sortedPlayers.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 font-semibold">No racers yet</div>
+              ) : (
+                <div className="space-y-2">
+                  {sortedPlayers.map((p, i) => {
+                    const isMe = p.user_id === user?.id;
+                    const correct = p.correct_answers || 0;
+                    const lap = Math.floor(correct / distance);
+                    const stepInLap = correct % distance;
+                    return (
+                      <div key={p.user_id} className={`flex items-center gap-3 p-3 rounded-xl border-2 ${
+                        isMe ? 'bg-cyan-50 border-cyan-300' : 'bg-gray-50 border-transparent'
+                      }`}>
+                        <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0 ${
+                          i === 0 ? 'bg-yellow-400 text-yellow-900' :
+                          i === 1 ? 'bg-gray-300 text-gray-800' :
+                          i === 2 ? 'bg-orange-400 text-orange-900' :
+                          'bg-gray-200 text-gray-600'
+                        }`}>{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-black text-sm truncate ${isMe ? 'text-cyan-900' : 'text-gray-900'}`}>
+                            {p.player_name || 'Player'}{isMe && ' (You)'}
+                          </div>
+                          <div className="text-xs text-gray-500 font-semibold">
+                            Lap {lap} · {stepInLap}/{distance}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end flex-shrink-0">
+                          <span className="text-lg font-black text-cyan-700 tabular-nums">{correct}</span>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase">correct</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

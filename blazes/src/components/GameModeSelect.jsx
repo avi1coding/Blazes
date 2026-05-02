@@ -120,7 +120,7 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
     {
       id: 'race',
       name: 'Race',
-      tagline: 'Run laps. Most laps wins.',
+      tagline: 'Run laps. Go furthest to win.',
       icon: Rocket,
       gradient: 'from-cyan-500 to-blue-600',
       solid: 'bg-cyan-600',

@@ -111,6 +111,21 @@ export default function TeacherLobby() {
         }
 
         setIsStarting(true);
+
+        // Pre-open popups SYNCHRONOUSLY (before any await) so the browser keeps
+        // them in the user-gesture chain. We redirect them once the start API call returns.
+        let raceViewWin = null;
+        let playWin = null;
+        if (currentUser.role === 'teacher') {
+            if (game?.game_mode === 'race') {
+                raceViewWin = window.open('about:blank', '_blank');
+            }
+            const willHostPlay = !!(game?.settings && (typeof game.settings === 'string' ? JSON.parse(game.settings).hostPlays : game.settings.hostPlays));
+            if (willHostPlay) {
+                playWin = window.open('about:blank', '_blank');
+            }
+        }
+
         try {
             const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
             const response = await fetch(`${baseUrl}/api/games/${gameCode}/start`, {
@@ -126,6 +141,8 @@ export default function TeacherLobby() {
                 // Stop lobby music before navigating
                 if (lobbyAudioRef.current) lobbyAudioRef.current.stop();
                 if (currentUser.role === 'student') {
+                    if (raceViewWin) raceViewWin.close();
+                    if (playWin) playWin.close();
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
                 } else if (hostPlays) {
                     // Auto-join host as a participant first
@@ -136,16 +153,22 @@ export default function TeacherLobby() {
                             body: JSON.stringify({ userId: currentUser.id, playerName: currentUser.name }),
                         });
                     } catch (_) {}
-                    // Open the gameplay screen in a new tab so host can play and monitor at the same time
-                    window.open(`/game/play/${gameCode}`, '_blank', 'noopener');
+                    if (raceViewWin) raceViewWin.location.href = `/game/race-view/${gameCode}`;
+                    if (playWin) playWin.location.href = `/game/play/${gameCode}`;
                     navigate(`/game/monitor/${gameCode}/all`, { state: { game, user: currentUser } });
                 } else {
+                    if (raceViewWin) raceViewWin.location.href = `/game/race-view/${gameCode}`;
+                    if (playWin) playWin.close();
                     navigate(`/game/monitor/${gameCode}/all`, { state: { game, user: currentUser } });
                 }
             } else {
+                if (raceViewWin) raceViewWin.close();
+                if (playWin) playWin.close();
                 setToast({ show: true, message: `Error starting game: ${data?.error || response.status}`, type: 'error' });
             }
         } catch (error) {
+            if (raceViewWin) raceViewWin.close();
+            if (playWin) playWin.close();
             console.error('Error starting game:', error);
             setToast({ show: true, message: `Failed to start game: ${error.message}`, type: 'error' });
         }
@@ -338,7 +361,12 @@ export default function TeacherLobby() {
                             disabled={isStarting || !canStart}
                             className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            {isStarting ? 'Starting...' : `Start Game${participants.length > 0 ? ` (${participants.length} Players)` : ''}`}
+                            {(() => {
+                                if (isStarting) return 'Starting...';
+                                const total = participants.length + (hostPlays ? 1 : 0);
+                                if (total === 0) return 'Start Game';
+                                return `Start Game (${total} ${total === 1 ? 'Player' : 'Players'})`;
+                            })()}
                         </button>
                     </div>
                 </div>

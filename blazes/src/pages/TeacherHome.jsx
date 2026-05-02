@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import SkinsPage, { AvatarPreview, isBlazesPlusCached, cacheTier } from './SkinsPage';
+import AchievementsMap from './AchievementsMap';
 import CreateKit from '../components/CreateKit';
 import AddQuestionForm from '../components/AddQuestionForm';
 import NotificationDropdown from '../components/NotificationDropdown';
 import SubjectPicker, { GradePicker } from '../components/SubjectPicker';
 import { getGameModeName } from '../utils/gameModeName';
-import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown, Layers } from 'lucide-react';
+import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown, Layers, Award } from 'lucide-react';
 import Toast from '../components/Toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -15,6 +16,7 @@ export default function TeacherHome() {
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'dashboard');
   const [user, setUser] = useState(null);
   const [equippedSkinId, setEquippedSkinId] = useState('default');
+  const [blazesBucks, setBlazesBucks] = useState(0);
   const [teacherStats, setTeacherStats] = useState({
     totalGames: 0,
     avgScore: 0,
@@ -82,6 +84,12 @@ export default function TeacherHome() {
     fetch(`${base}/api/skins/${parsedUser.id}`)
       .then(r => r.json())
       .then(d => { if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin); })
+      .catch(() => {});
+
+    // Load BlazesBucks balance
+    fetch(`${base}/api/blazesbucks/${parsedUser.id}`)
+      .then(r => r.json())
+      .then(d => setBlazesBucks(d.balance || 0))
       .catch(() => {});
 
     // Load season progress
@@ -193,16 +201,30 @@ export default function TeacherHome() {
     });
   }, [topPerformers, studentsNeedingHelp]);
 
+  // Cache analytics in a ref so toggling tabs doesn't trigger a refetch within 60s
+  const analyticsCacheRef = useRef({ data: null, fetchedAt: 0, userId: null });
+
   // Fetch analytics when stats tab is active
   useEffect(() => {
     if (activeTab !== 'stats' || !user) return;
     const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+
+    const cache = analyticsCacheRef.current;
+    const fresh = cache.data && cache.userId === user.id && Date.now() - cache.fetchedAt < 60_000;
+    if (fresh) {
+      setAnalytics(cache.data);
+      return;
+    }
+
     setAnalytics(null);
     setSelectedStudent(null);
     setSelectedStudentDetail(null);
     fetch(`${base}/api/analytics/teacher/${user.id}`)
       .then(r => r.json())
-      .then(data => setAnalytics(data))
+      .then(data => {
+        analyticsCacheRef.current = { data, fetchedAt: Date.now(), userId: user.id };
+        setAnalytics(data);
+      })
       .catch(() => {
         setAnalytics({ students: [], classPerformance: [], accuracyDistribution: [], totalQuestionsAnswered: 0, overallAvgAccuracy: 0 });
       });
@@ -273,6 +295,7 @@ export default function TeacherHome() {
                 { id: 'classrooms', icon: GraduationCap, label: 'Classes' },
                 { id: 'stats', icon: BarChart3, label: 'Stats' },
                 { id: 'collection', icon: Shirt, label: 'Skins' },
+                { id: 'achievements', icon: Award, label: 'Achievements' },
               ].map(t => {
                 const Icon = t.icon;
                 const isActive = t.id === 'collection'
@@ -308,6 +331,10 @@ export default function TeacherHome() {
                 {teacherTier === 'teacher_pro' ? 'Teacher Pro' : 'Upgrade'}
               </span>
             </button>
+            <div className="hidden sm:flex items-center gap-1 bg-yellow-50 border border-yellow-200 px-2.5 py-1 rounded-full">
+              <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
+              <span className="font-black text-yellow-700 text-xs tabular-nums">{blazesBucks.toLocaleString()}</span>
+            </div>
             <button onClick={() => navigate('/settings')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <Settings className="w-5 h-5 text-gray-600" />
             </button>
@@ -1619,10 +1646,14 @@ export default function TeacherHome() {
         {activeTab === 'skins' && user && (
           <SkinsPage
             userId={user.id}
-            blazesBucks={0}
-            onBBChange={() => { }}
+            blazesBucks={blazesBucks}
+            onBBChange={(newBalance) => setBlazesBucks(newBalance)}
             onSkinEquip={(skinId) => setEquippedSkinId(skinId)}
           />
+        )}
+
+        {activeTab === 'achievements' && user && (
+          <div className="mt-6"><AchievementsMap userId={user.id} /></div>
         )}
 
         {activeTab === 'myKits' && (

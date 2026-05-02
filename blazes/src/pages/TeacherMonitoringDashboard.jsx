@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair, X } from 'lucide-react';
+import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair, X, Rocket } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
 import VolumeControl from '../components/VolumeControl';
 import { createSeamlessLoop } from '../utils/seamlessAudio';
@@ -429,6 +429,35 @@ export default function TeacherMonitoringDashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          );
+        })()}
+
+        {/* Race: open presentation display + (if host is playing) gameplay in new tabs */}
+        {game?.game_mode === 'race' && (() => {
+          let raceSettings = {};
+          try { raceSettings = typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {}); } catch (_) {}
+          const hostIsPlaying = !!raceSettings.hostPlays;
+          return (
+            <div className={`mb-8 grid grid-cols-1 ${hostIsPlaying ? 'sm:grid-cols-2' : ''} gap-3`}>
+              <button
+                onClick={() => window.open(`/game/race-view/${gameCode}`, '_blank', 'noopener')}
+                className="flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black rounded-2xl hover:shadow-xl hover:shadow-cyan-500/30 transition-all text-base sm:text-lg"
+              >
+                <Rocket className="w-5 h-5" />
+                Open Race Display
+                <span className="text-xs font-bold opacity-80 hidden md:inline">— for the projector</span>
+              </button>
+              {hostIsPlaying && (
+                <button
+                  onClick={() => window.open(`/game/play/${gameCode}`, '_blank', 'noopener')}
+                  className="flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-black rounded-2xl hover:shadow-xl hover:shadow-emerald-500/30 transition-all text-base sm:text-lg"
+                >
+                  <Rocket className="w-5 h-5" />
+                  Open My Gameplay
+                  <span className="text-xs font-bold opacity-80 hidden md:inline">— answer questions</span>
+                </button>
+              )}
             </div>
           );
         })()}

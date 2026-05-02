@@ -4,7 +4,7 @@ import SkinsPage, { AvatarPreview } from './SkinsPage';
 import CreateKit from '../components/CreateKit';
 import NotificationDropdown from '../components/NotificationDropdown';
 import Toast from '../components/Toast';
-import { Flame, Trophy, TrendingUp, Star, Zap, Target, Award, Clock, Users, Play, ChevronRight, BarChart3, Shirt, X, Home, GraduationCap, ClipboardList, Check, BookOpen, Plus, Trash2, Settings, Crown, Lock, Sparkles } from 'lucide-react';
+import { Flame, Trophy, TrendingUp, Zap, Target, Award, Clock, Users, Play, ChevronRight, BarChart3, Shirt, X, Home, GraduationCap, ClipboardList, Check, BookOpen, Plus, Trash2, Settings, Crown, Lock, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { getGameModeName } from '../utils/gameModeName';
 
@@ -324,24 +324,15 @@ export default function StudentHome() {
               </div>
             </div>
 
-            {/* Right: Levels, BB, Notifications, Profile */}
+            {/* Right: Upgrade (free only), BB, Notifications, Profile */}
             <div className="flex items-center gap-2">
-              <button onClick={() => navigate('/profile')}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors">
-                <Star className="w-4 h-4 text-red-600" strokeWidth={2.5} />
-                <span className="text-sm font-bold text-gray-700">Levels</span>
-              </button>
-              <button onClick={() => navigate('/upgrade')}
-                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors ${
-                  subscription?.tier && subscription.tier !== 'free'
-                    ? 'border-purple-200 bg-purple-50 hover:bg-purple-100'
-                    : 'border-gray-200 hover:bg-gray-50'
-                }`}>
-                <Crown className={`w-4 h-4 ${subscription?.tier && subscription.tier !== 'free' ? 'text-purple-600' : 'text-yellow-600'}`} strokeWidth={2.5} />
-                <span className={`text-sm font-bold ${subscription?.tier && subscription.tier !== 'free' ? 'text-purple-700' : 'text-gray-700'}`}>
-                  {subscription?.tier === 'blazes_plus' ? 'Blazes Plus' : subscription?.tier === 'teacher_pro' ? 'Pro' : 'Upgrade'}
-                </span>
-              </button>
+              {(!subscription?.tier || subscription.tier === 'free') && (
+                <button onClick={() => navigate('/upgrade')}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-yellow-200 bg-yellow-50 hover:bg-yellow-100 transition-colors">
+                  <Crown className="w-4 h-4 text-yellow-600" strokeWidth={2.5} />
+                  <span className="text-sm font-bold text-yellow-700">Upgrade</span>
+                </button>
+              )}
               <NotificationDropdown userId={user?.id} />
               <div className="hidden sm:flex items-center gap-1 bg-yellow-50 border border-yellow-200 px-2.5 py-1 rounded-full">
                 <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />

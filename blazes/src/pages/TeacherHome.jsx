@@ -17,6 +17,7 @@ export default function TeacherHome() {
   const [user, setUser] = useState(null);
   const [equippedSkinId, setEquippedSkinId] = useState('default');
   const [blazesBucks, setBlazesBucks] = useState(0);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [teacherStats, setTeacherStats] = useState({
     totalGames: 0,
     avgScore: 0,
@@ -294,12 +295,11 @@ export default function TeacherHome() {
                 { id: 'myKits', icon: BookOpen, label: 'Kits' },
                 { id: 'classrooms', icon: GraduationCap, label: 'Classes' },
                 { id: 'stats', icon: BarChart3, label: 'Stats' },
-                { id: 'collection', icon: Shirt, label: 'Skins' },
-                { id: 'achievements', icon: Award, label: 'Achievements' },
+                { id: 'collection', icon: Award, label: 'Collection' },
               ].map(t => {
                 const Icon = t.icon;
                 const isActive = t.id === 'collection'
-                  ? activeTab === 'skins'
+                  ? ['skins', 'achievements'].includes(activeTab)
                   : t.id === 'myKits'
                   ? ['myKits', 'createKit'].includes(activeTab)
                   : activeTab === t.id;
@@ -319,32 +319,50 @@ export default function TeacherHome() {
             </div>
           </div>
 
-          {/* Right: utilities + profile */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          {/* Right: upgrade (free only), BB, notifications, profile dropdown */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {teacherTier !== 'teacher_pro' && (
+              <button onClick={() => navigate('/upgrade')}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-yellow-200 bg-yellow-50 hover:bg-yellow-100 transition-colors">
+                <Crown className="w-4 h-4 text-yellow-600" strokeWidth={2.5} />
+                <span className="text-sm font-bold text-yellow-700">Upgrade</span>
+              </button>
+            )}
             <NotificationDropdown userId={user?.id} />
-            <button onClick={() => navigate('/upgrade')}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 border ${
-                teacherTier === 'teacher_pro' ? 'bg-red-50 border-red-200 hover:bg-red-100' : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-              }`}>
-              <Crown className={`w-4 h-4 ${teacherTier === 'teacher_pro' ? 'text-red-600' : 'text-yellow-600'}`} />
-              <span className={`text-xs font-bold hidden md:inline ${teacherTier === 'teacher_pro' ? 'text-red-700' : 'text-yellow-700'}`}>
-                {teacherTier === 'teacher_pro' ? 'Teacher Pro' : 'Upgrade'}
-              </span>
-            </button>
             <div className="hidden sm:flex items-center gap-1 bg-yellow-50 border border-yellow-200 px-2.5 py-1 rounded-full">
               <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
               <span className="font-black text-yellow-700 text-xs tabular-nums">{blazesBucks.toLocaleString()}</span>
             </div>
-            <button onClick={() => navigate('/settings')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Settings className="w-5 h-5 text-gray-600" />
-            </button>
-            <button onClick={() => navigate('/profile')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={32} isPlus={teacherTier === 'teacher_pro'} />
-              <div className="text-left hidden lg:block">
-                <div className="text-xs font-bold text-gray-900 leading-tight">{userName}</div>
-                <div className="text-[10px] text-gray-500 leading-tight">Lv {seasonProgress?.level || 1} • Teacher</div>
-              </div>
-            </button>
+            {/* Profile with dropdown */}
+            <div className="relative">
+              <button onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors">
+                <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={32} isPlus={teacherTier === 'teacher_pro'} />
+              </button>
+              {showProfileMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
+                  <div className="absolute right-0 top-11 w-52 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="font-bold text-gray-900 text-sm truncate">{userName}</div>
+                      <div className="text-xs text-gray-500">Lv {seasonProgress?.level || 1} • Teacher{teacherTier === 'teacher_pro' ? ' Pro' : ''}</div>
+                    </div>
+                    <button onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Users className="w-4 h-4" /> Profile
+                    </button>
+                    <button onClick={() => { setShowProfileMenu(false); navigate('/settings'); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Settings className="w-4 h-4" /> Settings
+                    </button>
+                    <button onClick={() => { setShowProfileMenu(false); handleLogout(); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100">
+                      <X className="w-4 h-4" /> Log Out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -1643,6 +1661,20 @@ export default function TeacherHome() {
           />
         )}
 
+        {/* ── Collection sub-tabs ── */}
+        {['skins', 'achievements'].includes(activeTab) && (
+          <div className="flex items-center gap-2 mb-6">
+            <button onClick={() => setActiveTab('skins')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'skins' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+              <Shirt className="w-4 h-4 inline mr-1.5" strokeWidth={2.5} />Skins & Packs
+            </button>
+            <button onClick={() => setActiveTab('achievements')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'achievements' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+              <Award className="w-4 h-4 inline mr-1.5" strokeWidth={2.5} />Achievements
+            </button>
+          </div>
+        )}
+
         {activeTab === 'skins' && user && (
           <SkinsPage
             userId={user.id}
@@ -1653,7 +1685,7 @@ export default function TeacherHome() {
         )}
 
         {activeTab === 'achievements' && user && (
-          <div className="mt-6"><AchievementsMap userId={user.id} /></div>
+          <AchievementsMap userId={user.id} />
         )}
 
         {activeTab === 'myKits' && (

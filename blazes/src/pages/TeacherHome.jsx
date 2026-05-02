@@ -18,7 +18,6 @@ export default function TeacherHome() {
   const [equippedSkinId, setEquippedSkinId] = useState('default');
   const [blazesBucks, setBlazesBucks] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [teacherStats, setTeacherStats] = useState({
     totalGames: 0,
     avgScore: 0,
@@ -321,57 +320,20 @@ export default function TeacherHome() {
           <div className="flex items-center gap-2 flex-shrink-0">
             <NotificationDropdown userId={user?.id} />
 
-            {/* Account button — levels, profile, collection, upgrade */}
-            <div className="relative">
-              <button onClick={() => { setShowAccountMenu(!showAccountMenu); setShowProfileMenu(false); }}
-                className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white shadow-md shadow-orange-500/30 hover:shadow-lg hover:shadow-orange-500/40 hover:scale-105 active:scale-100 transition-all ring-2 ring-white">
-                <Star className="w-4 h-4 fill-white" strokeWidth={2.5} />
-                <span className="text-sm font-black tracking-wide">Lv {seasonProgress?.level || 1}</span>
-                <div className="hidden sm:flex items-center gap-1 bg-white/25 rounded-full px-2 py-0.5">
-                  <img src="/blazes-coin.png" className="w-3.5 h-3.5" alt="BB" />
-                  <span className="text-[11px] font-black tabular-nums">{blazesBucks.toLocaleString()}</span>
-                </div>
-                <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showAccountMenu ? '-rotate-90' : 'rotate-90'}`} strokeWidth={3} />
-              </button>
-              {showAccountMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowAccountMenu(false)} />
-                  <div className="absolute right-0 top-11 w-60 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                      <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">Account</div>
-                      <div className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 rounded-full px-2.5 py-1">
-                        <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
-                        <span className="font-black text-yellow-700 text-xs tabular-nums">{blazesBucks.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <button onClick={() => { setShowAccountMenu(false); navigate('/profile'); }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
-                      <Star className="w-4 h-4 text-yellow-600" /> Levels
-                      <span className="ml-auto text-[10px] font-bold text-gray-400">Lv {seasonProgress?.level || 1}</span>
-                    </button>
-                    <button onClick={() => { setShowAccountMenu(false); navigate('/profile'); }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
-                      <Users className="w-4 h-4" /> Profile
-                    </button>
-                    <button onClick={() => { setShowAccountMenu(false); setActiveTab('skins'); }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
-                      <Award className="w-4 h-4" /> Collection
-                      <span className="ml-auto text-[10px] font-bold text-gray-400">Skins · Wins</span>
-                    </button>
-                    {teacherTier !== 'teacher_pro' && (
-                      <button onClick={() => { setShowAccountMenu(false); navigate('/upgrade'); }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-yellow-700 hover:bg-yellow-50 transition-colors border-t border-gray-100">
-                        <Crown className="w-4 h-4" /> Upgrade to Pro
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+            {/* Hub button — opens the dedicated personal area (levels / skins / achievements / upgrade) */}
+            <button onClick={() => navigate('/hub')}
+              className="flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white shadow-md shadow-orange-500/30 hover:shadow-lg hover:shadow-orange-500/40 hover:scale-105 active:scale-100 transition-all ring-2 ring-white">
+              <Star className="w-4 h-4 fill-white" strokeWidth={2.5} />
+              <span className="text-sm font-black tracking-wide">Lv {seasonProgress?.level || 1}</span>
+              <div className="hidden sm:flex items-center gap-1 bg-white/25 rounded-full px-2 py-0.5">
+                <img src="/blazes-coin.png" className="w-3.5 h-3.5" alt="BB" />
+                <span className="text-[11px] font-black tabular-nums">{blazesBucks.toLocaleString()}</span>
+              </div>
+            </button>
 
             {/* Avatar — settings + log out */}
             <div className="relative">
-              <button onClick={() => { setShowProfileMenu(!showProfileMenu); setShowAccountMenu(false); }}
+              <button onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors">
                 <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={32} isPlus={teacherTier === 'teacher_pro'} />
               </button>

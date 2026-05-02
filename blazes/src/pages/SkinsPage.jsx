@@ -291,18 +291,52 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
             )}
             {/* Inner circle */}
             <div style={{
-                width: size, height: size, borderRadius: '50%', background: bg,
-                boxShadow: `0 0 ${Math.round(size * 0.25)}px ${glow}80`,
+                width: size, height: size, borderRadius: '50%',
+                // Layered: skin gradient + diagonal glossy highlight + soft inner shadow on the bottom for orb depth
+                backgroundImage: `radial-gradient(circle at 30% 22%, rgba(255,255,255,0.55), rgba(255,255,255,0) 55%), radial-gradient(circle at 70% 80%, rgba(0,0,0,0.25), rgba(0,0,0,0) 55%), ${bg}`,
+                boxShadow: `0 0 ${Math.round(size * 0.3)}px ${glow}90, inset 0 -${Math.round(size * 0.08)}px ${Math.round(size * 0.16)}px rgba(0,0,0,0.25), inset 0 ${Math.round(size * 0.06)}px ${Math.round(size * 0.12)}px rgba(255,255,255,0.25)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: tier === 'Common' || tier === 'Uncommon' ? `2px solid ${frameColor}40` : 'none',
-                position: 'relative', zIndex: 2,
+                border: tier === 'Common' || tier === 'Uncommon' ? `2px solid ${frameColor}55` : 'none',
+                position: 'relative', zIndex: 2, overflow: 'hidden',
             }}>
                 {iconPath ? (
-                    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))' }}>
-                        <path d={iconPath} />
+                    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"
+                        style={{ filter: `drop-shadow(0 ${Math.max(1, Math.round(size * 0.04))}px ${Math.max(2, Math.round(size * 0.08))}px rgba(0,0,0,0.55))`, position: 'relative', zIndex: 2 }}>
+                        {/* Soft halo behind the icon — same path, fat translucent stroke */}
+                        <path d={iconPath} stroke="rgba(255,255,255,0.35)" strokeWidth={Math.max(3, iconSize * 0.18)} />
+                        {/* Crisp main icon */}
+                        <path d={iconPath} stroke="white" strokeWidth={Math.max(1.8, iconSize * 0.09)} />
+                        {/* Bright inner highlight stroke for extra crispness */}
+                        <path d={iconPath} stroke="rgba(255,255,255,0.95)" strokeWidth={Math.max(0.8, iconSize * 0.04)} />
                     </svg>
                 ) : (
-                    <span style={{ color: 'white', fontWeight: 900, fontSize: size * 0.4, textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{initial || '?'}</span>
+                    <span style={{ color: 'white', fontWeight: 900, fontSize: size * 0.4, textShadow: '0 2px 4px rgba(0,0,0,0.5), 0 0 12px rgba(255,255,255,0.3)', position: 'relative', zIndex: 2 }}>{initial || '?'}</span>
+                )}
+                {/* Sparkle dots for high-tier skins */}
+                {(tier === 'Legendary' || tier === 'Mythic') && (
+                    <>
+                        <span style={{
+                            position: 'absolute', top: '14%', right: '18%',
+                            width: Math.max(3, size * 0.07), height: Math.max(3, size * 0.07), borderRadius: '50%',
+                            background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 70%)',
+                            animation: 'skin-sparkle 2.4s ease-in-out infinite',
+                        }} />
+                        <span style={{
+                            position: 'absolute', bottom: '20%', left: '18%',
+                            width: Math.max(2, size * 0.05), height: Math.max(2, size * 0.05), borderRadius: '50%',
+                            background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 70%)',
+                            animation: 'skin-sparkle 3.1s ease-in-out infinite 0.7s',
+                        }} />
+                    </>
+                )}
+                {/* Conic shimmer rotation for Mythic only — subtle rainbow sweep */}
+                {tier === 'Mythic' && (
+                    <span style={{
+                        position: 'absolute', inset: 0, borderRadius: '50%',
+                        background: 'conic-gradient(from 0deg, rgba(255,255,255,0) 0deg, rgba(255,255,255,0.18) 60deg, rgba(255,255,255,0) 120deg, rgba(255,255,255,0) 360deg)',
+                        animation: 'skin-shimmer 4s linear infinite',
+                        mixBlendMode: 'screen', pointerEvents: 'none',
+                    }} />
                 )}
             </div>
         </div>

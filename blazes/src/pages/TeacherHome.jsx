@@ -326,7 +326,17 @@ export default function TeacherHome() {
               <Star className="w-4 h-4 fill-white" strokeWidth={2.5} />
               <span className="text-sm font-black tracking-wide">Lv {seasonProgress?.level || 1}</span>
               <div className="hidden sm:flex items-center gap-1 bg-white/25 rounded-full px-2 py-0.5">
-                <img src="/blazes-coin.png" className="w-3.5 h-3.5" alt="BB" />
+                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" aria-label="BB">
+                  <defs>
+                    <radialGradient id="bbCoinHub" cx="35%" cy="28%" r="85%">
+                      <stop offset="0%" stopColor="#fffbe6" />
+                      <stop offset="55%" stopColor="#fbbf24" />
+                      <stop offset="100%" stopColor="#b45309" />
+                    </radialGradient>
+                  </defs>
+                  <circle cx="12" cy="12" r="10" fill="url(#bbCoinHub)" stroke="#7c2d12" strokeWidth="0.7" />
+                  <text x="12" y="16.5" textAnchor="middle" fontWeight="900" fontSize="12" fill="#7c2d12">B</text>
+                </svg>
                 <span className="text-[11px] font-black tabular-nums">{blazesBucks.toLocaleString()}</span>
               </div>
             </button>

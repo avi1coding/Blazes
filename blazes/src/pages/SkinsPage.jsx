@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Check, Lock, ShoppingCart, Archive, Package } from 'lucide-react';
 
+// TEMP: flip to true to render every skin as owned/unlocked so the user can
+// visually review all orb designs without actually buying them. This only
+// affects the local UI — the server still tracks real ownership, so equip
+// requests will be locally previewed but won't persist.
+const PREVIEW_ALL_SKINS = true;
+
 // ─── Skin SVG icons (path data for 24x24 viewBox) ──────────────────────
 // Each entry is an SVG path string rendered in white
 const SKIN_ICONS = {
@@ -644,7 +650,12 @@ function SkinCard({ skin, isOwned, isEquipped, canAfford, isBuying, onBuy, onEqu
 // ─── Main SkinsPage ─────────────────────────────────────────────────────────
 export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip }) {
     const [tab, setTab] = useState('shop');
-    const [owned, setOwned] = useState(new Set(['default', ...FREE_SKIN_IDS]));
+    const [owned, setOwned] = useState(() => {
+        if (PREVIEW_ALL_SKINS) {
+            return new Set(['default', ...AVATAR_SKINS.map(s => s.id), ...SEASONAL_SKINS.map(s => s.id)]);
+        }
+        return new Set(['default', ...FREE_SKIN_IDS]);
+    });
     const [ownedCounts, setOwnedCounts] = useState({});
     const [equipped, setEquipped] = useState({ avatar_skin: 'default', bar_skin: 'default' });
     const [stock, setStock] = useState([]);       // array of skin IDs
@@ -690,7 +701,9 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
         fetch(`${base}/api/skins/${userId}`)
             .then(r => r.json())
             .then(d => {
-                setOwned(new Set(['default', ...FREE_SKIN_IDS, ...(d.owned || []).map(s => s.skin_id)]));
+                if (!PREVIEW_ALL_SKINS) {
+                    setOwned(new Set(['default', ...FREE_SKIN_IDS, ...(d.owned || []).map(s => s.skin_id)]));
+                }
                 const counts = {};
                 (d.owned || []).forEach(s => { counts[s.skin_id] = s.count || 1; });
                 setOwnedCounts(counts);
@@ -762,7 +775,9 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
         fetch(`${base}/api/skins/${userId}`)
             .then(r => r.json())
             .then(d => {
-                setOwned(new Set(['default', ...FREE_SKIN_IDS, ...(d.owned || []).map(s => s.skin_id)]));
+                if (!PREVIEW_ALL_SKINS) {
+                    setOwned(new Set(['default', ...FREE_SKIN_IDS, ...(d.owned || []).map(s => s.skin_id)]));
+                }
                 const counts = {};
                 (d.owned || []).forEach(s => { counts[s.skin_id] = s.count || 1; });
                 setOwnedCounts(counts);

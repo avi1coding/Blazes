@@ -29,3 +29,6 @@ Thumbs.db
 
 # Uploads
 blazes-backend/uploads/
+
+# Claude Code per-user settings (personal hooks, not team-wide)
+.claude/settings.local.json

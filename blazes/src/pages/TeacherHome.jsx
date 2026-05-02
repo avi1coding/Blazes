@@ -295,17 +295,14 @@ export default function TeacherHome() {
                 { id: 'myKits', icon: BookOpen, label: 'Kits' },
                 { id: 'classrooms', icon: GraduationCap, label: 'Classes' },
                 { id: 'stats', icon: BarChart3, label: 'Stats' },
-                { id: 'collection', icon: Award, label: 'Collection' },
               ].map(t => {
                 const Icon = t.icon;
-                const isActive = t.id === 'collection'
-                  ? ['skins', 'achievements'].includes(activeTab)
-                  : t.id === 'myKits'
+                const isActive = t.id === 'myKits'
                   ? ['myKits', 'createKit'].includes(activeTab)
                   : activeTab === t.id;
                 return (
                   <button key={t.id}
-                    onClick={() => setActiveTab(t.id === 'collection' ? 'skins' : t.id)}
+                    onClick={() => setActiveTab(t.id)}
                     className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${isActive
                       ? 'bg-red-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
@@ -319,20 +316,9 @@ export default function TeacherHome() {
             </div>
           </div>
 
-          {/* Right: upgrade (free only), BB, notifications, profile dropdown */}
+          {/* Right: notifications + profile dropdown (everything personal/gamification lives in the dropdown) */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {teacherTier !== 'teacher_pro' && (
-              <button onClick={() => navigate('/upgrade')}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-yellow-200 bg-yellow-50 hover:bg-yellow-100 transition-colors">
-                <Crown className="w-4 h-4 text-yellow-600" strokeWidth={2.5} />
-                <span className="text-sm font-bold text-yellow-700">Upgrade</span>
-              </button>
-            )}
             <NotificationDropdown userId={user?.id} />
-            <div className="hidden sm:flex items-center gap-1 bg-yellow-50 border border-yellow-200 px-2.5 py-1 rounded-full">
-              <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
-              <span className="font-black text-yellow-700 text-xs tabular-nums">{blazesBucks.toLocaleString()}</span>
-            </div>
             {/* Profile with dropdown */}
             <div className="relative">
               <button onClick={() => setShowProfileMenu(!showProfileMenu)}
@@ -342,15 +328,30 @@ export default function TeacherHome() {
               {showProfileMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                  <div className="absolute right-0 top-11 w-52 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                  <div className="absolute right-0 top-11 w-60 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100">
                       <div className="font-bold text-gray-900 text-sm truncate">{userName}</div>
-                      <div className="text-xs text-gray-500">Lv {seasonProgress?.level || 1} • Teacher{teacherTier === 'teacher_pro' ? ' Pro' : ''}</div>
+                      <div className="text-xs text-gray-500 mb-2">Lv {seasonProgress?.level || 1} • Teacher{teacherTier === 'teacher_pro' ? ' Pro' : ''}</div>
+                      <div className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 rounded-full px-2.5 py-1 w-fit">
+                        <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
+                        <span className="font-black text-yellow-700 text-xs tabular-nums">{blazesBucks.toLocaleString()} BB</span>
+                      </div>
                     </div>
                     <button onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                       <Users className="w-4 h-4" /> Profile
                     </button>
+                    <button onClick={() => { setShowProfileMenu(false); setActiveTab('skins'); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Award className="w-4 h-4" /> Collection
+                      <span className="ml-auto text-[10px] font-bold text-gray-400 uppercase tracking-wider">Skins · Wins</span>
+                    </button>
+                    {teacherTier !== 'teacher_pro' && (
+                      <button onClick={() => { setShowProfileMenu(false); navigate('/upgrade'); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-yellow-700 hover:bg-yellow-50 transition-colors">
+                        <Crown className="w-4 h-4" /> Upgrade to Pro
+                      </button>
+                    )}
                     <button onClick={() => { setShowProfileMenu(false); navigate('/settings'); }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                       <Settings className="w-4 h-4" /> Settings

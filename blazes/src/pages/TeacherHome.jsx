@@ -6,7 +6,7 @@ import AddQuestionForm from '../components/AddQuestionForm';
 import NotificationDropdown from '../components/NotificationDropdown';
 import SubjectPicker, { GradePicker } from '../components/SubjectPicker';
 import { getGameModeName } from '../utils/gameModeName';
-import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown, Layers, Award } from 'lucide-react';
+import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown, Layers, Award, Star } from 'lucide-react';
 import Toast from '../components/Toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -18,6 +18,7 @@ export default function TeacherHome() {
   const [equippedSkinId, setEquippedSkinId] = useState('default');
   const [blazesBucks, setBlazesBucks] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [teacherStats, setTeacherStats] = useState({
     totalGames: 0,
     avgScore: 0,
@@ -316,42 +317,67 @@ export default function TeacherHome() {
             </div>
           </div>
 
-          {/* Right: notifications + profile dropdown (everything personal/gamification lives in the dropdown) */}
+          {/* Right: notifications, account button (levels/profile/collection/upgrade), avatar (settings/logout) */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <NotificationDropdown userId={user?.id} />
-            {/* Profile with dropdown */}
+
+            {/* Account button — levels, profile, collection, upgrade */}
             <div className="relative">
-              <button onClick={() => setShowProfileMenu(!showProfileMenu)}
+              <button onClick={() => { setShowAccountMenu(!showAccountMenu); setShowProfileMenu(false); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors">
+                <Star className="w-4 h-4 text-yellow-600" strokeWidth={2.5} />
+                <span className="text-sm font-bold text-gray-700">Lv {seasonProgress?.level || 1}</span>
+              </button>
+              {showAccountMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowAccountMenu(false)} />
+                  <div className="absolute right-0 top-11 w-60 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">Account</div>
+                      <div className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 rounded-full px-2.5 py-1">
+                        <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
+                        <span className="font-black text-yellow-700 text-xs tabular-nums">{blazesBucks.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => { setShowAccountMenu(false); navigate('/profile'); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Star className="w-4 h-4 text-yellow-600" /> Levels
+                      <span className="ml-auto text-[10px] font-bold text-gray-400">Lv {seasonProgress?.level || 1}</span>
+                    </button>
+                    <button onClick={() => { setShowAccountMenu(false); navigate('/profile'); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Users className="w-4 h-4" /> Profile
+                    </button>
+                    <button onClick={() => { setShowAccountMenu(false); setActiveTab('skins'); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Award className="w-4 h-4" /> Collection
+                      <span className="ml-auto text-[10px] font-bold text-gray-400">Skins · Wins</span>
+                    </button>
+                    {teacherTier !== 'teacher_pro' && (
+                      <button onClick={() => { setShowAccountMenu(false); navigate('/upgrade'); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-yellow-700 hover:bg-yellow-50 transition-colors border-t border-gray-100">
+                        <Crown className="w-4 h-4" /> Upgrade to Pro
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Avatar — settings + log out */}
+            <div className="relative">
+              <button onClick={() => { setShowProfileMenu(!showProfileMenu); setShowAccountMenu(false); }}
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors">
                 <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={32} isPlus={teacherTier === 'teacher_pro'} />
               </button>
               {showProfileMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                  <div className="absolute right-0 top-11 w-60 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                  <div className="absolute right-0 top-11 w-52 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100">
                       <div className="font-bold text-gray-900 text-sm truncate">{userName}</div>
-                      <div className="text-xs text-gray-500 mb-2">Lv {seasonProgress?.level || 1} • Teacher{teacherTier === 'teacher_pro' ? ' Pro' : ''}</div>
-                      <div className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 rounded-full px-2.5 py-1 w-fit">
-                        <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
-                        <span className="font-black text-yellow-700 text-xs tabular-nums">{blazesBucks.toLocaleString()} BB</span>
-                      </div>
+                      <div className="text-xs text-gray-500">Teacher{teacherTier === 'teacher_pro' ? ' Pro' : ''}</div>
                     </div>
-                    <button onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
-                      <Users className="w-4 h-4" /> Profile
-                    </button>
-                    <button onClick={() => { setShowProfileMenu(false); setActiveTab('skins'); }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
-                      <Award className="w-4 h-4" /> Collection
-                      <span className="ml-auto text-[10px] font-bold text-gray-400 uppercase tracking-wider">Skins · Wins</span>
-                    </button>
-                    {teacherTier !== 'teacher_pro' && (
-                      <button onClick={() => { setShowProfileMenu(false); navigate('/upgrade'); }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-yellow-700 hover:bg-yellow-50 transition-colors">
-                        <Crown className="w-4 h-4" /> Upgrade to Pro
-                      </button>
-                    )}
                     <button onClick={() => { setShowProfileMenu(false); navigate('/settings'); }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                       <Settings className="w-4 h-4" /> Settings

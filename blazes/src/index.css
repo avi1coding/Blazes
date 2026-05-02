@@ -72,6 +72,12 @@
   to { transform: rotate(360deg); }
 }
 
+/* Subtle icon breathe — Legendary + Mythic */
+@keyframes skin-icon-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
 /* Pack opening animations */
 @keyframes packFloat {
   0%, 100% { transform: translateY(0); }

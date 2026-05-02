@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Check, Lock, ShoppingCart, Archive, Package } from 'lucide-react';
+import { Check, Lock, ShoppingCart, Archive, Package, AlertTriangle, CheckCircle } from 'lucide-react';
 
 // TEMP: flip to true to render every skin as owned/unlocked so the user can
 // visually review all orb designs without actually buying them. This only
@@ -262,7 +262,8 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
     const tier = skin?.tier || 'Basic';
     const rb = RARITY_BORDERS[tier] || RARITY_BORDERS.Basic;
     const iconPath = skin ? SKIN_ICONS[skin.id] : null;
-    const iconSize = size * 0.55;
+    const iconSize = size * 0.62;
+    const tierRank = { Basic: 0, Common: 1, Uncommon: 2, Rare: 3, Epic: 4, Legendary: 5, Mythic: 6 }[tier] || 0;
     const plusRingWidth = Math.max(3, Math.round(size * 0.04));
     const plusOuterSize = isPlus ? size + plusRingWidth * 2 + 4 : 0;
     const frameSize = isPlus ? plusOuterSize : size + (showFrame && tier !== 'Basic' ? Math.round(size * 0.2) : 0);
@@ -305,18 +306,51 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                 border: tier === 'Common' || tier === 'Uncommon' ? `2px solid ${frameColor}55` : 'none',
                 position: 'relative', zIndex: 2, overflow: 'hidden',
             }}>
+                {/* Glass inner ring — subtle white ring just inside the perimeter */}
+                <span style={{
+                    position: 'absolute', inset: '6%', borderRadius: '50%',
+                    border: `${Math.max(1, size * 0.018)}px solid rgba(255,255,255,0.22)`,
+                    boxShadow: 'inset 0 0 8px rgba(255,255,255,0.15)',
+                    pointerEvents: 'none', zIndex: 1,
+                }} />
+                {/* Decorative starburst rays behind icon — Common and above */}
+                {tierRank >= 1 && (
+                    <svg viewBox="0 0 100 100"
+                        style={{
+                            position: 'absolute', inset: '8%', width: '84%', height: '84%',
+                            pointerEvents: 'none', zIndex: 1,
+                            opacity: tierRank >= 4 ? 0.55 : 0.35,
+                            animation: tierRank >= 3 ? 'skin-shimmer 18s linear infinite' : 'none',
+                        }}>
+                        {Array.from({ length: tierRank >= 4 ? 12 : 8 }).map((_, i) => {
+                            const angle = (i * 360) / (tierRank >= 4 ? 12 : 8);
+                            return (
+                                <line key={i}
+                                    x1="50" y1={tierRank >= 4 ? 8 : 12} x2="50" y2={tierRank >= 4 ? 22 : 24}
+                                    stroke="rgba(255,255,255,0.85)" strokeWidth="1.4" strokeLinecap="round"
+                                    transform={`rotate(${angle} 50 50)`} />
+                            );
+                        })}
+                    </svg>
+                )}
                 {iconPath ? (
                     <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"
-                        style={{ filter: `drop-shadow(0 ${Math.max(1, Math.round(size * 0.04))}px ${Math.max(2, Math.round(size * 0.08))}px rgba(0,0,0,0.55))`, position: 'relative', zIndex: 2 }}>
-                        {/* Soft halo behind the icon — same path, fat translucent stroke */}
-                        <path d={iconPath} stroke="rgba(255,255,255,0.35)" strokeWidth={Math.max(3, iconSize * 0.18)} />
-                        {/* Crisp main icon */}
-                        <path d={iconPath} stroke="white" strokeWidth={Math.max(1.8, iconSize * 0.09)} />
-                        {/* Bright inner highlight stroke for extra crispness */}
-                        <path d={iconPath} stroke="rgba(255,255,255,0.95)" strokeWidth={Math.max(0.8, iconSize * 0.04)} />
+                        style={{
+                            position: 'relative', zIndex: 2,
+                            filter: `drop-shadow(0 0 ${Math.round(iconSize * 0.35)}px ${glow}) drop-shadow(0 ${Math.max(1, Math.round(size * 0.05))}px ${Math.max(2, Math.round(size * 0.1))}px rgba(0,0,0,0.6))`,
+                            animation: tierRank >= 5 ? 'skin-icon-pulse 2.4s ease-in-out infinite' : 'none',
+                        }}>
+                        {/* Outer colored halo — uses skin's glow color, fat translucent stroke = neon glow */}
+                        <path d={iconPath} stroke={glow} strokeOpacity="0.65" strokeWidth={Math.max(4.5, iconSize * 0.24)} />
+                        {/* Soft white halo above the colored one — adds brightness */}
+                        <path d={iconPath} stroke="rgba(255,255,255,0.55)" strokeWidth={Math.max(3, iconSize * 0.16)} />
+                        {/* Crisp main white stroke — the readable icon */}
+                        <path d={iconPath} stroke="white" strokeWidth={Math.max(2, iconSize * 0.1)} />
+                        {/* Hot inner highlight — almost glowing core */}
+                        <path d={iconPath} stroke="rgba(255,255,255,1)" strokeWidth={Math.max(0.6, iconSize * 0.035)} style={{ filter: 'brightness(1.4)' }} />
                     </svg>
                 ) : (
-                    <span style={{ color: 'white', fontWeight: 900, fontSize: size * 0.4, textShadow: '0 2px 4px rgba(0,0,0,0.5), 0 0 12px rgba(255,255,255,0.3)', position: 'relative', zIndex: 2 }}>{initial || '?'}</span>
+                    <span style={{ color: 'white', fontWeight: 900, fontSize: size * 0.42, textShadow: `0 2px 6px rgba(0,0,0,0.6), 0 0 ${Math.round(size * 0.3)}px ${glow}`, position: 'relative', zIndex: 2 }}>{initial || '?'}</span>
                 )}
                 {/* Sparkle dots for high-tier skins */}
                 {(tier === 'Legendary' || tier === 'Mythic') && (
@@ -751,7 +785,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                 setOwned(prev => new Set([...prev, skin.id]));
                 setBalance(d.balance);
                 onBBChange?.(d.balance);
-                showToast(`${skin.emoji} ${skin.name} purchased!`);
+                showToast(`${skin.name} purchased!`);
             } else {
                 showToast(d.error || 'Purchase failed', 'error');
             }
@@ -881,7 +915,10 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                     color: toast.type === 'error' ? '#991b1b' : '#14532d',
                     border: `2px solid ${toast.type === 'error' ? '#fca5a5' : '#86efac'}`
                 }}>
-                    {toast.type === 'error' ? '⚠️' : '🎉'} {toast.msg}
+                    {toast.type === 'error'
+                        ? <AlertTriangle size={16} strokeWidth={2.5} />
+                        : <CheckCircle size={16} strokeWidth={2.5} />}
+                    {toast.msg}
                 </div>
             )}
 

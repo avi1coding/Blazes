@@ -467,27 +467,23 @@ function ShopCard({ skin, inStock, isOwned, isEquipped, canAfford, isBuying, onB
                 </div>
             )}
 
-            {/* Avatar preview */}
+            {/* Avatar preview — uses the shared rich orb so shop tiles match pack tiles + nav avatar */}
             <div style={{
-                width: '100%', height: 90, borderRadius: 14, marginTop: 22, marginBottom: 10,
-                background: skin.bg,
-                boxShadow: isOwned
-                    ? `0 2px 14px ${skin.glow}55`
-                    : inStock && glowShadow
-                        ? `0 0 20px ${skin.glow}${glowHex}`
-                        : 'inset 0 0 0 2px rgba(0,0,0,0.05)',
+                width: '100%', height: 96, marginTop: 22, marginBottom: 10,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                filter: dimmed ? 'grayscale(0.6)' : 'none',
+                filter: dimmed ? 'grayscale(0.5) brightness(0.85)' : 'none',
             }}>
                 {!isOwned && !inStock ? (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{opacity:0.5}}>
-                        <path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6-7h-1V8A5 5 0 0 0 7 8v2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h0zM9 8a3 3 0 0 1 6 0v2H9V8z" fill="rgba(255,255,255,0.6)"/>
-                    </svg>
-                ) : SKIN_ICONS[skin.id] ? (
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
-                        <path d={SKIN_ICONS[skin.id]} />
-                    </svg>
-                ) : null}
+                    <div style={{
+                        width: 76, height: 76, borderRadius: '50%', background: '#f3f4f6',
+                        border: '2px dashed #d1d5db',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <Lock size={26} color="#9ca3af" strokeWidth={2.2} />
+                    </div>
+                ) : (
+                    <AvatarPreview skinId={skin.id} initial={skin.name?.[0]?.toUpperCase()} size={72} />
+                )}
             </div>
 
             {/* Name */}
@@ -519,8 +515,8 @@ function ShopCard({ skin, inStock, isOwned, isEquipped, canAfford, isBuying, onB
             )}
             {isEquipped ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#dc2626', background: '#fef2f2', borderRadius: 8, padding: '6px 0' }}>
-                        Equipped ✓
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 12, fontWeight: 800, color: '#dc2626', background: '#fef2f2', borderRadius: 8, padding: '6px 0' }}>
+                        <Check size={13} strokeWidth={3} /> Equipped
                     </div>
                     {inStock && onBuy && (
                         <button onClick={() => onBuy(skin)} disabled={!canAfford || isBuying} style={{
@@ -608,20 +604,22 @@ function SkinCard({ skin, isOwned, isEquipped, canAfford, isBuying, onBuy, onEqu
                 </div>
             )}
 
-            {/* Avatar circle */}
+            {/* Avatar circle — shared rich orb */}
             <div style={{
-                width: '100%', height: 90, borderRadius: 14, marginTop: 22, marginBottom: 10,
-                background: skin.bg,
-                boxShadow: isOwned ? `0 2px 14px ${skin.glow}55` : 'inset 0 0 0 2px rgba(0,0,0,0.06)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                width: '100%', height: 96, marginTop: 22, marginBottom: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-                {isOwned && SKIN_ICONS[skin.id] ? (
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
-                        <path d={SKIN_ICONS[skin.id]} />
-                    </svg>
-                ) : !isOwned ? (
-                    <Lock size={24} color="rgba(255,255,255,0.45)" />
-                ) : null}
+                {isOwned ? (
+                    <AvatarPreview skinId={skin.id} initial={skin.name?.[0]?.toUpperCase()} size={72} />
+                ) : (
+                    <div style={{
+                        width: 76, height: 76, borderRadius: '50%', background: '#f3f4f6',
+                        border: '2px dashed #d1d5db',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <Lock size={26} color="#9ca3af" strokeWidth={2.2} />
+                    </div>
+                )}
             </div>
 
             {/* Name + count */}
@@ -647,8 +645,8 @@ function SkinCard({ skin, isOwned, isEquipped, canAfford, isBuying, onBuy, onEqu
 
             {/* Action */}
             {isEquipped ? (
-                <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#dc2626', background: '#fef2f2', borderRadius: 8, padding: '6px 0' }}>
-                    Equipped ✓
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 12, fontWeight: 800, color: '#dc2626', background: '#fef2f2', borderRadius: 8, padding: '6px 0' }}>
+                    <Check size={13} strokeWidth={3} /> Equipped
                 </div>
             ) : isOwned ? (
                 onEquip && (
@@ -1194,33 +1192,19 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 12 }}>
                             {pack.skins.map(s => {
                                 const skinData = SKIN_BY_ID[s.id];
-                                const bg = RARITY_BG[skinData?.tier] || '#6b7280';
                                 const border = RARITY_BORDER[skinData?.tier] || '#4b5563';
-                                const iconPath = SKIN_ICONS[s.id];
                                 const isOwned = owned.has(s.id);
                                 return (
                                     <div key={s.id} style={{ textAlign: 'center' }}>
-                                        <div style={{
-                                            width: '100%', aspectRatio: '1', borderRadius: 12, position: 'relative',
-                                            background: skinData?.bg || bg,
-                                            border: `3px solid ${border}`,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            boxShadow: `0 2px 8px ${bg}30`,
-                                        }}>
-                                            {iconPath ? (
-                                                <svg viewBox="0 0 24 24" width={36} height={36} fill="none" stroke="white" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))' }}>
-                                                    <path d={iconPath} />
-                                                </svg>
-                                            ) : (
-                                                <span style={{ color: 'white', fontSize: 20, fontWeight: 900 }}>{(skinData?.name || '?')[0]}</span>
-                                            )}
+                                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 72 }}>
+                                            <AvatarPreview skinId={s.id} initial={(skinData?.name || '?')[0].toUpperCase()} size={56} />
                                             {isOwned && (
-                                                <div style={{ position: 'absolute', bottom: 4, right: 4, width: 18, height: 18, borderRadius: '50%', background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <Check size={11} color="white" strokeWidth={3} />
+                                                <div style={{ position: 'absolute', bottom: 0, right: '12%', width: 18, height: 18, borderRadius: '50%', background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #1e1b4b', zIndex: 5 }}>
+                                                    <Check size={10} color="white" strokeWidth={3} />
                                                 </div>
                                             )}
                                         </div>
-                                        <div style={{ fontSize: 11, fontWeight: 800, color: '#374151', marginTop: 6 }}>{skinData?.name}</div>
+                                        <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.9)', marginTop: 6 }}>{skinData?.name}</div>
                                         <div style={{ fontSize: 11, fontWeight: 700, color: border }}>{s.chance}%</div>
                                     </div>
                                 );

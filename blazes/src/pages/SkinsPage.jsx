@@ -311,11 +311,11 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     animation: rb.animation || 'none',
                 }} />
             )}
-            {/* Inner circle — gradient orb with a strong colored halo + clean dark rim */}
+            {/* Inner circle — clean gradient sphere, no inset highlights, just outer glow */}
             <div style={{
                 width: size, height: size, borderRadius: '50%',
-                backgroundImage: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.3), rgba(255,255,255,0) 55%), ${bg}`,
-                boxShadow: `0 0 ${Math.round(size * 0.35)}px ${glow}cc, 0 0 ${Math.round(size * 0.65)}px ${glow}66, inset 0 0 0 1.5px rgba(0,0,0,0.22), inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.2)`,
+                background: bg,
+                boxShadow: `0 0 ${Math.round(size * 0.35)}px ${glow}cc, 0 0 ${Math.round(size * 0.65)}px ${glow}66`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 position: 'relative', zIndex: 2, overflow: 'hidden',
             }}>

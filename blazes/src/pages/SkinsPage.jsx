@@ -323,7 +323,7 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     <IconComp
                         size={iconSize}
                         color="white"
-                        strokeWidth={3}
+                        strokeWidth={2.5}
                         absoluteStrokeWidth
                         style={{
                             position: 'relative', zIndex: 2,

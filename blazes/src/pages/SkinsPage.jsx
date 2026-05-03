@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Check, Lock, ShoppingCart, Archive, Package, AlertTriangle, CheckCircle } from 'lucide-react';
+import {
+    Check, Lock, ShoppingCart, Archive, Package, AlertTriangle, CheckCircle,
+    // Common
+    Wind, Flame, Globe, Droplet, Sun, Snowflake, Zap, Moon, TreePine, Volume2,
+    // Uncommon
+    Cog, Skull, Diamond, Atom, Orbit, CloudFog, Clock, CloudLightning, Hourglass,
+    Mountain, Ghost, Cpu, Telescope, Flower, CircleOff,
+    // Rare
+    Scale, Sparkles, Tornado, Lightbulb, Gem, Sparkle, Waves, Cloud, MountainSnow, Sprout,
+    // Epic
+    Activity, CloudSnow, Pickaxe, CloudRain, Stars,
+    // Legendary
+    MoreHorizontal, Target, Star, AlarmClock,
+    // Mythic
+    Trophy, Infinity as InfinityIcon, Crown,
+    // Mythological (Season 1)
+    Anchor, Bone, Shield, Sword, Eye, Crosshair, Feather, Heart, Hammer, Wine, Wheat,
+} from 'lucide-react';
 
 // TEMP: flip to true to render every skin as owned/unlocked so the user can
 // visually review all orb designs without actually buying them. This only
@@ -7,81 +24,83 @@ import { Check, Lock, ShoppingCart, Archive, Package, AlertTriangle, CheckCircle
 // requests will be locally previewed but won't persist.
 const PREVIEW_ALL_SKINS = true;
 
-// ─── Skin SVG icons (path data for 24x24 viewBox) ──────────────────────
-// Each entry is an SVG path string rendered in white
+// ─── Skin icons — mapped to lucide-react components ────────────────────
+// Each skin id resolves to a professionally-designed Lucide icon component.
+// Some concepts share the same icon where the closest match is reused
+// (e.g. "blaze" + "fire" both → Flame); the orb gradient + tier glow keep
+// them visually distinct.
 const SKIN_ICONS = {
-    // Basic - null (shows initial letter)
-    // Common - elemental
-    air: 'M3 8c3-4 6-4 9 0s6 4 9 0M3 16c3-4 6-4 9 0s6 4 9 0',
-    fire: 'M12 2c0 4-4 6-4 10a4 4 0 0 0 8 0c0-4-4-6-4-10zM10 15a2 2 0 0 0 4 0c0-2-2-3-2-5 0 2-2 3-2 5z',
-    earth: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a14 14 0 0 1 0 20M12 2a14 14 0 0 0 0 20',
-    water: 'M12 2c-4 5.5-8 8.5-8 12a8 8 0 0 0 16 0c0-3.5-4-6.5-8-12z',
-    light: 'M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M16.9 16.9l2.1 2.1M4.9 19.1l2.1-2.1M16.9 7.1l2.1-2.1M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
-    ice: 'M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11M9 5l3 2 3-2M9 19l3-2 3 2M5 9l2 3-2 3M19 9l-2 3 2 3',
-    lightning: 'M13 2L4 14h6l-3 8 10-12h-6l3-8z',
-    shadow: 'M20 12.5A8.5 8.5 0 1 1 11.5 4 6.5 6.5 0 0 0 20 12.5z',
-    wood: 'M12 22V12M8 12c-2-4 0-8 4-10 4 2 6 6 4 10M6 18c0-2 2-4 6-6 4 2 6 4 6 6',
-    sound: 'M12 4C8 4 6 8 6 12s2 8 6 8M12 8c-2 0-3 2-3 4s1 4 3 4M12 4v16M15 9c1 1 1.5 2 1.5 3S16 14 15 15M18 7c2 2 3 3.5 3 5s-1 3-3 5',
+    // Common — elemental
+    air: Wind,
+    fire: Flame,
+    earth: Globe,
+    water: Droplet,
+    light: Sun,
+    ice: Snowflake,
+    lightning: Zap,
+    shadow: Moon,
+    wood: TreePine,
+    sound: Volume2,
     // Uncommon
-    metal: 'M12 2l2.4 7H22l-6 4.5 2.3 7L12 16l-6.3 4.5 2.3-7-6-4.5h7.6z',
-    poison: 'M9 2h6v4c2 1 4 4 4 7 0 4-3 7-7 7s-7-3-7-7c0-3 2-6 4-7V2zM9 11a3 3 0 1 0 6 0M12 6v2',
-    crystal: 'M12 2L5 9l7 13 7-13-7-7zM5 9l7 4 7-4M12 13v9',
-    plasma: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
-    gravity: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM2 12a10 4 0 1 0 20 0 10 4 0 0 0-20 0z',
-    mist: 'M4 6h16M6 10h12M3 14h18M7 18h10',
-    time: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 3',
-    storm: 'M2 12h4l3-8 3 16 3-16 3 8h4',
-    sand: 'M5 4h14v2c0 3-3 5-7 5S5 9 5 6V4zM5 20h14v-2c0-3-3-5-7-5s-7 2-7 5v2zM12 9v6',
-    lava: 'M4 20c2-3 3-6 3-8 0-3 2-6 5-8 3 2 5 5 5 8 0 2 1 5 3 8M8 20c1-2 1.5-4 1.5-5.5 0-2 1-3.5 2.5-4.5 1.5 1 2.5 2.5 2.5 4.5S15 18 16 20',
-    spirit: 'M5 21V11a7 7 0 0 1 14 0v10l-2-1.5L15 21l-2-1.5L11 21l-2-1.5L7 21l-2-1.5zM9 10a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM15 10a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
-    tech: 'M4 4h16v16H4V4zM9 4v16M15 4v16M4 9h16M4 15h16',
-    cosmic: 'M12 11a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM3 9c3 0 6 1 9 3M21 15c-3 0-6-1-9-3M3 15c2 0 4 0 7-1M21 9c-2 0-4 0-7 1',
-    nature: 'M12 22V12M9 3c-3 3-3 7 0 9h6c3-2 3-6 0-9M7 14c-2 1-4 3-4 5h6M17 14c2 1 4 3 4 5h-6',
-    void: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z',
+    metal: Cog,
+    poison: Skull,
+    crystal: Diamond,
+    plasma: Atom,
+    gravity: Orbit,
+    mist: CloudFog,
+    time: Clock,
+    storm: CloudLightning,
+    sand: Hourglass,
+    lava: Mountain,
+    spirit: Ghost,
+    tech: Cpu,
+    cosmic: Telescope,
+    nature: Flower,
+    void: CircleOff,
     // Rare
-    order: 'M12 3v18M5 7l-3 6h6l-3-6zM19 7l-3 6h6l-3-6zM3 13a3 3 0 1 0 6 0M15 13a3 3 0 1 0 6 0M8 21h8',
-    astral: 'M12 2l2 6 6-2-4 5 6 1-6 1 4 5-6-2-2 6-2-6-6 2 4-5-6-1 6-1-4-5 6 2z',
-    chaos: 'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zM8 8l8 8M16 8l-8 8M12 2v20M2 12h20',
-    neon: 'M4 4l4 4M20 4l-4 4M4 20l4-4M20 20l-4-4M12 2v4M12 18v4M2 12h4M18 12h4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
-    mythic: 'M12 2l3 6h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z',
-    ember: 'M12 2c-2 4-6 6-6 11a6 6 0 0 0 12 0c0-5-4-7-6-11zM12 17a2 2 0 0 1-2-2c0-2 2-3 2-5 0 2 2 3 2 5a2 2 0 0 1-2 2z',
-    wave: 'M2 6c2 0 3 2 5 2s3-2 5-2 3 2 5 2 3-2 5-2M2 12c2 0 3 2 5 2s3-2 5-2 3 2 5 2 3-2 5-2M2 18c2 0 3 2 5 2s3-2 5-2 3 2 5 2 3-2 5-2',
-    gale: 'M4 8c4-2 8-2 12 0M4 12h12c2 0 4 1 4 3s-2 3-4 3H8M4 16h6c1 0 2 .5 2 1.5S11 19 10 19H6',
-    stone: 'M12 2L3 7v10l9 5 9-5V7l-9-5zM3 7l9 5 9-5M12 12v10',
-    vine: 'M12 22V2M8 6c0 2 2 4 4 4M16 10c0 2-2 4-4 4M8 14c0 2 2 4 4 4M16 18c0 2-2 3-4 3',
+    order: Scale,
+    astral: Sparkles,
+    chaos: Tornado,
+    neon: Lightbulb,
+    mythic: Gem,
+    ember: Sparkle,
+    wave: Waves,
+    gale: Cloud,
+    stone: MountainSnow,
+    vine: Sprout,
     // Epic
-    thunder: 'M13 2L4 14h6l-3 8 10-12h-6l3-8zM16 2l2 4M19 6l3 1',
-    frost: 'M12 2v20M7 4l5 4 5-4M7 20l5-4 5 4M2 12h20M4 7l4 5-4 5M20 7l-4 5 4 5',
-    quake: 'M2 18l3-3 2 2 3-5 2 3 2-8 2 5 2-4 2 2 3-3M2 22h20M6 22v-2M10 22v-4M14 22v-3M18 22v-1',
-    tempest: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 2c4 4 4 12 0 20M12 2c-4 4-4 12 0 20M2 12h20',
-    inferno: 'M12 1c-3 5-8 8-8 13a8 8 0 0 0 16 0c0-5-5-8-8-13zM12 18a3 3 0 0 1-3-3c0-3 3-5 3-8 0 3 3 5 3 8a3 3 0 0 1-3 3z',
-    aurora: 'M3 20c3-6 5-14 9-18 4 4 6 12 9 18M6 16c2-4 3.5-9 6-12 2.5 3 4 8 6 12M9 13c1.5-3 2-6 3-8 1 2 1.5 5 3 8',
+    thunder: Activity,
+    frost: CloudSnow,
+    quake: Pickaxe,
+    tempest: CloudRain,
+    inferno: Flame,
+    aurora: Stars,
     // Legendary
-    rift: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 2c-2 3-2 6 0 10s-2 7 0 10M2 12c3-2 6-2 10 0s7 2 10 0',
-    nova: 'M12 2l1.5 6.5L20 6l-2.5 6L22 12l-4.5 0L20 18l-6.5-2.5L12 22l-1.5-6.5L4 18l2.5-6L2 12l4.5 0L4 6l6.5 2.5z',
-    singularity: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
-    ethereal: 'M12 2l3 4 5-1-3 4 3 4-5-1-3 4-3-4-5 1 3-4-3-4 5 1zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
-    chrono: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2M12 2v2M12 20v2M2 12h2M20 12h2',
+    rift: MoreHorizontal,
+    nova: Star,
+    singularity: Target,
+    ethereal: Sparkles,
+    chrono: AlarmClock,
     // Mythic
-    celestial: 'M12 2l2 4 4-1-2 4 4 2-4 2 2 4-4-1-2 4-2-4-4 1 2-4-4-2 4-2-2-4 4 1zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
-    star: 'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z',
-    apex: 'M4 20l8-16 8 16H4zM12 4l-2 4h4l-2-4zM8 12h8M6 16h12',
-    omega: 'M7 20c-3-2-5-5-5-8a10 10 0 0 1 20 0c0 3-2 6-5 8M7 20H3M17 20h4M12 2v2M19.8 7l-1.7 1M4.2 7l1.7 1',
-    blaze: 'M12 1c-4 6-9 9-9 15a9 9 0 0 0 18 0c0-6-5-9-9-15zM12 19a4 4 0 0 1-4-4c0-4 4-6 4-10 0 4 4 6 4 10a4 4 0 0 1-4 4zM8 8c-1 1-1.5 2.5-.5 3.5M16 8c1 1 1.5 2.5.5 3.5',
+    celestial: Stars,
+    star: Star,
+    apex: Trophy,
+    omega: InfinityIcon,
+    blaze: Flame,
     // Season 1: Mythological
-    zeus: 'M12 2l-2 6-4-2 2 5-6 1 5 3-3 5 4-1 2 3 2-3 4 1-3-5 5-3-6-1 2-5-4 2z',
-    poseidon: 'M12 2v4M8 4c0 3 2 4 4 4s4-1 4-4M6 10l6 2 6-2M4 14l3-2v8M12 12v10M20 14l-3-2v8M7 22h10',
-    hades: 'M12 2a8 8 0 0 0-8 8c0 3 1.5 5 4 7v5h8v-5c2.5-2 4-4 4-7a8 8 0 0 0-8-8zM9 14l3-2 3 2M12 6v4',
-    athena: 'M12 2l-3 5h-5l4 4-2 6 6-3 6 3-2-6 4-4h-5zM12 14v8M8 22h8',
-    ares: 'M12 2L8 8H4l4 4-2 6h4l2 4 2-4h4l-2-6 4-4h-4zM10 10h4M12 8v4',
-    apollo: 'M12 2v2M4.9 4.9l1.4 1.4M2 12h2M4.9 19.1l1.4-1.4M12 20v2M19.1 19.1l-1.4-1.4M22 12h-2M19.1 4.9l-1.4 1.4M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z',
-    medusa: 'M12 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 6c2 2 2 6 0 8M20 6c-2 2-2 6 0 8M8 3c0 3-1 5-3 6M16 3c0 3 1 5 3 6M10 2c0 2-1 4-2 5M14 2c0 2 1 4 2 5M12 14v4M8 22c2-2 4-4 4-4s2 2 4 4',
-    artemis: 'M20 4L12 12M12 12L4 20M12 2a10 10 0 0 1 7 3M21 12a10 10 0 0 1-3 7M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
-    hermes: 'M12 2v20M8 6l4-4 4 4M6 10h12M7 10c-2 2-3 4-3 6s1 4 3 4M17 10c2 2 3 4 3 6s-1 4-3 4',
-    aphrodite: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
-    hephaestus: 'M14 4h-4v4H6v4h4v4h4v-4h4V8h-4V4zM4 18l2-2M20 18l-2-2M12 18v4',
-    dionysus: 'M12 2c-3 0-5 2-5 5v2c-2 0-3 1.5-3 3s1 3 3 3h1c1 2 2.5 3 4 3s3-1 4-3h1c2 0 3-1.5 3-3s-1-3-3-3v-2c0-3-2-5-5-5zM12 18v4',
-    demeter: 'M12 22V12M8 6c0 3 2 5 4 6M16 6c0 3-2 5-4 6M4 10c2 0 4 1 5 3M20 10c-2 0-4 1-5 3M7 2c0 2 1 4 3 5M17 2c0 2-1 4-3 5',
+    zeus: Crown,
+    poseidon: Anchor,
+    hades: Bone,
+    athena: Shield,
+    ares: Sword,
+    apollo: Sun,
+    medusa: Eye,
+    artemis: Crosshair,
+    hermes: Feather,
+    aphrodite: Heart,
+    hephaestus: Hammer,
+    dionysus: Wine,
+    demeter: Wheat,
 };
 
 // ─── Rarity border styles ───────────────────────────────────────────────
@@ -261,8 +280,8 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
     const glow = skin ? skin.glow : '#f97316';
     const tier = skin?.tier || 'Basic';
     const rb = RARITY_BORDERS[tier] || RARITY_BORDERS.Basic;
-    const iconPath = skin ? SKIN_ICONS[skin.id] : null;
-    const iconSize = size * 0.62;
+    const IconComp = skin ? SKIN_ICONS[skin.id] : null;
+    const iconSize = size * 0.6;
     const tierRank = { Basic: 0, Common: 1, Uncommon: 2, Rare: 3, Epic: 4, Legendary: 5, Mythic: 6 }[tier] || 0;
     const plusRingWidth = Math.max(3, Math.round(size * 0.04));
     const plusOuterSize = isPlus ? size + plusRingWidth * 2 + 4 : 0;
@@ -305,20 +324,19 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                 border: tier === 'Common' || tier === 'Uncommon' ? `2px solid ${frameColor}55` : 'none',
                 position: 'relative', zIndex: 2, overflow: 'hidden',
             }}>
-                {iconPath ? (
-                    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"
-                        style={{
-                            position: 'relative', zIndex: 2,
-                            filter: `drop-shadow(0 0 ${Math.round(iconSize * 0.32)}px ${glow}) drop-shadow(0 ${Math.max(1, Math.round(size * 0.04))}px ${Math.max(2, Math.round(size * 0.08))}px rgba(0,0,0,0.55))`,
-                            animation: tierRank >= 5 ? 'skin-icon-pulse 2.4s ease-in-out infinite' : 'none',
-                        }}>
-                        {/* Outer colored halo — neon bloom in the skin's accent color */}
-                        <path d={iconPath} stroke={glow} strokeOpacity="0.55" strokeWidth={Math.max(2.5, iconSize * 0.13)} />
-                        {/* Soft white halo */}
-                        <path d={iconPath} stroke="rgba(255,255,255,0.55)" strokeWidth={Math.max(1.6, iconSize * 0.08)} />
-                        {/* Crisp readable stroke — kept thin so the icon doesn't feel chunky */}
-                        <path d={iconPath} stroke="white" strokeWidth={Math.max(1.2, iconSize * 0.055)} />
-                    </svg>
+                {IconComp ? (
+                    <div style={{
+                        position: 'relative', width: iconSize, height: iconSize, zIndex: 2,
+                        filter: `drop-shadow(0 0 ${Math.round(iconSize * 0.3)}px ${glow}) drop-shadow(0 ${Math.max(1, Math.round(size * 0.04))}px ${Math.max(2, Math.round(size * 0.08))}px rgba(0,0,0,0.5))`,
+                        animation: tierRank >= 5 ? 'skin-icon-pulse 2.4s ease-in-out infinite' : 'none',
+                    }}>
+                        {/* Colored halo behind — uses the skin's accent for a neon bloom */}
+                        <IconComp size={iconSize} color={glow} strokeWidth={3.2}
+                            style={{ position: 'absolute', inset: 0, opacity: 0.55 }} />
+                        {/* Crisp white main icon */}
+                        <IconComp size={iconSize} color="white" strokeWidth={2}
+                            style={{ position: 'absolute', inset: 0 }} />
+                    </div>
                 ) : skin ? (
                     /* Basic / iconless skin — show the gradient orb alone, no letter */
                     null
@@ -1041,9 +1059,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                             <div style={{ position: 'absolute', top: 6, right: 6, width: 16, height: 16, borderTop: '2px solid #d4af37', borderRight: '2px solid #d4af37', borderRadius: '0 3px 0 0' }} />
                             <div style={{ position: 'absolute', bottom: 6, left: 6, width: 16, height: 16, borderBottom: '2px solid #d4af37', borderLeft: '2px solid #d4af37', borderRadius: '0 0 0 3px' }} />
                             <div style={{ position: 'absolute', bottom: 6, right: 6, width: 16, height: 16, borderBottom: '2px solid #d4af37', borderRight: '2px solid #d4af37', borderRadius: '0 0 3px 0' }} />
-                            <svg viewBox="0 0 24 24" width={48} height={48} fill="none" stroke="#d4af37" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.5))' }}>
-                                <path d={SKIN_ICONS.zeus} />
-                            </svg>
+                            <Crown size={48} color="#d4af37" strokeWidth={1.5} style={{ filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.5))' }} />
                             <div style={{ color: '#d4af37', fontSize: 9, fontWeight: 900, marginTop: 10, letterSpacing: '0.15em' }}>SEASON ONE</div>
                         </div>
 
@@ -1252,10 +1268,8 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                                         <div style={{ position: 'absolute', bottom: 8, left: 8, width: 20, height: 20, borderBottom: '2px solid #d4af37', borderLeft: '2px solid #d4af37', borderRadius: '0 0 0 4px' }} />
                                         <div style={{ position: 'absolute', bottom: 8, right: 8, width: 20, height: 20, borderBottom: '2px solid #d4af37', borderRight: '2px solid #d4af37', borderRadius: '0 0 4px 0' }} />
 
-                                        {/* Lightning bolt icon */}
-                                        <svg viewBox="0 0 24 24" width={56} height={56} fill="none" stroke="#d4af37" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.6))' }}>
-                                            <path d={SKIN_ICONS.zeus} />
-                                        </svg>
+                                        {/* Pack-front Crown emblem */}
+                                        <Crown size={56} color="#d4af37" strokeWidth={1.5} style={{ filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.6))' }} />
                                         <div style={{ color: '#d4af37', fontSize: 16, fontWeight: 900, marginTop: 16, letterSpacing: '0.05em', textShadow: '0 0 12px rgba(212,175,55,0.5)' }}>MYTHOLOGICAL</div>
                                         <div style={{ color: 'rgba(212,175,55,0.5)', fontSize: 10, fontWeight: 700, marginTop: 6, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Season One</div>
                                     </div>

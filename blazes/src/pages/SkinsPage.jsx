@@ -311,13 +311,12 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     animation: rb.animation || 'none',
                 }} />
             )}
-            {/* Inner circle — gradient orb with a strong colored halo */}
+            {/* Inner circle — gradient orb with a strong colored halo + clean dark rim */}
             <div style={{
                 width: size, height: size, borderRadius: '50%',
                 backgroundImage: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.3), rgba(255,255,255,0) 55%), ${bg}`,
-                boxShadow: `0 0 ${Math.round(size * 0.35)}px ${glow}cc, 0 0 ${Math.round(size * 0.65)}px ${glow}66, inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.18)`,
+                boxShadow: `0 0 ${Math.round(size * 0.35)}px ${glow}cc, 0 0 ${Math.round(size * 0.65)}px ${glow}66, inset 0 0 0 1.5px rgba(0,0,0,0.22), inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.2)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: tier === 'Common' || tier === 'Uncommon' ? `2px solid ${frameColor}55` : 'none',
                 position: 'relative', zIndex: 2, overflow: 'hidden',
             }}>
                 {IconComp ? (
@@ -452,22 +451,29 @@ function ShopCard({ skin, inStock, isOwned, isEquipped, canAfford, isBuying, onB
                 </div>
             )}
 
-            {/* Avatar preview — uses the shared rich orb so shop tiles match pack tiles + nav avatar */}
+            {/* Avatar preview — same rich orb everywhere; locked skins show the orb dimmed
+                with a lock badge so the shopper can still see what they're working toward. */}
             <div style={{
                 width: '100%', height: 96, marginTop: 22, marginBottom: 10,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                filter: dimmed ? 'grayscale(0.5) brightness(0.85)' : 'none',
+                position: 'relative',
             }}>
-                {!isOwned && !inStock ? (
-                    <div style={{
-                        width: 76, height: 76, borderRadius: '50%', background: '#f3f4f6',
-                        border: '2px dashed #d1d5db',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                        <Lock size={26} color="#9ca3af" strokeWidth={2.2} />
-                    </div>
-                ) : (
+                <div style={{
+                    position: 'relative',
+                    filter: dimmed ? 'grayscale(0.6) brightness(0.7)' : 'none',
+                }}>
                     <AvatarPreview skinId={skin.id} initial={skin.name?.[0]?.toUpperCase()} size={72} />
+                </div>
+                {dimmed && (
+                    <div style={{
+                        position: 'absolute', bottom: -4, right: 'calc(50% - 50px)',
+                        width: 26, height: 26, borderRadius: '50%',
+                        background: 'rgba(17,24,39,0.92)', boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: '2px solid white',
+                    }}>
+                        <Lock size={13} color="white" strokeWidth={2.5} />
+                    </div>
                 )}
             </div>
 
@@ -589,20 +595,27 @@ function SkinCard({ skin, isOwned, isEquipped, canAfford, isBuying, onBuy, onEqu
                 </div>
             )}
 
-            {/* Avatar circle — shared rich orb */}
+            {/* Avatar circle — same rich orb; locked dimmed + lock badge */}
             <div style={{
                 width: '100%', height: 96, marginTop: 22, marginBottom: 10,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative',
             }}>
-                {isOwned ? (
+                <div style={{
+                    position: 'relative',
+                    filter: !isOwned ? 'grayscale(0.6) brightness(0.7)' : 'none',
+                }}>
                     <AvatarPreview skinId={skin.id} initial={skin.name?.[0]?.toUpperCase()} size={72} />
-                ) : (
+                </div>
+                {!isOwned && (
                     <div style={{
-                        width: 76, height: 76, borderRadius: '50%', background: '#f3f4f6',
-                        border: '2px dashed #d1d5db',
+                        position: 'absolute', bottom: -4, right: 'calc(50% - 50px)',
+                        width: 26, height: 26, borderRadius: '50%',
+                        background: 'rgba(17,24,39,0.92)', boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: '2px solid white',
                     }}>
-                        <Lock size={26} color="#9ca3af" strokeWidth={2.2} />
+                        <Lock size={13} color="white" strokeWidth={2.5} />
                     </div>
                 )}
             </div>

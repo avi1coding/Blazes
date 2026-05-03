@@ -153,9 +153,12 @@ export default function TeacherLobby() {
                             body: JSON.stringify({ userId: currentUser.id, playerName: currentUser.name }),
                         });
                     } catch (_) {}
+                    // Race-display popup opens, gameplay is the host's main tab,
+                    // and the second pre-opened popup (if any) becomes monitoring so the
+                    // host can still flip to the dashboard if they want.
                     if (raceViewWin) raceViewWin.location.href = `/game/race-view/${gameCode}`;
-                    if (playWin) playWin.location.href = `/game/play/${gameCode}`;
-                    navigate(`/game/monitor/${gameCode}/all`, { state: { game, user: currentUser } });
+                    if (playWin) playWin.location.href = `/game/monitor/${gameCode}/all`;
+                    navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
                 } else {
                     if (raceViewWin) raceViewWin.location.href = `/game/race-view/${gameCode}`;
                     if (playWin) playWin.close();

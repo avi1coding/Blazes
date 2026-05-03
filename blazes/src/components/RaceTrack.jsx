@@ -1,195 +1,131 @@
-import { useEffect, useRef, useState } from 'react';
-import { Flag, Users } from 'lucide-react';
+import { useMemo } from 'react';
+import { Trophy, Medal } from 'lucide-react';
 
+// Stable per-user color (deterministic from id so a player keeps the same accent)
 const PLAYER_COLORS = [
   '#06b6d4', '#a855f7', '#f97316', '#10b981', '#ef4444',
   '#f59e0b', '#3b82f6', '#ec4899', '#84cc16', '#8b5cf6',
 ];
+const colorFor = (id) => PLAYER_COLORS[Math.abs((id || 0)) % PLAYER_COLORS.length];
 
-// SVG path for the racing line — stadium oval positioned in 1000×400 viewBox.
-// Start point is bottom-center so finish line sits where the eye expects it.
-const TRACK_PATH = 'M 500 320 L 800 320 A 80 80 0 0 0 800 160 L 200 160 A 80 80 0 0 0 200 320 Z';
-
+// Leaderboard-style race visualization. Each row = one player. The progress bar
+// inside each row scales relative to the current leader so the player who's
+// ahead always reaches the right edge — instantly obvious who's winning.
 export default function RaceTrack({ participants = [], distance = 10, currentUserId, className = '' }) {
-  const trackPathRef = useRef(null);
-  const [pathLength, setPathLength] = useState(0);
+  const ordered = useMemo(() => (
+    [...participants].sort((a, b) => (b.correct_answers || 0) - (a.correct_answers || 0))
+  ), [participants]);
 
-  useEffect(() => {
-    if (trackPathRef.current) {
-      setPathLength(trackPathRef.current.getTotalLength());
-    }
-  }, []);
-
-  const getPositionAt = (progress) => {
-    if (!trackPathRef.current || !pathLength) return { x: 500, y: 320 };
-    return trackPathRef.current.getPointAtLength((progress * pathLength) % pathLength);
-  };
-
-  const finishPoint = pathLength > 0 ? trackPathRef.current.getPointAtLength(0) : { x: 500, y: 320 };
-
-  // Sort by total correct desc so top players render last (on top of stack)
-  const sortedAsc = [...participants].sort((a, b) => (a.correct_answers || 0) - (b.correct_answers || 0));
+  const leader = ordered[0]?.correct_answers || 0;
+  const max = Math.max(distance, leader || distance);
 
   return (
-    <div className={`relative ${className}`}>
-      <svg viewBox="0 0 1000 400" className="w-full h-full" style={{ display: 'block' }}>
-        <defs>
-          {/* Sky-to-grass gradient for the infield */}
-          <linearGradient id="raceTrackBg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1e3a8a" />
-            <stop offset="100%" stopColor="#172554" />
-          </linearGradient>
-          <linearGradient id="trackSurface" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#dc2626" />
-            <stop offset="100%" stopColor="#991b1b" />
-          </linearGradient>
-          <radialGradient id="grassFill" cx="50%" cy="50%" r="60%">
-            <stop offset="0%" stopColor="#22c55e" />
-            <stop offset="100%" stopColor="#15803d" />
-          </radialGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          {/* Player dot drop shadow */}
-          <filter id="dotShadow">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.4" />
-          </filter>
-        </defs>
-
-        {/* Stadium background */}
-        <rect width="1000" height="400" fill="url(#raceTrackBg)" />
-
-        {/* Track surface (red rubberized) */}
-        <path
-          d="M 500 360 L 800 360 A 120 120 0 0 0 800 120 L 200 120 A 120 120 0 0 0 200 360 Z"
-          fill="url(#trackSurface)"
-        />
-
-        {/* Lane dividers (4 lanes) */}
-        {[100, 105, 110, 115].map(r => (
-          <path
-            key={r}
-            d={`M 500 ${320 + (r - 100)} L 800 ${320 + (r - 100)} A ${r} ${r} 0 0 0 800 ${160 - (r - 100)} L 200 ${160 - (r - 100)} A ${r} ${r} 0 0 0 200 ${320 + (r - 100)} Z`}
-            fill="none"
-            stroke="rgba(255,255,255,0.12)"
-            strokeWidth="1"
-          />
-        ))}
-
-        {/* Inner field (grass) */}
-        <path
-          d="M 500 280 L 800 280 A 40 40 0 0 0 800 200 L 200 200 A 40 40 0 0 0 200 280 Z"
-          fill="url(#grassFill)"
-        />
-
-        {/* Subtle field detail */}
-        <ellipse cx="500" cy="240" rx="180" ry="20" fill="rgba(255,255,255,0.05)" />
-
-        {/* The actual race line (centerline) — players move along this */}
-        <path
-          ref={trackPathRef}
-          d={TRACK_PATH}
-          fill="none"
-          stroke="rgba(255,255,255,0.4)"
-          strokeWidth="2"
-          strokeDasharray="6 10"
-        />
-
-        {/* Finish line — proper checkered pattern */}
-        {pathLength > 0 && (
-          <g>
-            {/* White base bars */}
-            <rect x={finishPoint.x - 12} y={finishPoint.y - 26} width="24" height="52" fill="white" />
-            {/* Checker pattern */}
-            {Array.from({ length: 8 }).map((_, i) => (
-              <rect
-                key={i}
-                x={finishPoint.x - 12 + (i % 2) * 12}
-                y={finishPoint.y - 26 + Math.floor(i / 2) * 13}
-                width="12" height="13"
-                fill={(Math.floor(i / 2) + (i % 2)) % 2 === 0 ? 'black' : 'white'}
-              />
-            ))}
-            {/* "FINISH" label */}
-            <text x={finishPoint.x} y={finishPoint.y - 35} textAnchor="middle" fontSize="14" fontWeight="900" fill="white" stroke="black" strokeWidth="0.5">
-              FINISH
-            </text>
-          </g>
+    <div className={`relative w-full p-4 sm:p-6 ${className}`}>
+      <div className="flex flex-col gap-2 sm:gap-3">
+        {ordered.length === 0 && (
+          <div className="text-center py-12 sm:py-16 text-white/40 font-bold text-sm sm:text-base">
+            Waiting for racers…
+          </div>
         )}
-
-        {/* Players (rendered with the leader on top) */}
-        {pathLength > 0 && sortedAsc.map((p) => {
+        {ordered.map((p, idx) => {
           const correct = p.correct_answers || 0;
           const lap = Math.floor(correct / distance);
-          const progressInLap = (correct % distance) / distance;
-          const pos = getPositionAt(progressInLap);
+          const stepInLap = correct % distance;
+          const pct = max > 0 ? Math.min(100, (correct / max) * 100) : 0;
           const isMe = p.user_id === currentUserId;
-          // Color: stable per user_id
-          const colorIdx = (p.user_id || 0) % PLAYER_COLORS.length;
-          const color = isMe ? '#06b6d4' : PLAYER_COLORS[colorIdx];
+          const accent = isMe ? '#06b6d4' : colorFor(p.user_id);
+          const rankColors = [
+            { bg: 'from-yellow-400 to-amber-500', shadow: 'rgba(251,191,36,0.45)', icon: Trophy },
+            { bg: 'from-slate-300 to-slate-400', shadow: 'rgba(203,213,225,0.4)', icon: Medal },
+            { bg: 'from-orange-400 to-amber-700', shadow: 'rgba(251,146,60,0.4)', icon: Medal },
+          ];
+          const rankStyle = idx < 3 ? rankColors[idx] : null;
+          const RankIcon = rankStyle?.icon;
 
           return (
-            <g key={p.user_id} style={{ transition: 'transform 700ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
-              {/* Outer halo for current user */}
-              {isMe && (
-                <circle cx={pos.x} cy={pos.y} r="22" fill={color} fillOpacity="0.25" />
-              )}
-              {/* Player dot with shadow */}
-              <g filter="url(#dotShadow)">
-                <circle cx={pos.x} cy={pos.y} r={isMe ? 16 : 13} fill={color} stroke="white" strokeWidth="3" />
-                {isMe && (
-                  <circle cx={pos.x} cy={pos.y} r="16" fill="none" stroke="white" strokeWidth="1" strokeOpacity="0.6">
-                    <animate attributeName="r" values="16;22;16" dur="1.5s" repeatCount="indefinite" />
-                    <animate attributeName="stroke-opacity" values="0.6;0;0.6" dur="1.5s" repeatCount="indefinite" />
-                  </circle>
+            <div
+              key={p.user_id}
+              className="flex items-center gap-3 sm:gap-4 rounded-2xl border bg-white/[0.04] border-white/[0.06] px-3 sm:px-5 py-2.5 sm:py-3.5 transition-[transform,opacity] duration-700"
+              style={{
+                boxShadow: idx === 0
+                  ? `0 0 0 1px ${accent}66, 0 8px 32px ${rankStyle?.shadow || 'rgba(0,0,0,0.25)'}`
+                  : isMe ? `0 0 0 1px ${accent}55` : undefined,
+                background: idx === 0 ? `linear-gradient(90deg, rgba(251,191,36,0.06), rgba(255,255,255,0.02))` : undefined,
+              }}
+            >
+              {/* Rank pill */}
+              <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11">
+                {rankStyle ? (
+                  <div
+                    className={`w-full h-full rounded-xl bg-gradient-to-br ${rankStyle.bg} flex items-center justify-center shadow-md`}
+                    style={{ boxShadow: `0 4px 14px ${rankStyle.shadow}` }}
+                  >
+                    <RankIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" strokeWidth={2.5} />
+                  </div>
+                ) : (
+                  <div className="w-full h-full rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
+                    <span className="text-sm sm:text-base font-black text-white/70 tabular-nums">{idx + 1}</span>
+                  </div>
                 )}
-                <text x={pos.x} y={pos.y + 4} textAnchor="middle" fontSize={isMe ? '12' : '10'} fontWeight="900" fill="white">
-                  {(p.player_name || '?')[0].toUpperCase()}
-                </text>
-              </g>
-              {/* Lap badge (gold) — appears once they've completed one lap */}
-              {lap > 0 && (
-                <g>
-                  <circle cx={pos.x + 13} cy={pos.y - 13} r="9" fill="#fbbf24" stroke="white" strokeWidth="2" filter="url(#dotShadow)" />
-                  <text x={pos.x + 13} y={pos.y - 9} textAnchor="middle" fontSize="11" fontWeight="900" fill="#78350f">
-                    {lap}
-                  </text>
-                </g>
-              )}
-              {/* Name label below the dot */}
-              <text x={pos.x} y={pos.y + 32} textAnchor="middle" fontSize="11" fontWeight="700" fill="white" stroke="black" strokeWidth="0.4">
-                {(p.player_name || 'Player').slice(0, 12)}{isMe ? ' (you)' : ''}
-              </text>
-            </g>
+              </div>
+
+              {/* Avatar disc */}
+              <div
+                className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-black text-base sm:text-lg uppercase"
+                style={{
+                  background: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.35), rgba(255,255,255,0) 55%), linear-gradient(135deg, ${accent}, ${accent}cc)`,
+                  boxShadow: `0 0 18px ${accent}99, 0 0 0 2px rgba(0,0,0,0.25) inset`,
+                }}
+              >
+                {(p.player_name || '?')[0]}
+              </div>
+
+              {/* Name + progress + stats */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <div className="font-black text-white truncate text-sm sm:text-base flex items-center gap-2">
+                    {p.player_name || 'Player'}
+                    {isMe && <span className="text-[10px] font-black text-cyan-300 px-1.5 py-0.5 bg-cyan-500/20 rounded-full">YOU</span>}
+                    {lap > 0 && (
+                      <span className="text-[10px] font-black text-yellow-300 px-1.5 py-0.5 bg-yellow-500/15 rounded-full whitespace-nowrap">
+                        LAP {lap}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-1 flex-shrink-0">
+                    <span className="text-xl sm:text-2xl font-black text-white tabular-nums">{correct}</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-white/50">correct</span>
+                  </div>
+                </div>
+                {/* Progress bar — relative to current leader */}
+                <div className="relative h-2.5 sm:h-3 bg-white/[0.06] rounded-full overflow-hidden">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-700"
+                    style={{
+                      width: `${pct}%`,
+                      background: `linear-gradient(90deg, ${accent}, ${accent}dd)`,
+                      boxShadow: `0 0 12px ${accent}cc`,
+                    }}
+                  />
+                  {/* Within-lap tick markers */}
+                  <div className="absolute inset-0 flex pointer-events-none">
+                    {Array.from({ length: Math.max(1, Math.floor(max / distance)) }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="border-r border-white/15 h-full"
+                        style={{ width: `${100 / Math.max(1, Math.floor(max / distance))}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-1 text-[10px] sm:text-xs font-bold text-white/50 tabular-nums">
+                  Lap {lap} · {stepInLap}/{distance}
+                </div>
+              </div>
+            </div>
           );
         })}
-
-        {/* Player count badge */}
-        <g>
-          <rect x="20" y="20" rx="8" ry="8" width="100" height="32" fill="rgba(0,0,0,0.5)" />
-          <foreignObject x="20" y="20" width="100" height="32">
-            <div className="w-full h-full flex items-center justify-center gap-1.5 text-white">
-              <Users className="w-4 h-4" />
-              <span className="font-black text-sm tabular-nums">{participants.length}</span>
-            </div>
-          </foreignObject>
-        </g>
-
-        {/* Lap reminder */}
-        <g>
-          <rect x="880" y="20" rx="8" ry="8" width="100" height="32" fill="rgba(0,0,0,0.5)" />
-          <foreignObject x="880" y="20" width="100" height="32">
-            <div className="w-full h-full flex items-center justify-center gap-1.5 text-white">
-              <Flag className="w-4 h-4" />
-              <span className="font-black text-sm">{distance}/lap</span>
-            </div>
-          </foreignObject>
-        </g>
-      </svg>
+      </div>
     </div>
   );
 }

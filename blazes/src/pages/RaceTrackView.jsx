@@ -68,80 +68,83 @@ export default function RaceTrackView() {
   }, [totalSec, game]);
 
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-
-  const sortedPlayers = [...participants].sort((a, b) => (b.correct_answers || 0) - (a.correct_answers || 0));
-  const top3 = sortedPlayers.slice(0, 3);
+  const timeWarning = timeLeft !== null && timeLeft <= 10;
+  const timeLow = timeLeft !== null && timeLeft <= 60;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden">
-      {/* Top bar */}
-      <header className="px-4 sm:px-8 py-4 border-b border-white/10 flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/30">
-            <Rocket className="w-6 h-6 text-white" strokeWidth={2.5} />
+    <div className="min-h-screen flex flex-col text-white relative overflow-hidden"
+      style={{
+        background: 'radial-gradient(ellipse at 30% -20%, rgba(56,189,248,0.18), transparent 60%), radial-gradient(ellipse at 80% 110%, rgba(168,85,247,0.18), transparent 60%), linear-gradient(180deg, #0a0e1a 0%, #050810 100%)',
+      }}>
+      {/* Decorative glow blobs */}
+      <div className="pointer-events-none absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-cyan-500/[0.07] blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-500/[0.06] blur-3xl" />
+
+      {/* Hero header */}
+      <header className="relative z-10 px-6 sm:px-10 py-6 sm:py-8 flex items-center justify-between flex-wrap gap-4 sm:gap-6">
+        <div className="flex items-center gap-4 sm:gap-5">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #06b6d4 0%, #2563eb 100%)',
+              boxShadow: '0 8px 32px rgba(6,182,212,0.45)',
+            }}>
+            <Rocket className="w-7 h-7 sm:w-8 sm:h-8 text-white" strokeWidth={2.5} />
           </div>
           <div>
-            <div className="text-xl font-black tracking-tight">Race</div>
-            <div className="text-xs text-cyan-300/80 font-bold">{distance} per lap · go furthest to win</div>
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-none">RACE</h1>
+            <div className="text-xs sm:text-sm text-cyan-300/80 font-bold mt-1">
+              {distance} per lap · go furthest to win
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 sm:px-4 py-2">
-            <Users className="w-4 h-4 text-cyan-400" />
-            <span className="font-black tabular-nums">{participants.length}</span>
-            <span className="text-[10px] uppercase tracking-wider text-white/60 font-bold hidden sm:inline">Racers</span>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 bg-white/[0.05] border border-white/[0.08] rounded-2xl px-4 py-2.5 sm:py-3">
+            <Users className="w-5 h-5 text-cyan-400" />
+            <span className="font-black tabular-nums text-xl sm:text-2xl">{participants.length}</span>
+            <span className="text-[10px] uppercase tracking-wider text-white/50 font-bold hidden sm:inline ml-0.5">
+              {participants.length === 1 ? 'racer' : 'racers'}
+            </span>
           </div>
           {timeLeft !== null && (
-            <div className={`flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 border ${
-              timeLeft <= 10 ? 'bg-red-500/20 border-red-400/40 animate-pulse' :
-              timeLeft < 60 ? 'bg-orange-500/20 border-orange-400/40' :
-              'bg-white/5 border-white/10'
-            }`}>
-              <Clock className="w-4 h-4 text-white/80" />
-              <span className="font-black tabular-nums text-base sm:text-lg">{formatTime(timeLeft)}</span>
+            <div
+              className={`flex items-center gap-2 sm:gap-3 rounded-2xl px-4 py-2.5 sm:py-3 border transition-colors ${
+                timeWarning ? 'bg-red-500/20 border-red-400/50 animate-pulse' :
+                timeLow ? 'bg-orange-500/20 border-orange-400/40' :
+                'bg-white/[0.05] border-white/[0.08]'
+              }`}
+            >
+              <Clock className={`w-5 h-5 ${timeWarning ? 'text-red-300' : 'text-white/70'}`} strokeWidth={2.5} />
+              <span className="font-black tabular-nums text-2xl sm:text-3xl tracking-tight">{formatTime(timeLeft)}</span>
             </div>
           )}
         </div>
       </header>
 
-      {/* Track — center stage */}
-      <main className="px-4 sm:px-8 py-4 sm:py-6">
-        <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-slate-900/60">
-          <RaceTrack participants={participants} distance={distance} className="aspect-[2.5/1] w-full" />
-        </div>
-
-        {/* Podium strip */}
-        {top3.length > 0 && (
-          <div className="mt-4 sm:mt-6 grid grid-cols-3 gap-2 sm:gap-4">
-            {top3.map((p, i) => {
-              const correct = p.correct_answers || 0;
-              const lap = Math.floor(correct / distance);
-              const stepInLap = correct % distance;
-              const styles = [
-                { bg: 'from-yellow-400/20 to-yellow-500/5', border: 'border-yellow-400/40', accent: 'text-yellow-300', label: '1st' },
-                { bg: 'from-slate-300/20 to-slate-400/5', border: 'border-slate-300/40', accent: 'text-slate-200', label: '2nd' },
-                { bg: 'from-orange-400/20 to-orange-500/5', border: 'border-orange-400/40', accent: 'text-orange-300', label: '3rd' },
-              ][i];
-              return (
-                <div key={p.user_id} className={`bg-gradient-to-br ${styles.bg} border-2 ${styles.border} rounded-2xl p-3 sm:p-5 flex items-center gap-3`}>
-                  <div className={`flex flex-col items-center justify-center w-12 sm:w-14 flex-shrink-0`}>
-                    <Flag className={`w-5 h-5 sm:w-6 sm:h-6 ${styles.accent}`} />
-                    <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${styles.accent} mt-0.5`}>{styles.label}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-black text-base sm:text-xl truncate">{p.player_name || 'Player'}</div>
-                    <div className="text-[11px] sm:text-sm text-white/70 font-bold">Lap {lap} · {stepInLap}/{distance}</div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-2xl sm:text-3xl font-black tabular-nums">{correct}</div>
-                    <div className="text-[9px] sm:text-[10px] uppercase font-black tracking-wider text-white/60">correct</div>
-                  </div>
-                </div>
-              );
-            })}
+      {/* Standings */}
+      <main className="relative z-10 flex-1 px-4 sm:px-6 pb-6 sm:pb-10">
+        <div
+          className="rounded-3xl border border-white/[0.06] overflow-hidden"
+          style={{
+            background: 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(15,23,42,0.4) 100%)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}
+        >
+          <div className="px-5 sm:px-7 py-4 border-b border-white/[0.06] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Flag className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-white/70">
+                Live Standings
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-emerald-400">Live</span>
+            </div>
           </div>
-        )}
+          <RaceTrack participants={participants} distance={distance} />
+        </div>
       </main>
     </div>
   );

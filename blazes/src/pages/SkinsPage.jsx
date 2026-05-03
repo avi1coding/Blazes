@@ -312,36 +312,32 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     position: 'absolute', inset: 0, borderRadius: '50%',
                     border: rb.border, borderColor: frameColor,
                     animation: rb.animation || 'none',
-                    boxShadow: `0 0 ${Math.round(size * 0.3)}px ${frameColor}60`,
                 }} />
             )}
-            {/* Inner circle — clean orb, just gradient + a subtle top gloss */}
+            {/* Inner circle — clean orb, no outer color bleed */}
             <div style={{
                 width: size, height: size, borderRadius: '50%',
-                backgroundImage: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.32), rgba(255,255,255,0) 55%), ${bg}`,
-                boxShadow: `0 0 ${Math.round(size * 0.28)}px ${glow}80, inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.18)`,
+                backgroundImage: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.3), rgba(255,255,255,0) 55%), ${bg}`,
+                boxShadow: `inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.18)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: tier === 'Common' || tier === 'Uncommon' ? `2px solid ${frameColor}55` : 'none',
                 position: 'relative', zIndex: 2, overflow: 'hidden',
             }}>
                 {IconComp ? (
-                    <div style={{
-                        position: 'relative', width: iconSize, height: iconSize, zIndex: 2,
-                        filter: `drop-shadow(0 0 ${Math.round(iconSize * 0.3)}px ${glow}) drop-shadow(0 ${Math.max(1, Math.round(size * 0.04))}px ${Math.max(2, Math.round(size * 0.08))}px rgba(0,0,0,0.5))`,
-                        animation: tierRank >= 5 ? 'skin-icon-pulse 2.4s ease-in-out infinite' : 'none',
-                    }}>
-                        {/* Colored halo behind — uses the skin's accent for a neon bloom */}
-                        <IconComp size={iconSize} color={glow} strokeWidth={3.2}
-                            style={{ position: 'absolute', inset: 0, opacity: 0.55 }} />
-                        {/* Crisp white main icon */}
-                        <IconComp size={iconSize} color="white" strokeWidth={2}
-                            style={{ position: 'absolute', inset: 0 }} />
-                    </div>
+                    <IconComp
+                        size={iconSize}
+                        color="white"
+                        strokeWidth={2}
+                        style={{
+                            position: 'relative', zIndex: 2,
+                            filter: `drop-shadow(0 ${Math.max(1, Math.round(size * 0.04))}px ${Math.max(2, Math.round(size * 0.08))}px rgba(0,0,0,0.45))`,
+                        }}
+                    />
                 ) : skin ? (
                     /* Basic / iconless skin — show the gradient orb alone, no letter */
                     null
                 ) : (
-                    <span style={{ color: 'white', fontWeight: 900, fontSize: size * 0.42, textShadow: `0 2px 6px rgba(0,0,0,0.6), 0 0 ${Math.round(size * 0.3)}px ${glow}`, position: 'relative', zIndex: 2 }}>{initial || '?'}</span>
+                    <span style={{ color: 'white', fontWeight: 900, fontSize: size * 0.42, textShadow: '0 2px 6px rgba(0,0,0,0.5)', position: 'relative', zIndex: 2 }}>{initial || '?'}</span>
                 )}
                 {/* Sparkle dots for high-tier skins */}
                 {(tier === 'Legendary' || tier === 'Mythic') && (

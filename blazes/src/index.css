@@ -38,26 +38,22 @@
   animation: none !important;
 }
 
-/* Skin rarity border animations */
+/* Skin rarity border animations — opacity/scale only, no outward box-shadow bleed */
 @keyframes rare-glow {
-  0%, 100% { box-shadow: 0 0 8px currentColor; opacity: 0.7; }
-  50% { box-shadow: 0 0 16px currentColor; opacity: 1; }
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 @keyframes epic-glow {
-  0%, 100% { box-shadow: 0 0 10px currentColor; opacity: 0.8; transform: scale(1); }
-  50% { box-shadow: 0 0 22px currentColor; opacity: 1; transform: scale(1.02); }
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
 }
 @keyframes legendary-glow {
-  0% { box-shadow: 0 0 12px currentColor; opacity: 0.8; transform: rotate(0deg) scale(1); }
-  50% { box-shadow: 0 0 28px currentColor; opacity: 1; transform: rotate(0deg) scale(1.03); }
-  100% { box-shadow: 0 0 12px currentColor; opacity: 0.8; transform: rotate(0deg) scale(1); }
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.03); }
 }
 @keyframes mythic-glow {
-  0% { box-shadow: 0 0 14px currentColor, 0 0 28px currentColor; opacity: 0.9; transform: scale(1); }
-  25% { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; opacity: 1; transform: scale(1.04); }
-  50% { box-shadow: 0 0 14px currentColor, 0 0 28px currentColor; opacity: 0.9; transform: scale(1); }
-  75% { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; opacity: 1; transform: scale(1.04); }
-  100% { box-shadow: 0 0 14px currentColor, 0 0 28px currentColor; opacity: 0.9; transform: scale(1); }
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
 }
 
 /* Skin avatar sparkle dots (Legendary + Mythic) */

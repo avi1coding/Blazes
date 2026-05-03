@@ -281,7 +281,8 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
     const tier = skin?.tier || 'Basic';
     const rb = RARITY_BORDERS[tier] || RARITY_BORDERS.Basic;
     const IconComp = skin ? SKIN_ICONS[skin.id] : null;
-    const iconSize = size * 0.6;
+    // Round to integer pixels — fractional sizes cause sub-pixel blur on SVG strokes
+    const iconSize = Math.round(size * 0.55);
     const tierRank = { Basic: 0, Common: 1, Uncommon: 2, Rare: 3, Epic: 4, Legendary: 5, Mythic: 6 }[tier] || 0;
     const plusRingWidth = Math.max(3, Math.round(size * 0.04));
     const plusOuterSize = isPlus ? size + plusRingWidth * 2 + 4 : 0;
@@ -327,11 +328,9 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     <IconComp
                         size={iconSize}
                         color="white"
-                        strokeWidth={2}
-                        style={{
-                            position: 'relative', zIndex: 2,
-                            filter: `drop-shadow(0 ${Math.max(1, Math.round(size * 0.04))}px ${Math.max(2, Math.round(size * 0.08))}px rgba(0,0,0,0.45))`,
-                        }}
+                        strokeWidth={2.25}
+                        absoluteStrokeWidth
+                        style={{ position: 'relative', zIndex: 2 }}
                     />
                 ) : skin ? (
                     /* Basic / iconless skin — show the gradient orb alone, no letter */

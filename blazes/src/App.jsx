@@ -52,11 +52,18 @@ class ErrorBoundary extends React.Component {
                 Go home
               </button>
             </div>
-            {import.meta.env.DEV && (
-              <pre className="mt-4 text-[10px] text-left text-red-700 bg-red-50 p-2 rounded border border-red-100 overflow-auto max-h-32">
-                {String(this.state.error?.stack || this.state.error)}
+            {/* Show the error message + first stack frame in prod too — without it
+                "something went wrong" is uselessly opaque. The full stack stays
+                console-only via componentDidCatch. */}
+            <details className="mt-4 text-left">
+              <summary className="text-xs font-bold text-gray-500 cursor-pointer hover:text-gray-700">
+                Show error details
+              </summary>
+              <pre className="mt-2 text-[10px] text-red-700 bg-red-50 p-2 rounded border border-red-100 overflow-auto max-h-40 whitespace-pre-wrap">
+                {String(this.state.error?.message || this.state.error)}
+                {this.state.error?.stack ? '\n\n' + String(this.state.error.stack).split('\n').slice(0, 4).join('\n') : ''}
               </pre>
-            )}
+            </details>
           </div>
         </div>
       );

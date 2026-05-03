@@ -137,7 +137,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   }, []);
 
   const submitScore = useCallback(async () => {
-    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
     if (!currentUser) return null;
     try {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -166,7 +166,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   const handleGameOver = useCallback(async () => {
     if (gameOverCalledRef.current) return;
     gameOverCalledRef.current = true;
-    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
     const finalScore = scoreRef.current;
     const finalCorrect = correctCountRef.current;
     const finalAnswered = questionsAnsweredRef.current;
@@ -738,7 +738,7 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
   const handleGameOver = useCallback(async () => {
     if (gameOverCalledRef.current) return;
     gameOverCalledRef.current = true;
-    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
     let bbEarned = 0;
     if (currentUser) {
       try {
@@ -1061,7 +1061,7 @@ export default function GamePlay() {
   const { gameCode } = useParams();
   const location = useLocation();
 
-  const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
+  const [user] = useState(() => JSON.parse(localStorage.getItem('user') || 'null'));
   const [equippedSkinId, setEquippedSkinId] = useState('default');
   const [game, setGame] = useState(location.state?.game || null);
   const [loading, setLoading] = useState(true);

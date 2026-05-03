@@ -1,6 +1,59 @@
-import { useEffect, lazy, Suspense } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Flame } from 'lucide-react';
+
+// Catches render errors anywhere in the route tree so a broken component
+// shows a friendly retry UI instead of a fully white screen.
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error('[ErrorBoundary]', error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+          <div className="max-w-md w-full bg-white border border-gray-200 rounded-2xl p-6 shadow-sm text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Flame className="w-6 h-6 text-red-600" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 mb-2">Something went wrong on this page</h2>
+            <p className="text-sm text-gray-600 mb-5">
+              The page hit an unexpected error. Try reloading — if it keeps happening,
+              go back to home.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { this.setState({ error: null }); window.location.reload(); }}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors"
+              >
+                Reload page
+              </button>
+              <button
+                onClick={() => { this.setState({ error: null }); window.location.href = '/'; }}
+                className="flex-1 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition-colors"
+              >
+                Go home
+              </button>
+            </div>
+            {import.meta.env.DEV && (
+              <pre className="mt-4 text-[10px] text-left text-red-700 bg-red-50 p-2 rounded border border-red-100 overflow-auto max-h-32">
+                {String(this.state.error?.stack || this.state.error)}
+              </pre>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Pages that load immediately (first screen users see)
 import Landing from "./pages/Landing";
@@ -78,8 +131,9 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Suspense fallback={<Loading />}>
-        <Routes>
+      <ErrorBoundary>
+        <Suspense fallback={<Loading />}>
+          <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
@@ -118,7 +172,8 @@ function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </Suspense>
+        </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

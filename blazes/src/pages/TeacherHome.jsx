@@ -18,6 +18,41 @@ export default function TeacherHome() {
   const [equippedSkinId, setEquippedSkinId] = useState('default');
   const [blazesBucks, setBlazesBucks] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
+
+  const handleJoinGame = async () => {
+    if (joinCode.length !== 6) {
+      setJoinError('Please enter a valid 6-digit code');
+      return;
+    }
+    setJoinError('');
+    setJoinLoading(true);
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+      const res = await fetch(`${baseUrl}/api/games/${joinCode.toUpperCase()}`);
+      if (!res.ok) {
+        setJoinError('Game not found. Check the code and try again.');
+        setJoinLoading(false);
+        return;
+      }
+      const data = await res.json();
+      if (data.status === 'ended') {
+        setJoinError('This game has already ended.');
+        setJoinLoading(false);
+        return;
+      }
+      navigate('/game/join', { state: { gameCode: joinCode.toUpperCase() } });
+      setShowJoinModal(false);
+      setJoinCode('');
+    } catch {
+      setJoinError('Could not connect to server. Try again.');
+    } finally {
+      setJoinLoading(false);
+    }
+  };
   const [teacherStats, setTeacherStats] = useState({
     totalGames: 0,
     avgScore: 0,
@@ -313,6 +348,13 @@ export default function TeacherHome() {
                   </button>
                 );
               })}
+              <button
+                onClick={() => setShowJoinModal(true)}
+                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-sm font-black transition-all whitespace-nowrap bg-red-600 text-white hover:bg-red-700 shadow-sm"
+              >
+                <Play className="w-4 h-4" strokeWidth={2.5} />
+                <span className="hidden sm:inline">Join Game</span>
+              </button>
             </div>
           </div>
 
@@ -322,11 +364,14 @@ export default function TeacherHome() {
 
             {/* Hub button — opens the dedicated personal area (levels / skins / achievements / upgrade) */}
             <button onClick={() => navigate('/hub')}
-              className="flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white shadow-md shadow-orange-500/30 hover:shadow-lg hover:shadow-orange-500/40 hover:scale-105 active:scale-100 transition-all ring-2 ring-white">
-              <Star className="w-4 h-4 fill-white" strokeWidth={2.5} />
-              <span className="text-sm font-black tracking-wide">Lv {seasonProgress?.level || 1}</span>
-              <div className="hidden sm:flex items-center gap-1 bg-white/25 rounded-full px-2 py-0.5">
-                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" aria-label="BB">
+              className="group flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all shadow-sm">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 100%)', boxShadow: '0 1px 4px rgba(249,115,22,0.4)' }}>
+                <Star className="w-3.5 h-3.5 fill-white text-white" strokeWidth={2.5} />
+              </div>
+              <span className="text-sm font-black text-gray-900 tabular-nums">Lv {seasonProgress?.level || 1}</span>
+              <div className="hidden sm:flex items-center gap-1 ml-0.5 pl-2 border-l border-gray-200">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" aria-label="BB">
                   <defs>
                     <radialGradient id="bbCoinHub" cx="35%" cy="28%" r="85%">
                       <stop offset="0%" stopColor="#fffbe6" />
@@ -337,7 +382,7 @@ export default function TeacherHome() {
                   <circle cx="12" cy="12" r="10" fill="url(#bbCoinHub)" stroke="#7c2d12" strokeWidth="0.7" />
                   <text x="12" y="16.5" textAnchor="middle" fontWeight="900" fontSize="12" fill="#7c2d12">B</text>
                 </svg>
-                <span className="text-[11px] font-black tabular-nums">{blazesBucks.toLocaleString()}</span>
+                <span className="text-xs font-black tabular-nums text-amber-700">{blazesBucks.toLocaleString()}</span>
               </div>
             </button>
 
@@ -2295,6 +2340,51 @@ export default function TeacherHome() {
           </button>
         </div>
       </div>
+
+      {/* Join Game modal — teachers can join existing games as participants */}
+      {showJoinModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900">Join Game</h2>
+              <button
+                onClick={() => { setShowJoinModal(false); setJoinCode(''); setJoinError(''); }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-gray-900 mb-3">
+                Enter 6-Digit Game Code
+              </label>
+              <input
+                type="text"
+                value={joinCode}
+                onChange={(e) => { setJoinCode(e.target.value.toUpperCase().slice(0, 6)); setJoinError(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !joinLoading) handleJoinGame(); }}
+                placeholder="ABC123"
+                className={`w-full px-6 py-4 border-2 rounded-xl focus:outline-none transition-colors text-gray-900 text-center text-2xl font-black tracking-widest ${joinError ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-orange-500'}`}
+                maxLength={6}
+                autoFocus
+              />
+            </div>
+            {joinError && (
+              <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl p-3 text-red-700 font-semibold text-sm text-center">
+                {joinError}
+              </div>
+            )}
+            <button
+              onClick={handleJoinGame}
+              disabled={joinLoading}
+              className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white font-black py-4 rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 text-lg disabled:opacity-50"
+            >
+              <Play className="w-5 h-5" />
+              {joinLoading ? 'Checking...' : 'Join Game'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

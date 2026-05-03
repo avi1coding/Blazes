@@ -121,21 +121,22 @@ export default function RaceTrackView() {
         </div>
       </header>
 
-      {/* Standings */}
-      <main className="relative z-10 flex-1 px-4 sm:px-6 pb-6 sm:pb-10">
+      {/* Track — the centerpiece */}
+      <main className="relative z-10 flex-1 px-4 sm:px-8 pb-6 sm:pb-10 flex items-center">
         <div
-          className="rounded-3xl border border-white/[0.06] overflow-hidden"
+          className="w-full rounded-3xl border border-white/[0.06] overflow-hidden"
           style={{
             background: 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(15,23,42,0.4) 100%)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 30px 80px rgba(6,182,212,0.08)',
           }}
         >
-          <div className="px-5 sm:px-7 py-4 border-b border-white/[0.06] flex items-center justify-between">
+          <div className="px-5 sm:px-7 py-3 border-b border-white/[0.06] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Flag className="w-4 h-4 text-cyan-400" />
               <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-white/70">
-                Live Standings
+                Live Track
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -143,7 +144,7 @@ export default function RaceTrackView() {
               <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-emerald-400">Live</span>
             </div>
           </div>
-          <RaceTrack participants={participants} distance={distance} />
+          <RaceTrack participants={participants} distance={distance} className="aspect-[8/3]" />
         </div>
       </main>
     </div>

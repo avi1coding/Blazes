@@ -311,11 +311,11 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     animation: rb.animation || 'none',
                 }} />
             )}
-            {/* Inner circle — gradient orb with a controlled colored glow */}
+            {/* Inner circle — gradient orb with a strong colored halo */}
             <div style={{
                 width: size, height: size, borderRadius: '50%',
                 backgroundImage: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.3), rgba(255,255,255,0) 55%), ${bg}`,
-                boxShadow: `0 0 ${Math.round(size * 0.22)}px ${glow}66, inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.18)`,
+                boxShadow: `0 0 ${Math.round(size * 0.35)}px ${glow}cc, 0 0 ${Math.round(size * 0.65)}px ${glow}66, inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.18)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: tier === 'Common' || tier === 'Uncommon' ? `2px solid ${frameColor}55` : 'none',
                 position: 'relative', zIndex: 2, overflow: 'hidden',
@@ -328,7 +328,7 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                         absoluteStrokeWidth
                         style={{
                             position: 'relative', zIndex: 2,
-                            filter: `drop-shadow(0 0 ${Math.max(2, Math.round(size * 0.08))}px ${glow}) drop-shadow(0 0 ${Math.max(4, Math.round(size * 0.18))}px ${glow}aa)`,
+                            filter: `drop-shadow(0 0 ${Math.max(3, Math.round(size * 0.14))}px ${glow}) drop-shadow(0 0 ${Math.max(6, Math.round(size * 0.28))}px ${glow}) drop-shadow(0 0 ${Math.max(10, Math.round(size * 0.5))}px ${glow}99)`,
                         }}
                     />
                 ) : skin ? (

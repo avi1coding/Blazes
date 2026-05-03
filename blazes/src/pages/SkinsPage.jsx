@@ -13,7 +13,9 @@ import {
     // Legendary
     MoreHorizontal, Target, Star, AlarmClock,
     // Mythic
-    Trophy, Infinity as InfinityIcon, Crown,
+    Trophy, Infinity as InfinityIcon, Crown, FlameKindling,
+    // Misc replacements for de-duplication
+    Asterisk, Music,
     // Mythological (Season 1)
     Anchor, Bone, Shield, Sword, Eye, Crosshair, Feather, Heart, Hammer, Wine, Wheat,
 } from 'lucide-react';
@@ -73,27 +75,24 @@ const SKIN_ICONS = {
     frost: CloudSnow,
     quake: Pickaxe,
     tempest: CloudRain,
-    inferno: Flame,
-    aurora: Stars,
     // Legendary
     rift: MoreHorizontal,
-    nova: Star,
+    nova: Asterisk,
     singularity: Target,
-    ethereal: Sparkles,
     chrono: AlarmClock,
     // Mythic
     celestial: Stars,
     star: Star,
     apex: Trophy,
     omega: InfinityIcon,
-    blaze: Flame,
+    blaze: FlameKindling,
     // Season 1: Mythological
     zeus: Crown,
     poseidon: Anchor,
     hades: Bone,
     athena: Shield,
     ares: Sword,
-    apollo: Sun,
+    apollo: Music,
     medusa: Eye,
     artemis: Crosshair,
     hermes: Feather,
@@ -231,13 +230,10 @@ export const AVATAR_SKINS = [
     { id: 'frost', name: 'Frost', cost: 640, emoji: '🧊', bg: 'linear-gradient(135deg,#bae6fd,#0891b2)', glow: '#bae6fd', tier: 'Epic', tc: '#0369a1' },
     { id: 'quake', name: 'Quake', cost: 660, emoji: '🫨', bg: 'linear-gradient(135deg,#d97706,#991b1b)', glow: '#d97706', tier: 'Epic', tc: '#92400e' },
     { id: 'tempest', name: 'Tempest', cost: 680, emoji: '🌀', bg: 'linear-gradient(135deg,#475569,#1e3a5f)', glow: '#64748b', tier: 'Epic', tc: '#334155' },
-    { id: 'inferno', name: 'Inferno', cost: 700, emoji: '💥', bg: 'linear-gradient(135deg,#ef4444,#ea580c,#eab308)', glow: '#dc2626', tier: 'Epic', tc: '#b91c1c' },
-    { id: 'aurora', name: 'Aurora', cost: 800, emoji: '🌌', bg: 'linear-gradient(135deg,#4ade80,#14b8a6,#9333ea)', glow: '#4ade80', tier: 'Epic', tc: '#15803d' },
     // Legendary
     { id: 'rift', name: 'Rift', cost: 900, emoji: '🌀', bg: 'linear-gradient(135deg,#7e22ce,#000000)', glow: '#9333ea', tier: 'Legendary', tc: '#7e22ce' },
     { id: 'nova', name: 'Nova', cost: 1000, emoji: '💫', bg: 'linear-gradient(135deg,#fde047,#ec4899,#9333ea)', glow: '#facc15', tier: 'Legendary', tc: '#b45309' },
     { id: 'singularity', name: 'Singularity', cost: 1150, emoji: '⚫', bg: 'linear-gradient(135deg,#000000,#312e81,#581c87)', glow: '#4f46e5', tier: 'Legendary', tc: '#4338ca' },
-    { id: 'ethereal', name: 'Ethereal', cost: 1300, emoji: '🌟', bg: 'linear-gradient(135deg,#f1f5f9,#ddd6fe,#818cf8)', glow: '#e0e7ff', tier: 'Legendary', tc: '#6366f1' },
     { id: 'chrono', name: 'Chrono', cost: 1450, emoji: '⌚', bg: 'linear-gradient(135deg,#fbbf24,#14b8a6,#4338ca)', glow: '#f59e0b', tier: 'Legendary', tc: '#b45309' },
     // Mythic
     { id: 'celestial', name: 'Celestial', cost: 1600, emoji: '🌠', bg: 'linear-gradient(135deg,#a5b4fc,#c084fc,#f9a8d4)', glow: '#818cf8', tier: 'Mythic', tc: '#4f46e5' },
@@ -315,11 +311,11 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     animation: rb.animation || 'none',
                 }} />
             )}
-            {/* Inner circle — clean orb, no outer color bleed */}
+            {/* Inner circle — gradient orb with a controlled colored glow */}
             <div style={{
                 width: size, height: size, borderRadius: '50%',
                 backgroundImage: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.3), rgba(255,255,255,0) 55%), ${bg}`,
-                boxShadow: `inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.18)`,
+                boxShadow: `0 0 ${Math.round(size * 0.22)}px ${glow}66, inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.18)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: tier === 'Common' || tier === 'Uncommon' ? `2px solid ${frameColor}55` : 'none',
                 position: 'relative', zIndex: 2, overflow: 'hidden',
@@ -330,7 +326,10 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                         color="white"
                         strokeWidth={2.25}
                         absoluteStrokeWidth
-                        style={{ position: 'relative', zIndex: 2 }}
+                        style={{
+                            position: 'relative', zIndex: 2,
+                            filter: `drop-shadow(0 0 ${Math.max(2, Math.round(size * 0.08))}px ${glow}) drop-shadow(0 0 ${Math.max(4, Math.round(size * 0.18))}px ${glow}aa)`,
+                        }}
                     />
                 ) : skin ? (
                     /* Basic / iconless skin — show the gradient orb alone, no letter */

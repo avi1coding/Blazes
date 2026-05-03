@@ -14,12 +14,12 @@ const SKIN_ICONS = {
     // Common - elemental
     air: 'M3 8c3-4 6-4 9 0s6 4 9 0M3 16c3-4 6-4 9 0s6 4 9 0',
     fire: 'M12 2c0 4-4 6-4 10a4 4 0 0 0 8 0c0-4-4-6-4-10zM10 15a2 2 0 0 0 4 0c0-2-2-3-2-5 0 2-2 3-2 5z',
-    earth: 'M12 3L2 20h20L12 3zM12 8l5.5 10h-11L12 8z',
+    earth: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a14 14 0 0 1 0 20M12 2a14 14 0 0 0 0 20',
     water: 'M12 2c-4 5.5-8 8.5-8 12a8 8 0 0 0 16 0c0-3.5-4-6.5-8-12z',
     light: 'M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M16.9 16.9l2.1 2.1M4.9 19.1l2.1-2.1M16.9 7.1l2.1-2.1M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
-    ice: 'M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1M12 6l2 2-2 2-2-2zM12 14l2 2-2 2-2-2zM6 12l2-2 2 2-2 2zM14 12l2-2 2 2-2 2z',
+    ice: 'M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11M9 5l3 2 3-2M9 19l3-2 3 2M5 9l2 3-2 3M19 9l-2 3 2 3',
     lightning: 'M13 2L4 14h6l-3 8 10-12h-6l3-8z',
-    shadow: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 4a8 8 0 0 1 0 16V4z',
+    shadow: 'M20 12.5A8.5 8.5 0 1 1 11.5 4 6.5 6.5 0 0 0 20 12.5z',
     wood: 'M12 22V12M8 12c-2-4 0-8 4-10 4 2 6 6 4 10M6 18c0-2 2-4 6-6 4 2 6 4 6 6',
     sound: 'M12 4C8 4 6 8 6 12s2 8 6 8M12 8c-2 0-3 2-3 4s1 4 3 4M12 4v16M15 9c1 1 1.5 2 1.5 3S16 14 15 15M18 7c2 2 3 3.5 3 5s-1 3-3 5',
     // Uncommon
@@ -27,19 +27,19 @@ const SKIN_ICONS = {
     poison: 'M9 2h6v4c2 1 4 4 4 7 0 4-3 7-7 7s-7-3-7-7c0-3 2-6 4-7V2zM9 11a3 3 0 1 0 6 0M12 6v2',
     crystal: 'M12 2L5 9l7 13 7-13-7-7zM5 9l7 4 7-4M12 13v9',
     plasma: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
-    gravity: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM2 12h4M18 12h4M12 2v4M12 18v4',
+    gravity: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM2 12a10 4 0 1 0 20 0 10 4 0 0 0-20 0z',
     mist: 'M4 6h16M6 10h12M3 14h18M7 18h10',
     time: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 3',
     storm: 'M2 12h4l3-8 3 16 3-16 3 8h4',
     sand: 'M5 4h14v2c0 3-3 5-7 5S5 9 5 6V4zM5 20h14v-2c0-3-3-5-7-5s-7 2-7 5v2zM12 9v6',
     lava: 'M4 20c2-3 3-6 3-8 0-3 2-6 5-8 3 2 5 5 5 8 0 2 1 5 3 8M8 20c1-2 1.5-4 1.5-5.5 0-2 1-3.5 2.5-4.5 1.5 1 2.5 2.5 2.5 4.5S15 18 16 20',
-    spirit: 'M12 2C8 2 5 6 5 10c0 6 3 8 3 12h8c0-4 3-6 3-12 0-4-3-8-7-8zM9 16h6M10 19h4',
+    spirit: 'M5 21V11a7 7 0 0 1 14 0v10l-2-1.5L15 21l-2-1.5L11 21l-2-1.5L7 21l-2-1.5zM9 10a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM15 10a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
     tech: 'M4 4h16v16H4V4zM9 4v16M15 4v16M4 9h16M4 15h16',
-    cosmic: 'M12 2l1.5 4.5L18 5l-1.5 4.5L21 12l-4.5 1.5L18 18l-4.5-1.5L12 22l-1.5-4.5L6 19l1.5-4.5L3 12l4.5-1.5L6 6l4.5 1.5z',
+    cosmic: 'M12 11a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM3 9c3 0 6 1 9 3M21 15c-3 0-6-1-9-3M3 15c2 0 4 0 7-1M21 9c-2 0-4 0-7 1',
     nature: 'M12 22V12M9 3c-3 3-3 7 0 9h6c3-2 3-6 0-9M7 14c-2 1-4 3-4 5h6M17 14c2 1 4 3 4 5h-6',
-    void: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10z',
+    void: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z',
     // Rare
-    order: 'M12 2v6M12 16v6M8 12H2M22 12h-6M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+    order: 'M12 3v18M5 7l-3 6h6l-3-6zM19 7l-3 6h6l-3-6zM3 13a3 3 0 1 0 6 0M15 13a3 3 0 1 0 6 0M8 21h8',
     astral: 'M12 2l2 6 6-2-4 5 6 1-6 1 4 5-6-2-2 6-2-6-6 2 4-5-6-1 6-1-4-5 6 2z',
     chaos: 'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zM8 8l8 8M16 8l-8 8M12 2v20M2 12h20',
     neon: 'M4 4l4 4M20 4l-4 4M4 20l4-4M20 20l-4-4M12 2v4M12 18v4M2 12h4M18 12h4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
@@ -296,43 +296,15 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     boxShadow: `0 0 ${Math.round(size * 0.3)}px ${frameColor}60`,
                 }} />
             )}
-            {/* Inner circle */}
+            {/* Inner circle — clean orb, just gradient + a subtle top gloss */}
             <div style={{
                 width: size, height: size, borderRadius: '50%',
-                // Layered: skin gradient + diagonal glossy highlight + soft inner shadow on the bottom for orb depth
-                backgroundImage: `radial-gradient(circle at 30% 22%, rgba(255,255,255,0.55), rgba(255,255,255,0) 55%), radial-gradient(circle at 70% 80%, rgba(0,0,0,0.25), rgba(0,0,0,0) 55%), ${bg}`,
-                boxShadow: `0 0 ${Math.round(size * 0.3)}px ${glow}90, inset 0 -${Math.round(size * 0.08)}px ${Math.round(size * 0.16)}px rgba(0,0,0,0.25), inset 0 ${Math.round(size * 0.06)}px ${Math.round(size * 0.12)}px rgba(255,255,255,0.25)`,
+                backgroundImage: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.32), rgba(255,255,255,0) 55%), ${bg}`,
+                boxShadow: `0 0 ${Math.round(size * 0.28)}px ${glow}80, inset 0 ${Math.round(size * 0.04)}px ${Math.round(size * 0.08)}px rgba(255,255,255,0.18)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: tier === 'Common' || tier === 'Uncommon' ? `2px solid ${frameColor}55` : 'none',
                 position: 'relative', zIndex: 2, overflow: 'hidden',
             }}>
-                {/* Glass inner ring — subtle white ring just inside the perimeter */}
-                <span style={{
-                    position: 'absolute', inset: '6%', borderRadius: '50%',
-                    border: `${Math.max(1, size * 0.018)}px solid rgba(255,255,255,0.22)`,
-                    boxShadow: 'inset 0 0 8px rgba(255,255,255,0.15)',
-                    pointerEvents: 'none', zIndex: 1,
-                }} />
-                {/* Decorative starburst rays behind icon — Common and above */}
-                {tierRank >= 1 && (
-                    <svg viewBox="0 0 100 100"
-                        style={{
-                            position: 'absolute', inset: '8%', width: '84%', height: '84%',
-                            pointerEvents: 'none', zIndex: 1,
-                            opacity: tierRank >= 4 ? 0.55 : 0.35,
-                            animation: tierRank >= 3 ? 'skin-shimmer 18s linear infinite' : 'none',
-                        }}>
-                        {Array.from({ length: tierRank >= 4 ? 12 : 8 }).map((_, i) => {
-                            const angle = (i * 360) / (tierRank >= 4 ? 12 : 8);
-                            return (
-                                <line key={i}
-                                    x1="50" y1={tierRank >= 4 ? 8 : 12} x2="50" y2={tierRank >= 4 ? 22 : 24}
-                                    stroke="rgba(255,255,255,0.85)" strokeWidth="1.4" strokeLinecap="round"
-                                    transform={`rotate(${angle} 50 50)`} />
-                            );
-                        })}
-                    </svg>
-                )}
                 {iconPath ? (
                     <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"
                         style={{

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Bell, Gamepad2, Eye, Shield, Trash2, ChevronRight, Lock, BookOpen, BarChart3, Users, ClipboardList } from 'lucide-react';
+import { ArrowLeft, User, Bell, Gamepad2, Eye, Shield, Trash2, ChevronRight, Lock, BookOpen, BarChart3, Users, ClipboardList, Flame } from 'lucide-react';
 import Toast from '../components/Toast';
 
 function getPasswordStrength(pw) {
@@ -276,7 +276,15 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center animate-pulse">
+          <Flame className="w-6 h-6 text-white" strokeWidth={2.5} />
+        </div>
+      </div>
+    );
+  }
 
   const backPath = user.role === 'teacher' ? '/home/teacher' : '/home/student';
 

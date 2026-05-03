@@ -4,6 +4,15 @@ import { Flame } from 'lucide-react';
 
 // Catches render errors anywhere in the route tree so a broken component
 // shows a friendly retry UI instead of a fully white screen.
+function homePathForUser() {
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || 'null');
+    if (u?.role === 'teacher') return '/home/teacher';
+    if (u?.role === 'student' || u?.role === 'guest') return '/home/student';
+  } catch (_) { /* malformed localStorage; fall through */ }
+  return '/';
+}
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -17,6 +26,7 @@ class ErrorBoundary extends React.Component {
   }
   render() {
     if (this.state.error) {
+      const homeHref = homePathForUser();
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
           <div className="max-w-md w-full bg-white border border-gray-200 rounded-2xl p-6 shadow-sm text-center">
@@ -36,7 +46,7 @@ class ErrorBoundary extends React.Component {
                 Reload page
               </button>
               <button
-                onClick={() => { this.setState({ error: null }); window.location.href = '/'; }}
+                onClick={() => { this.setState({ error: null }); window.location.href = homeHref; }}
                 className="flex-1 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition-colors"
               >
                 Go home

@@ -6,10 +6,22 @@ import AchievementsMap from './AchievementsMap';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
+// Read user once, synchronously. localStorage.getItem returns null when missing
+// (safe — JSON.parse(null) returns null), and a try/catch guards against corrupted
+// payloads. Returning here means the very first render already has the user, no
+// white-screen flash before a useEffect kicks in.
+function readStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null');
+  } catch (_) {
+    return null;
+  }
+}
+
 export default function HubPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(readStoredUser);
   const [tab, setTab] = useState(searchParams.get('tab') || 'levels');
   const [progress, setProgress] = useState(null);
   const [blazesBucks, setBlazesBucks] = useState(0);
@@ -17,24 +29,33 @@ export default function HubPage() {
   const [subscription, setSubscription] = useState(null);
   const [badges, setBadges] = useState([]);
 
+  // Bounce to /login if there's no user; if there is, fan out the data fetches.
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (!userData) { navigate('/login'); return; }
-    const parsed = JSON.parse(userData);
-    setUser(parsed);
-    fetch(`${BASE}/api/season/progress/${parsed.id}`).then(r => r.json()).then(setProgress).catch(() => {});
-    fetch(`${BASE}/api/season/badges/${parsed.id}`).then(r => r.json()).then(d => setBadges(Array.isArray(d) ? d : [])).catch(() => {});
-    fetch(`${BASE}/api/blazesbucks/${parsed.id}`).then(r => r.json()).then(d => setBlazesBucks(d.balance || 0)).catch(() => {});
-    fetch(`${BASE}/api/skins/${parsed.id}`).then(r => r.json()).then(d => { if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin); }).catch(() => {});
-    fetch(`${BASE}/api/subscription/${parsed.id}`).then(r => r.json()).then(setSubscription).catch(() => {});
-  }, [navigate]);
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    fetch(`${BASE}/api/season/progress/${user.id}`).then(r => r.json()).then(setProgress).catch(() => {});
+    fetch(`${BASE}/api/season/badges/${user.id}`).then(r => r.json()).then(d => setBadges(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch(`${BASE}/api/blazesbucks/${user.id}`).then(r => r.json()).then(d => setBlazesBucks(d.balance || 0)).catch(() => {});
+    fetch(`${BASE}/api/skins/${user.id}`).then(r => r.json()).then(d => { if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin); }).catch(() => {});
+    fetch(`${BASE}/api/subscription/${user.id}`).then(r => r.json()).then(setSubscription).catch(() => {});
+  }, [navigate, user]);
 
   const switchTab = (next) => {
     setTab(next);
     setSearchParams({ tab: next }, { replace: true });
   };
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center animate-pulse">
+          <Flame className="w-6 h-6 text-white" strokeWidth={2.5} />
+        </div>
+      </div>
+    );
+  }
 
   const backPath = user.role === 'teacher' ? '/home/teacher' : '/home/student';
   const isPro = ['teacher_pro', 'blazes_plus', 'school'].includes(subscription?.tier);

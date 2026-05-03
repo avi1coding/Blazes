@@ -14,9 +14,11 @@ export default function ProfilePage() {
   const isPlus = subscription?.tier === 'blazes_plus' || subscription?.tier === 'teacher_pro' || subscription?.tier === 'school';
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (!userData) { navigate('/login'); return; }
-    const parsed = JSON.parse(userData);
+    let parsed = null;
+    try {
+      parsed = JSON.parse(localStorage.getItem('user') || 'null');
+    } catch (_) { /* corrupted; treat as logged out */ }
+    if (!parsed) { navigate('/login'); return; }
     setUser(parsed);
     const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     fetch(`${base}/api/season/progress/${parsed.id}`).then(r => r.json()).then(setProgress).catch(() => {});
@@ -25,7 +27,15 @@ export default function ProfilePage() {
     fetch(`${base}/api/subscription/${parsed.id}`).then(r => r.json()).then(setSubscription).catch(() => {});
   }, [navigate]);
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#1f1f23' }}>
+        <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center animate-pulse">
+          <Flame className="w-6 h-6 text-white" strokeWidth={2.5} />
+        </div>
+      </div>
+    );
+  }
 
   const backPath = user.role === 'teacher' ? '/home/teacher' : '/home/student';
   const level = progress?.level || 1;

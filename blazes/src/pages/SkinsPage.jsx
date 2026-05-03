@@ -337,18 +337,19 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"
                         style={{
                             position: 'relative', zIndex: 2,
-                            filter: `drop-shadow(0 0 ${Math.round(iconSize * 0.35)}px ${glow}) drop-shadow(0 ${Math.max(1, Math.round(size * 0.05))}px ${Math.max(2, Math.round(size * 0.1))}px rgba(0,0,0,0.6))`,
+                            filter: `drop-shadow(0 0 ${Math.round(iconSize * 0.32)}px ${glow}) drop-shadow(0 ${Math.max(1, Math.round(size * 0.04))}px ${Math.max(2, Math.round(size * 0.08))}px rgba(0,0,0,0.55))`,
                             animation: tierRank >= 5 ? 'skin-icon-pulse 2.4s ease-in-out infinite' : 'none',
                         }}>
-                        {/* Outer colored halo — uses skin's glow color, fat translucent stroke = neon glow */}
-                        <path d={iconPath} stroke={glow} strokeOpacity="0.65" strokeWidth={Math.max(4.5, iconSize * 0.24)} />
-                        {/* Soft white halo above the colored one — adds brightness */}
-                        <path d={iconPath} stroke="rgba(255,255,255,0.55)" strokeWidth={Math.max(3, iconSize * 0.16)} />
-                        {/* Crisp main white stroke — the readable icon */}
-                        <path d={iconPath} stroke="white" strokeWidth={Math.max(2, iconSize * 0.1)} />
-                        {/* Hot inner highlight — almost glowing core */}
-                        <path d={iconPath} stroke="rgba(255,255,255,1)" strokeWidth={Math.max(0.6, iconSize * 0.035)} style={{ filter: 'brightness(1.4)' }} />
+                        {/* Outer colored halo — neon bloom in the skin's accent color */}
+                        <path d={iconPath} stroke={glow} strokeOpacity="0.55" strokeWidth={Math.max(2.5, iconSize * 0.13)} />
+                        {/* Soft white halo */}
+                        <path d={iconPath} stroke="rgba(255,255,255,0.55)" strokeWidth={Math.max(1.6, iconSize * 0.08)} />
+                        {/* Crisp readable stroke — kept thin so the icon doesn't feel chunky */}
+                        <path d={iconPath} stroke="white" strokeWidth={Math.max(1.2, iconSize * 0.055)} />
                     </svg>
+                ) : skin ? (
+                    /* Basic / iconless skin — show the gradient orb alone, no letter */
+                    null
                 ) : (
                     <span style={{ color: 'white', fontWeight: 900, fontSize: size * 0.42, textShadow: `0 2px 6px rgba(0,0,0,0.6), 0 0 ${Math.round(size * 0.3)}px ${glow}`, position: 'relative', zIndex: 2 }}>{initial || '?'}</span>
                 )}

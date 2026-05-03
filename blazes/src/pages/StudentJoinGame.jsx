@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Flame, LogOut, UserX } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Flame, LogOut } from 'lucide-react';
 import { AvatarPreview, isBlazesPlusCached } from './SkinsPage';
 
 export default function StudentJoinGame() {
@@ -44,11 +44,17 @@ export default function StudentJoinGame() {
     fetchSettings();
   }, [gameCode]);
 
+  // Anonymous joiners always pick their own display name — the teacher's
+  // "use account names" toggle only controls whether logged-in players are
+  // forced to use their account name (because they actually have one).
+  const isAnonymous = !user;
+  const showNameInput = isAnonymous || allowCustomNames;
+
   const handleJoinGame = async (e) => {
     e.preventDefault();
     setError('');
 
-    const nameToUse = allowCustomNames ? playerName.trim() : (user?.name || '');
+    const nameToUse = showNameInput ? playerName.trim() : (user?.name || '');
 
     if (!nameToUse) {
       setError('Please enter your name');
@@ -58,9 +64,24 @@ export default function StudentJoinGame() {
       setError('No game code provided');
       return;
     }
-    if (!user) {
-      setError('You need an account to join this game.');
-      return;
+
+    // Anonymous joiners get a transient guest identity stored in localStorage
+    // so the lobby + gameplay screens (which all read 'user' from storage) work
+    // identically. The negative id keeps it from colliding with real accounts.
+    let identity = user;
+    if (isAnonymous) {
+      const cached = JSON.parse(localStorage.getItem('guest_user') || 'null');
+      if (cached && cached.name === nameToUse) {
+        identity = cached;
+      } else {
+        identity = {
+          id: -(Math.floor(Math.random() * 1e9) + 1),
+          name: nameToUse,
+          role: 'guest',
+        };
+        localStorage.setItem('guest_user', JSON.stringify(identity));
+      }
+      localStorage.setItem('user', JSON.stringify(identity));
     }
 
     setIsLoading(true);
@@ -69,7 +90,7 @@ export default function StudentJoinGame() {
       const response = await fetch(`${baseUrl}/api/games/${gameCode.toUpperCase()}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, playerName: nameToUse })
+        body: JSON.stringify({ userId: identity.id, playerName: nameToUse })
       });
 
       const data = await response.json();
@@ -90,9 +111,6 @@ export default function StudentJoinGame() {
     localStorage.removeItem('token');
     navigate('/login');
   };
-
-  // Account required wall — show before any form
-  const needsAccount = allowCustomNames === false && !user;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -117,43 +135,8 @@ export default function StudentJoinGame() {
         </div>
       </nav>
 
-      {/* Account required wall */}
-      {needsAccount && (
-        <div className="max-w-md mx-auto px-4 sm:px-6 py-12 sm:py-20">
-          <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-lg border-2 border-red-100 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <UserX className="w-8 h-8 text-red-600" strokeWidth={2.5} />
-            </div>
-            <h1 className="text-2xl font-black text-gray-900 mb-2">Account Required</h1>
-            <p className="text-gray-600 mb-2">
-              This game uses account names — you need to be logged in to join.
-            </p>
-            <div className="mb-6 p-3 bg-gray-50 rounded-xl border border-gray-200">
-              <p className="text-xs text-gray-500 mb-1">Game Code</p>
-              <p className="text-2xl font-black text-gray-900 tracking-widest">{gameCode}</p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <Link
-                to="/signup"
-                state={{ redirect: `/game/join`, gameCode }}
-                className="w-full bg-red-600 text-white font-black py-3 rounded-xl hover:bg-red-700 transition-colors"
-              >
-                Create an Account
-              </Link>
-              <Link
-                to="/login"
-                state={{ redirect: `/game/join`, gameCode }}
-                className="w-full bg-white border-2 border-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:border-gray-300 transition-colors"
-              >
-                Log In
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Main Content */}
-      {!needsAccount && <div className="max-w-md mx-auto px-4 sm:px-6 py-12 sm:py-20">
+      <div className="max-w-md mx-auto px-4 sm:px-6 py-12 sm:py-20">
         <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-lg border-2 border-gray-200">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -161,7 +144,7 @@ export default function StudentJoinGame() {
             </div>
             <h1 className="text-3xl font-black text-gray-900 mb-2">Join Game</h1>
             <p className="text-gray-600">
-              {allowCustomNames ? 'Enter a display name to join' : 'Joining as your account name'}
+              {showNameInput ? 'Enter a display name to join' : 'Joining as your account name'}
             </p>
           </div>
 
@@ -174,7 +157,7 @@ export default function StudentJoinGame() {
             {/* Name section */}
             {allowCustomNames === null ? (
               <div className="h-14 bg-gray-100 rounded-xl animate-pulse" />
-            ) : allowCustomNames ? (
+            ) : showNameInput ? (
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Your Display Name
@@ -188,6 +171,11 @@ export default function StudentJoinGame() {
                   maxLength={30}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-600 focus:outline-none transition-colors"
                 />
+                {isAnonymous && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    You'll join as a guest. Sign in if you want your stats to save.
+                  </p>
+                )}
               </div>
             ) : (
               <div>
@@ -232,7 +220,7 @@ export default function StudentJoinGame() {
             Ask your teacher for the game code, enter it here, and join the waiting room. The game will start once the teacher clicks "Start Game"!
           </p>
         </div>
-      </div>}
+      </div>
     </div>
   );
 }

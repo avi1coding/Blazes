@@ -39,7 +39,10 @@ export default function TeacherLobby() {
     const [participants, setParticipants] = useState([]);
     const [copied, setCopied] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
-    const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
+    const [user] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('user') || 'null'); }
+        catch { return null; }
+    });
     const [playerSkins, setPlayerSkins] = useState({});
     const fetchedSkinIds = useRef(new Set());
     const [toast, setToast] = useState({ show: false, message: '', type: 'error' });

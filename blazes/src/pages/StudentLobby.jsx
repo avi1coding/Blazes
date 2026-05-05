@@ -9,7 +9,10 @@ export default function StudentLobby() {
     const { gameCode } = useParams();
 
 
-    const [user] = useState(() => JSON.parse(localStorage.getItem('user')));
+    const [user] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('user') || 'null'); }
+        catch { return null; }
+    });
     const [game, setGame] = useState(null);
     const [participants, setParticipants] = useState([]);
     const [loading, setLoading] = useState(true);

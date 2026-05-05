@@ -89,15 +89,20 @@ export default function GameResults() {
       .catch(() => {});
   }, [gameCode]);
 
-  // Compute placements with ties
-  const placements = leaderboard.map((p, i) => {
-    if (i === 0) return 1;
+  // Compute placements with ties.
+  // Using forEach + a separate accumulator: `.map` referencing `placements` from
+  // inside its own callback hits the TDZ (the binding isn't initialised until
+  // the right-hand side returns) and throws a ReferenceError as soon as two
+  // players tie, which is what was triggering the boundary on /game/results.
+  const placements = [];
+  leaderboard.forEach((p, i) => {
+    if (i === 0) { placements.push(1); return; }
     const prev = leaderboard[i - 1];
     const sameScore = (p.score || 0) === (prev.score || 0);
     const sameElim = gameMode === 'survival'
       ? (p.eliminated || 0) === (prev.eliminated || 0) && (p.eliminated_at_round || 0) === (prev.eliminated_at_round || 0)
       : true;
-    return sameScore && sameElim ? placements[i - 1] : i + 1;
+    placements.push(sameScore && sameElim ? placements[i - 1] : i + 1);
   });
 
   const placementIcon = (place) => {

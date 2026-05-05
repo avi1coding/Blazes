@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Clock, Flag, Trophy, Rocket, BarChart3, X } from 'lucide-react';
+import { Clock, Flag, Trophy, Rocket, BarChart3, X, Eye } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -214,6 +214,18 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">Leaderboard</span>
             </button>
+            {/* Host playing? Give them a one-click way to pop the monitoring dashboard
+                in another tab so they can watch all students while they answer. */}
+            {game?.host_id && user?.id && game.host_id === user.id && (
+              <button
+                onClick={() => window.open(`/game/monitor/${gameCode}/all`, '_blank', 'noopener')}
+                className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-3 py-2 font-black text-xs sm:text-sm transition-colors"
+                title="Open monitoring dashboard"
+              >
+                <Eye className="w-4 h-4" />
+                <span className="hidden sm:inline">Monitor</span>
+              </button>
+            )}
           </div>
         </div>
       </header>

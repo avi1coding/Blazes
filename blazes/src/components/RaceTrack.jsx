@@ -21,9 +21,22 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
     }
   }, []);
 
-  const getPos = (progress) => {
+  // Position along the centerline at `progress` (0..1), then shifted perpendicular
+  // by `laneOffset` pixels — so players who are at the same progress (e.g. all at
+  // the starting line) don't pile on top of each other.
+  const getPos = (progress, laneOffset = 0) => {
     if (!trackRef.current || !pathLength) return { x: 800, y: 460 };
-    return trackRef.current.getPointAtLength((progress * pathLength) % pathLength);
+    const adjusted = (progress * pathLength) % pathLength;
+    const p = trackRef.current.getPointAtLength(adjusted);
+    if (!laneOffset) return p;
+    // Tangent via a small forward step → rotate 90° for the perpendicular direction.
+    const next = trackRef.current.getPointAtLength((adjusted + 1) % pathLength);
+    const dx = next.x - p.x;
+    const dy = next.y - p.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const perpX = -dy / len;
+    const perpY = dx / len;
+    return { x: p.x + perpX * laneOffset, y: p.y + perpY * laneOffset };
   };
 
   const finishPoint = pathLength > 0
@@ -32,6 +45,22 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
 
   // Sort by total correct ascending so the leader renders LAST (and therefore on top)
   const sortedAsc = [...participants].sort((a, b) => (a.correct_answers || 0) - (b.correct_answers || 0));
+
+  // Cluster players that share the same progress and fan them across 4 lanes so
+  // each one stays visible. Using a Map keyed by exact correct_answers count means
+  // every player at the start is in the same cluster and gets a different lane.
+  const clusterIndex = new Map();
+  const LANE_OFFSETS = [-30, -10, 10, 30]; // 4 lanes spread across the ~100px track band
+  for (const p of [...participants].sort((a, b) => (b.correct_answers || 0) - (a.correct_answers || 0))) {
+    const key = p.correct_answers || 0;
+    const i = clusterIndex.get(`__count_${key}`) || 0;
+    clusterIndex.set(p.user_id, i);
+    clusterIndex.set(`__count_${key}`, i + 1);
+  }
+  const laneFor = (p) => {
+    const i = clusterIndex.get(p.user_id) ?? 0;
+    return LANE_OFFSETS[i % LANE_OFFSETS.length];
+  };
 
   return (
     <div className={`relative ${className}`}>
@@ -172,12 +201,12 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
           );
         })()}
 
-        {/* PLAYERS — leader on top */}
+        {/* PLAYERS — leader on top, clustered players spread across 4 lanes */}
         {pathLength > 0 && sortedAsc.map((p) => {
           const correct = p.correct_answers || 0;
           const lap = Math.floor(correct / distance);
           const progressInLap = (correct % distance) / distance;
-          const pos = getPos(progressInLap);
+          const pos = getPos(progressInLap, laneFor(p));
           const isMe = p.user_id === currentUserId;
           const color = isMe ? '#06b6d4' : colorFor(p.user_id);
           const r = isMe ? 22 : 18;

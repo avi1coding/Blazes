@@ -22,6 +22,15 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
   const gameCode = propCode || params.gameCode;
   const navigate = useNavigate();
   const [user] = useState(() => propUser || JSON.parse(localStorage.getItem('user') || 'null'));
+  const [equippedSkinId, setEquippedSkinId] = useState('default');
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch(`${BASE}/api/skins/${user.id}`)
+      .then(r => r.json())
+      .then(d => { if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin); })
+      .catch(() => {});
+  }, [user?.id]);
 
   const [game, setGame] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -396,7 +405,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
           {/* Left: avatar + name + rank */}
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="relative flex-shrink-0">
-              <AvatarPreview skinId="default" initial={user?.name?.[0] || '?'} size={36} isPlus={isBlazesPlusCached()} />
+              <AvatarPreview skinId={equippedSkinId} initial={user?.name?.[0] || '?'} size={36} isPlus={isBlazesPlusCached()} />
               {myRank && myRank <= 3 && (
                 <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-purple-950 ${
                   myRank === 1 ? 'bg-yellow-400 text-yellow-950' :

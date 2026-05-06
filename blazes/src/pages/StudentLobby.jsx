@@ -126,6 +126,22 @@ export default function StudentLobby() {
         });
     }, [participants]);
 
+    // Fetch the host's equipped skin so the host card shows their pfp
+    useEffect(() => {
+        const hostId = game?.host_id;
+        if (!hostId || fetchedSkinIds.current.has(hostId)) return;
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+        fetchedSkinIds.current.add(hostId);
+        fetch(`${base}/api/skins/${hostId}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.equipped?.avatar_skin) {
+                    setPlayerSkins(prev => ({ ...prev, [hostId]: d.equipped.avatar_skin }));
+                }
+            })
+            .catch(() => {});
+    }, [game?.host_id]);
+
     const handleLeaveGame = () => {
         navigate('/home/student');
     };
@@ -281,7 +297,7 @@ export default function StudentLobby() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {hostPlaysAndNotInList && (
                                 <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-xl">
-                                    <AvatarPreview skinId="default" initial={(settingsObj.hostName || 'T')[0].toUpperCase()} size={48} />
+                                    <AvatarPreview skinId={playerSkins[game?.host_id] || 'default'} initial={(settingsObj.hostName || 'T')[0].toUpperCase()} size={48} userId={game?.host_id} />
                                     <div className="flex-1">
                                         <div className="font-bold text-purple-900 flex items-center gap-1.5">
                                             {settingsObj.hostName || 'Teacher'}

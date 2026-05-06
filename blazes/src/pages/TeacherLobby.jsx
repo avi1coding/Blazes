@@ -96,6 +96,20 @@ export default function TeacherLobby() {
         });
     }, [participants]);
 
+    // Fetch the host's (current user's) own equipped skin so the host card shows it
+    useEffect(() => {
+        if (!user?.id || fetchedSkinIds.current.has(user.id)) return;
+        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+        fetchedSkinIds.current.add(user.id);
+        fetch(`${base}/api/skins/${user.id}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.equipped?.avatar_skin) setPlayerSkins(prev => ({ ...prev, [user.id]: d.equipped.avatar_skin }));
+                if (d.tier) cacheTier(user.id, d.tier);
+            })
+            .catch(() => {});
+    }, [user?.id]);
+
     const copyGameCode = () => {
         navigator.clipboard.writeText(gameCode);
         setCopied(true);
@@ -300,7 +314,7 @@ export default function TeacherLobby() {
                                         <span className="font-bold text-purple-900 text-sm">Playing</span>
                                     </div>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <AvatarPreview skinId="default" initial={user?.name?.[0]?.toUpperCase() || 'H'} size={32} />
+                                        <AvatarPreview skinId={playerSkins[user?.id] || 'default'} initial={user?.name?.[0]?.toUpperCase() || 'H'} size={32} userId={user?.id} />
                                         <p className="font-black truncate text-purple-900">{user?.name || 'Host'}</p>
                                     </div>
                                 </div>

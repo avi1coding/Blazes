@@ -425,7 +425,7 @@ export default function TeacherMonitoringDashboard() {
                         return (
                           <div key={p.user_id} className={`flex items-center gap-3 p-3 rounded-xl ${p.is_ghost ? 'bg-gray-100 opacity-50' : place === 1 ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'}`}>
                             <span className={`font-black w-6 text-center text-sm ${place === 1 ? 'text-yellow-500' : 'text-gray-400'}`}>#{place}</span>
-                            <AvatarPreview skinId={playerSkins[p.user_id] || 'default'} initial={(p.player_name || '?')[0].toUpperCase()} size={32} />
+                            <AvatarPreview skinId={p.avatar_skin || playerSkins[p.user_id] || 'default'} initial={(p.player_name || '?')[0].toUpperCase()} size={32} />
                             <div className="flex-1 min-w-0">
                               <div className="font-bold text-gray-900 text-sm truncate">{p.player_name}</div>
                               {p.is_ghost && <div className="text-xs text-purple-500 font-semibold">Ghost</div>}
@@ -474,7 +474,7 @@ export default function TeacherMonitoringDashboard() {
                       return (
                         <div key={p.user_id} className={`absolute transition-all duration-700 flex flex-col items-center ${p.is_ghost ? 'opacity-30' : ''}`}
                           style={{ bottom: `${Math.min(90, yPercent + 4)}%`, left: `${xOffset}%` }}>
-                          <AvatarPreview skinId={playerSkins[p.user_id] || 'default'} initial={(p.player_name || '?')[0].toUpperCase()} size={28} />
+                          <AvatarPreview skinId={p.avatar_skin || playerSkins[p.user_id] || 'default'} initial={(p.player_name || '?')[0].toUpperCase()} size={28} />
                           <span className="text-[9px] font-bold text-white bg-black/70 px-1 rounded mt-0.5">{p.player_name?.split(' ')[0]}</span>
                         </div>
                       );
@@ -632,7 +632,7 @@ export default function TeacherMonitoringDashboard() {
                       <div className="space-y-2">
                         {teamPlayers.map(p => (
                           <div key={p.user_id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                            <AvatarPreview skinId={playerSkins[p.user_id] || 'default'} initial={(p.player_name || '?')[0].toUpperCase()} size={32} />
+                            <AvatarPreview skinId={p.avatar_skin || playerSkins[p.user_id] || 'default'} initial={(p.player_name || '?')[0].toUpperCase()} size={32} />
                             <div className="flex-1 min-w-0">
                               <div className="font-bold text-gray-900 text-sm truncate">{p.player_name}</div>
                             </div>
@@ -716,7 +716,7 @@ export default function TeacherMonitoringDashboard() {
                       </div>
                     )}
                     <div className="flex items-start justify-between mb-4">
-                      <AvatarPreview skinId={playerSkins[player.user_id] || 'default'} initial={player.player_name?.[0]?.toUpperCase() || 'S'} size={56} />
+                      <AvatarPreview skinId={player.avatar_skin || playerSkins[player.user_id] || 'default'} initial={player.player_name?.[0]?.toUpperCase() || 'S'} size={56} />
                       {!isEliminated && <Eye className="w-5 h-5 text-blue-600" />}
                     </div>
                     <h3 className="font-bold text-gray-900 text-lg mb-1">

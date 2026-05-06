@@ -1968,8 +1968,21 @@ app.get('/api/games/:gameCode', (req, res) => {
       }
     }
 
-    // Get participants
-    db.all('SELECT * FROM game_participants WHERE game_id = ?', [game.id], (err, participants) => {
+    // Attach the host's equipped avatar skin so clients can render the host's pfp
+    // without a separate fetch (and pick up changes on every poll).
+    const hostEq = await new Promise(resolve =>
+      db.get('SELECT avatar_skin FROM user_equipped WHERE user_id = ?', [game.host_id], (_, row) => resolve(row))
+    );
+    game.host_avatar_skin = hostEq?.avatar_skin || null;
+
+    // Get participants joined with their equipped avatar skin
+    db.all(
+      `SELECT gp.*, ue.avatar_skin
+       FROM game_participants gp
+       LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
+       WHERE gp.game_id = ?`,
+      [game.id],
+      (err, participants) => {
       if (err) return res.status(500).json({ error: err.message });
 
       // Get questions from the kit for gameplay

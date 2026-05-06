@@ -297,7 +297,7 @@ export default function StudentLobby() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {hostPlaysAndNotInList && (
                                 <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-xl">
-                                    <AvatarPreview skinId={playerSkins[game?.host_id] || 'default'} initial={(settingsObj.hostName || 'T')[0].toUpperCase()} size={48} userId={game?.host_id} />
+                                    <AvatarPreview skinId={game?.host_avatar_skin || playerSkins[game?.host_id] || 'default'} initial={(settingsObj.hostName || 'T')[0].toUpperCase()} size={48} userId={game?.host_id} />
                                     <div className="flex-1">
                                         <div className="font-bold text-purple-900 flex items-center gap-1.5">
                                             {settingsObj.hostName || 'Teacher'}
@@ -313,13 +313,13 @@ export default function StudentLobby() {
                                     className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
                                 >
                                     <AvatarPreview
-                                        skinId={player.user_id === user.id ? equippedSkinId : (playerSkins[player.user_id] || 'default')}
+                                        skinId={player.user_id === user.id ? equippedSkinId : (player.avatar_skin || playerSkins[player.user_id] || 'default')}
                                         initial={player.player_name?.[0]?.toUpperCase() || 'P'}
                                         size={48}
                                         isPlus={player.user_id === user.id && isBlazesPlusCached()}
                                     />
                                     <div className="flex-1">
-                                        <div className="font-bold" style={{ color: getNameColor(player.user_id === user.id ? equippedSkinId : (playerSkins[player.user_id] || 'default')) }}>
+                                        <div className="font-bold" style={{ color: getNameColor(player.user_id === user.id ? equippedSkinId : (player.avatar_skin || playerSkins[player.user_id] || 'default')) }}>
                                             {player.player_name || `Player ${index + 1}`}
                                             {player.user_id === game.host_id && (
                                                 <span className="ml-2">

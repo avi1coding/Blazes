@@ -109,38 +109,34 @@ export default function StudentLobby() {
         return () => clearInterval(t);
     }, [roundStartTimeRef.current, gameCode, navigate, game, user]);
 
-    // Fetch skins for all participants
+    // Refresh skins for all participants + host every poll, so changes propagate
+    // to other players' screens without manual reload. fetchedSkinIds is kept
+    // for the very-first paint dedup (within the same render tick) only — the
+    // staleness timer below clears it every few seconds to force re-fetch.
     useEffect(() => {
         const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-        participants.forEach(p => {
-            if (!p.user_id || fetchedSkinIds.current.has(p.user_id)) return;
-            fetchedSkinIds.current.add(p.user_id);
-            fetch(`${base}/api/skins/${p.user_id}`)
+        const idsToFetch = new Set(participants.map(p => p.user_id).filter(Boolean));
+        if (game?.host_id) idsToFetch.add(game.host_id);
+        idsToFetch.forEach(uid => {
+            if (fetchedSkinIds.current.has(uid)) return;
+            fetchedSkinIds.current.add(uid);
+            fetch(`${base}/api/skins/${uid}`)
                 .then(r => r.json())
                 .then(d => {
                     if (d.equipped?.avatar_skin) {
-                        setPlayerSkins(prev => ({ ...prev, [p.user_id]: d.equipped.avatar_skin }));
+                        setPlayerSkins(prev => ({ ...prev, [uid]: d.equipped.avatar_skin }));
                     }
                 })
                 .catch(() => {});
         });
-    }, [participants]);
+    }, [participants, game?.host_id]);
 
-    // Fetch the host's equipped skin so the host card shows their pfp
+    // Invalidate the skin cache periodically so a player who equips a new skin
+    // is seen with the new one by everyone else within ~5s.
     useEffect(() => {
-        const hostId = game?.host_id;
-        if (!hostId || fetchedSkinIds.current.has(hostId)) return;
-        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-        fetchedSkinIds.current.add(hostId);
-        fetch(`${base}/api/skins/${hostId}`)
-            .then(r => r.json())
-            .then(d => {
-                if (d.equipped?.avatar_skin) {
-                    setPlayerSkins(prev => ({ ...prev, [hostId]: d.equipped.avatar_skin }));
-                }
-            })
-            .catch(() => {});
-    }, [game?.host_id]);
+        const t = setInterval(() => { fetchedSkinIds.current.clear(); }, 5000);
+        return () => clearInterval(t);
+    }, []);
 
     const handleLeaveGame = () => {
         navigate('/home/student');

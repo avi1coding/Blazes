@@ -80,35 +80,32 @@ export default function TeacherLobby() {
     }, [gameCode, navigate]);
 
 
-    // Fetch equipped skin for any participants we haven't fetched yet
+    // Refresh skins for participants + the host (self) so changes propagate to
+    // every viewer's screen. fetchedSkinIds dedups within a tick; the timer
+    // below clears it every few seconds to force re-fetch.
     useEffect(() => {
         const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-        participants.forEach(p => {
-            if (!p.user_id || fetchedSkinIds.current.has(p.user_id)) return;
-            fetchedSkinIds.current.add(p.user_id);
-            fetch(`${base}/api/skins/${p.user_id}`)
+        const idsToFetch = new Set(participants.map(p => p.user_id).filter(Boolean));
+        if (user?.id) idsToFetch.add(user.id);
+        idsToFetch.forEach(uid => {
+            if (fetchedSkinIds.current.has(uid)) return;
+            fetchedSkinIds.current.add(uid);
+            fetch(`${base}/api/skins/${uid}`)
                 .then(r => r.json())
                 .then(d => {
-                    if (d.equipped?.avatar_skin) setPlayerSkins(prev => ({ ...prev, [p.user_id]: d.equipped.avatar_skin }));
-                    if (d.tier) cacheTier(p.user_id, d.tier);
+                    if (d.equipped?.avatar_skin) setPlayerSkins(prev => ({ ...prev, [uid]: d.equipped.avatar_skin }));
+                    if (d.tier) cacheTier(uid, d.tier);
                 })
                 .catch(() => {});
         });
-    }, [participants]);
+    }, [participants, user?.id]);
 
-    // Fetch the host's (current user's) own equipped skin so the host card shows it
+    // Invalidate the skin cache periodically so a player who equips a new skin
+    // is seen with the new one by everyone else within ~5s.
     useEffect(() => {
-        if (!user?.id || fetchedSkinIds.current.has(user.id)) return;
-        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-        fetchedSkinIds.current.add(user.id);
-        fetch(`${base}/api/skins/${user.id}`)
-            .then(r => r.json())
-            .then(d => {
-                if (d.equipped?.avatar_skin) setPlayerSkins(prev => ({ ...prev, [user.id]: d.equipped.avatar_skin }));
-                if (d.tier) cacheTier(user.id, d.tier);
-            })
-            .catch(() => {});
-    }, [user?.id]);
+        const t = setInterval(() => { fetchedSkinIds.current.clear(); }, 5000);
+        return () => clearInterval(t);
+    }, []);
 
     const copyGameCode = () => {
         navigator.clipboard.writeText(gameCode);

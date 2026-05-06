@@ -180,8 +180,28 @@ export default function TeacherMonitoringDashboard() {
     }
   };
 
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
+
   const handleLeave = () => {
+    // If the game is still running, leaving the dashboard ends it for everyone
+    // — confirm first so the host doesn't accidentally torch a live session.
+    if (gameStatus === 'started') {
+      setLeaveConfirm(true);
+      return;
+    }
     if (gameAudioRef.current) gameAudioRef.current.stop();
+    navigate('/home/teacher');
+  };
+
+  const confirmLeave = async () => {
+    setLeaveConfirm(false);
+    if (gameAudioRef.current) gameAudioRef.current.stop();
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+      await fetch(`${baseUrl}/api/games/${gameCode}/abandon`, { method: 'PUT' });
+    } catch (err) {
+      console.error('Error abandoning game:', err);
+    }
     navigate('/home/teacher');
   };
 
@@ -221,6 +241,39 @@ export default function TeacherMonitoringDashboard() {
                 className="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors"
               >
                 End Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave-while-running confirmation — abandons the game */}
+      {leaveConfirm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border-2 border-orange-200 p-5 sm:p-8 max-w-md w-full shadow-xl">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <LogOut className="w-6 h-6 text-orange-600" />
+              </div>
+              <h2 className="text-xl font-black text-gray-900">Leave Game?</h2>
+            </div>
+            <p className="text-gray-700 mb-6">
+              The game is still running. Leaving will end it for everyone, and the
+              students won't see a final leaderboard. If you want a normal end with
+              placements, click <span className="font-bold">End Game</span> instead.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setLeaveConfirm(false)}
+                className="flex-1 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition-colors"
+              >
+                Stay
+              </button>
+              <button
+                onClick={confirmLeave}
+                className="flex-1 py-2.5 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition-colors"
+              >
+                Leave Anyway
               </button>
             </div>
           </div>

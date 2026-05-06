@@ -589,6 +589,9 @@ db.run(`ALTER TABLE game_participants ADD COLUMN team INTEGER`, () => { });
 db.run(`ALTER TABLE game_participants ADD COLUMN energy_points INTEGER DEFAULT 0`, () => { });
 db.run(`ALTER TABLE games ADD COLUMN team_1_score INTEGER DEFAULT 0`, () => { });
 db.run(`ALTER TABLE games ADD COLUMN team_2_score INTEGER DEFAULT 0`, () => { });
+// Set when the host bails out mid-game; results page renders a different
+// message ("host ended early") instead of the placement leaderboard.
+db.run(`ALTER TABLE games ADD COLUMN abandoned INTEGER DEFAULT 0`, () => { });
 db.run(`CREATE TABLE IF NOT EXISTS elemental_attacks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   game_id INTEGER,
@@ -2498,6 +2501,21 @@ app.put('/api/games/:gameCode/end', (req, res) => {
   );
 });
 
+// Host bailed out mid-game. Marks status='ended' and abandoned=1 so the results
+// page can show a "host ended early" message instead of the placement leaderboard.
+// No placement BB awarded — the game wasn't completed normally.
+app.put('/api/games/:gameCode/abandon', (req, res) => {
+  const { gameCode } = req.params;
+  db.run(
+    `UPDATE games SET status = 'ended', abandoned = 1, ended_at = CURRENT_TIMESTAMP WHERE game_code = ? AND status != 'ended'`,
+    [gameCode],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Game abandoned', changed: this.changes });
+    }
+  );
+});
+
 // Submit final score for game — awards BB based on new economy
 app.post('/api/games/:gameCode/answers', async (req, res) => {
   const { gameCode } = req.params;
@@ -2903,6 +2921,7 @@ app.get('/api/games/:gameCode/results', (req, res) => {
           gameCode,
           gameMode: game.game_mode,
           status: game.status,
+          abandoned: !!game.abandoned,
           settings,
           totalRoundsPlayed: game.rounds_played || 0,
           participants: participants || []

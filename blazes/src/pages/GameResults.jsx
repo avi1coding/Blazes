@@ -26,6 +26,7 @@ export default function GameResults() {
   const [aiLoading, setAiLoading] = useState(false);
   const [showOverview, setShowOverview] = useState(false);
   const [userTier, setUserTier] = useState('free');
+  const [abandoned, setAbandoned] = useState(false);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -68,6 +69,7 @@ export default function GameResults() {
       .then(data => {
         setGameMode(data.gameMode);
         setTotalRounds(data.totalRoundsPlayed || 0);
+        setAbandoned(!!data.abandoned);
         const sorted = rankParticipants(data.participants || []);
         setLeaderboard(sorted);
         if (sorted.length > 0 && sorted[0].user_id === user?.id) {
@@ -201,8 +203,25 @@ export default function GameResults() {
           </div>
         </div>
 
-        {/* Leaderboard */}
-        {leaderboard.length > 0 && (
+        {/* Host-abandoned notice — replaces the leaderboard when the host left
+            before a normal end. Players don't see placements because the game
+            didn't actually finish. */}
+        {abandoned && (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-orange-200 mb-6 text-center">
+            <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <X className="w-8 h-8 text-orange-600" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Session ended early</h2>
+            <p className="text-gray-600 max-w-sm mx-auto">
+              Your teacher left this game before it finished, so there's no final
+              leaderboard. Your answers and BB are still saved — try a different
+              game when one's running.
+            </p>
+          </div>
+        )}
+
+        {/* Leaderboard — only shown for normally-ended games */}
+        {!abandoned && leaderboard.length > 0 && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-gray-200 mb-6">
             <div className="flex items-center gap-2 mb-6">
               <Trophy className="w-6 h-6 text-yellow-500" strokeWidth={2.5} />

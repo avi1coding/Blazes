@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Flame, Trophy, Home, Users, Crown, Medal, Shield, Skull, Heart, BarChart3, Zap } from 'lucide-react';
+import { Flame, Trophy, Home, Users, Crown, Medal, Shield, Skull, Heart, BarChart3, Zap, X as XIcon } from 'lucide-react';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 import { rankParticipants } from '../utils/ranking';
 
@@ -179,8 +179,22 @@ export default function TeacherGameResults() {
                     </div>
                 </div>
 
-                {/* Full Leaderboard */}
-                {sorted.length > 0 && (
+                {/* Host abandoned the session — show notice instead of leaderboard */}
+                {results?.abandoned && (
+                    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border-2 border-orange-200 text-center">
+                        <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <XIcon className="w-8 h-8 text-orange-600" strokeWidth={2.5} />
+                        </div>
+                        <h2 className="text-xl font-black text-gray-900 mb-2">Session ended early</h2>
+                        <p className="text-gray-600 max-w-md mx-auto text-sm">
+                            You left this game before it finished, so no final leaderboard is shown.
+                            Students' answers are still recorded in your stats.
+                        </p>
+                    </div>
+                )}
+
+                {/* Full Leaderboard — only when the game ended normally */}
+                {!results?.abandoned && sorted.length > 0 && (
                     <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200">
                         <div className="flex items-center gap-2 mb-6">
                             <Trophy className="w-6 h-6 text-yellow-500" strokeWidth={2.5} />

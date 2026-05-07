@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, User, Bell, Gamepad2, Eye, Shield, Trash2, ChevronRight, Lock, BookOpen, BarChart3, Users, ClipboardList, Flame } from 'lucide-react';
 import Toast from '../components/Toast';
 
@@ -72,10 +72,13 @@ function getSections(userRole) {
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
   const [user, setUser] = useState(null);
   const [settings, setSettings] = useState(null);
-  const [activeSection, setActiveSection] = useState('account');
+  // URL is the source of truth so browser back/forward navigates between sections.
+  const activeSection = searchParams.get('section') || 'account';
+  const setActiveSection = (next) => setSearchParams({ section: next });
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
   // Account form states

@@ -22,7 +22,9 @@ export default function HubPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = useState(readStoredUser);
-  const [tab, setTab] = useState(searchParams.get('tab') || 'levels');
+  // URL is the source of truth for the tab so the browser back/forward
+  // buttons can navigate between tabs.
+  const tab = searchParams.get('tab') || 'levels';
   const [progress, setProgress] = useState(null);
   const [blazesBucks, setBlazesBucks] = useState(0);
   const [equippedSkinId, setEquippedSkinId] = useState('default');
@@ -43,8 +45,7 @@ export default function HubPage() {
   }, [navigate, user]);
 
   const switchTab = (next) => {
-    setTab(next);
-    setSearchParams({ tab: next }, { replace: true });
+    setSearchParams({ tab: next });
   };
 
   if (!user) {

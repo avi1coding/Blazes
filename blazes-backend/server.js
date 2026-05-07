@@ -3102,17 +3102,28 @@ app.get('/api/games/:gameCode/student/:userId/answers', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!game) return res.status(404).json({ error: 'Game not found' });
 
-    // Get answers - join with questions for question text
+    // Get answers — join with questions so the client can render the FULL
+    // question (text + options + which one was correct) alongside what the
+    // student picked. This is what powers the Plus-tier "review your game"
+    // detail view.
     db.all(
-      `SELECT 
-        ga.id, 
-        ga.user_id, 
-        ga.question_id, 
-        ga.answer, 
-        ga.is_correct, 
+      `SELECT
+        ga.id,
+        ga.user_id,
+        ga.question_id,
+        ga.answer,
+        ga.is_correct,
         ga.time_taken,
         ga.points_earned,
-        q.question_text
+        ga.answered_at,
+        q.question_text,
+        q.option_a,
+        q.option_b,
+        q.option_c,
+        q.option_d,
+        q.correct_answer,
+        q.answer_type,
+        q.image_url
       FROM game_answers ga
       LEFT JOIN questions q ON ga.question_id = q.id
       WHERE ga.game_id = ? AND ga.user_id = ?
@@ -3123,10 +3134,11 @@ app.get('/api/games/:gameCode/student/:userId/answers', (req, res) => {
         // Calculate score and correct count
         const totalScore = (answers || []).reduce((sum, a) => sum + (a.points_earned || 0), 0);
         const correctCount = (answers || []).filter(a => a.is_correct).length;
-        res.json({ 
-          answers: answers || [], 
-          totalScore, 
-          correctCount 
+        res.json({
+          game: { game_code: game.game_code, game_mode: game.game_mode, started_at: game.started_at, ended_at: game.ended_at },
+          answers: answers || [],
+          totalScore,
+          correctCount,
         });
       }
     );

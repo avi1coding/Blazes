@@ -67,6 +67,11 @@ export default function StudentHome() {
   const [seasonProgress, setSeasonProgress] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [upgradePrompt, setUpgradePrompt] = useState({ show: false, feature: '', desc: '', tier: '' });
+  // Recent-game review (Plus only) — opens a modal showing every question
+  // they answered with full detail (their pick vs. correct answer, time, points).
+  const [reviewGameCode, setReviewGameCode] = useState(null);
+  const [reviewData, setReviewData] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -175,6 +180,19 @@ export default function StudentHome() {
     fetch(`${base}/api/season/progress/${parsedUser.id}`).then(r => r.json()).then(setSeasonProgress).catch(() => {});
     fetch(`${base}/api/subscription/${parsedUser.id}`).then(r => r.json()).then(d => { setSubscription(d); localStorage.setItem('blazes_tier', d.tier || 'free'); }).catch(() => {});
   }, [navigate]);
+
+  // Fetch the per-question review for the selected recent game.
+  useEffect(() => {
+    if (!reviewGameCode || !user?.id) { setReviewData(null); return; }
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+    setReviewLoading(true);
+    setReviewData(null);
+    fetch(`${base}/api/games/${reviewGameCode}/student/${user.id}/answers`)
+      .then(r => r.json())
+      .then(setReviewData)
+      .catch(() => setReviewData(null))
+      .finally(() => setReviewLoading(false));
+  }, [reviewGameCode, user?.id]);
 
   // Refetch assignments when dashboard or classrooms tab is active to show updated status
   useEffect(() => {
@@ -829,51 +847,98 @@ export default function StudentHome() {
                   )}
                 </div>
 
-                {/* 5. Recent Games table */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 mb-8">
-                  <h3 className="text-lg font-black text-gray-900 mb-4">Recent Games</h3>
-                  {studentAnalytics.recentGames && studentAnalytics.recentGames.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-gray-200">
-                            <th className="text-left py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Kit</th>
-                            <th className="text-right py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Score</th>
-                            <th className="text-right py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Accuracy</th>
-                            <th className="text-right py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Questions</th>
-                            <th className="text-right py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {studentAnalytics.recentGames.slice(0, 5).map((g, i) => {
-                            const acc = Number(g.accuracy) || 0;
-                            const badgeColor = acc >= 80 ? 'bg-green-100 text-green-700' : acc >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
-                            return (
-                              <tr key={i} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                                <td className="py-2.5 px-3 font-semibold text-gray-800 max-w-[200px] truncate">{g.kit_title || 'Unknown Kit'}</td>
-                                <td className="py-2.5 px-3 text-right font-bold text-gray-900">{(g.score || 0).toLocaleString()}</td>
-                                <td className="py-2.5 px-3 text-right">
-                                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${badgeColor}`}>
-                                    {acc.toFixed(0)}%
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-3 text-right font-semibold text-gray-600">{g.questions_answered || 0}</td>
-                                <td className="py-2.5 px-3 text-right text-gray-500 font-medium whitespace-nowrap">
-                                  {g.date ? new Date(g.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--'}
-                                </td>
+                {/* 5. Recent Games table — Plus members can click any row to open a
+                    full per-question review of that game. Free members see a lock
+                    and an upgrade prompt. */}
+                {(() => {
+                  const isPlus = ['blazes_plus', 'teacher_pro', 'school'].includes(subscription?.tier);
+                  return (
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 mb-8">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-black text-gray-900">Recent Games</h3>
+                        {!isPlus && (
+                          <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                            <Lock className="w-3 h-3" strokeWidth={2.5} />
+                            Tap to review · Plus
+                          </span>
+                        )}
+                        {isPlus && (
+                          <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-purple-700 bg-gradient-to-r from-purple-100 to-fuchsia-100 px-2 py-1 rounded-full">
+                            <Crown className="w-3 h-3" strokeWidth={2.5} />
+                            Tap any row to review
+                          </span>
+                        )}
+                      </div>
+                      {studentAnalytics.recentGames && studentAnalytics.recentGames.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200">
+                                <th className="text-left py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Kit</th>
+                                <th className="text-right py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Score</th>
+                                <th className="text-right py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Accuracy</th>
+                                <th className="text-right py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Questions</th>
+                                <th className="text-right py-2 px-3 font-bold text-gray-500 uppercase text-xs tracking-wide">Date</th>
+                                <th className="w-8" />
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                            </thead>
+                            <tbody>
+                              {studentAnalytics.recentGames.slice(0, 5).map((g, i) => {
+                                const acc = Number(g.accuracy) || 0;
+                                const badgeColor = acc >= 80 ? 'bg-green-100 text-green-700' : acc >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
+                                const onRowClick = () => {
+                                  if (isPlus && g.game_code) {
+                                    setReviewGameCode(g.game_code);
+                                  } else {
+                                    setUpgradePrompt({
+                                      show: true,
+                                      feature: 'Game Review',
+                                      desc: 'Re-open any past game and walk through every question — your answer, the correct answer, time taken, and points earned.',
+                                      tier: 'Blazes Plus',
+                                    });
+                                  }
+                                };
+                                return (
+                                  <tr
+                                    key={i}
+                                    onClick={onRowClick}
+                                    className={`border-b border-gray-100 last:border-0 cursor-pointer transition-colors ${
+                                      isPlus ? 'hover:bg-purple-50' : 'hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <td className="py-2.5 px-3 font-semibold text-gray-800 max-w-[200px] truncate">{g.kit_title || 'Unknown Kit'}</td>
+                                    <td className="py-2.5 px-3 text-right font-bold text-gray-900">{(g.score || 0).toLocaleString()}</td>
+                                    <td className="py-2.5 px-3 text-right">
+                                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${badgeColor}`}>
+                                        {acc.toFixed(0)}%
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-semibold text-gray-600">{g.questions_answered || 0}</td>
+                                    <td className="py-2.5 px-3 text-right text-gray-500 font-medium whitespace-nowrap">
+                                      {g.date ? new Date(g.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--'}
+                                    </td>
+                                    <td className="py-2.5 px-2 text-right">
+                                      {isPlus ? (
+                                        <ChevronRight className="w-4 h-4 text-purple-400 inline-block" />
+                                      ) : (
+                                        <Lock className="w-3.5 h-3.5 text-gray-400 inline-block" strokeWidth={2.5} />
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-10 text-gray-400">
+                          <Play className="w-5 h-5 mr-2" />
+                          <span className="font-semibold">No games played yet</span>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-center py-10 text-gray-400">
-                      <Play className="w-5 h-5 mr-2" />
-                      <span className="font-semibold">No games played yet</span>
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {/* ═══ ADVANCED ANALYTICS (Blazes Plus only) ═══ */}
                 {['blazes_plus', 'teacher_pro', 'school'].includes(subscription?.tier) ? (
@@ -2487,6 +2552,156 @@ export default function StudentHome() {
               <Play className="w-5 h-5" />
               {joinLoading ? 'Checking...' : 'Join Game'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Recent Game Review Modal — Plus members only. Walks through every
+          question they answered with full detail. */}
+      {reviewGameCode && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setReviewGameCode(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-gradient-to-br from-purple-600 to-fuchsia-600 text-white px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Game Review</div>
+                  <div className="text-lg font-black">Code <span className="font-mono">{reviewGameCode}</span></div>
+                </div>
+              </div>
+              <button onClick={() => setReviewGameCode(null)} className="p-2 hover:bg-white/15 rounded-lg transition-colors">
+                <X className="w-5 h-5" strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+              {reviewLoading ? (
+                <div className="text-center py-16 text-gray-400">
+                  <BarChart3 className="w-10 h-10 mx-auto mb-3 animate-pulse" />
+                  <p className="text-sm font-semibold">Loading your game...</p>
+                </div>
+              ) : !reviewData || !reviewData.answers?.length ? (
+                <div className="text-center py-16 text-gray-400">
+                  <Play className="w-10 h-10 mx-auto mb-3" />
+                  <p className="text-sm font-semibold">No answers recorded for this game.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Summary header */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-3 text-center">
+                      <div className="text-2xl font-black text-emerald-700 tabular-nums">{reviewData.correctCount}</div>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-emerald-600 mt-0.5">Correct</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 rounded-xl p-3 text-center">
+                      <div className="text-2xl font-black text-red-700 tabular-nums">{(reviewData.answers.length || 0) - (reviewData.correctCount || 0)}</div>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-red-600 mt-0.5">Missed</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-3 text-center">
+                      <div className="text-2xl font-black text-amber-700 tabular-nums">{(reviewData.totalScore || 0).toLocaleString()}</div>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-amber-600 mt-0.5">Points</div>
+                    </div>
+                  </div>
+
+                  {/* Per-question cards */}
+                  <div className="space-y-3 pt-2">
+                    {reviewData.answers.map((a, i) => {
+                      const isCorrect = !!a.is_correct;
+                      const opts = ['option_a', 'option_b', 'option_c', 'option_d']
+                        .map((k, idx) => ({ letter: ['A', 'B', 'C', 'D'][idx], text: a[k] }))
+                        .filter(o => o.text);
+                      const correctLetter = (() => {
+                        const raw = String(a.correct_answer || '').toUpperCase();
+                        const m = raw.match(/[A-D](?!.*[A-D])/);
+                        return m ? m[0] : null;
+                      })();
+                      const userLetter = String(a.answer || '').toUpperCase();
+                      return (
+                        <div
+                          key={a.id || i}
+                          className={`rounded-2xl border-2 overflow-hidden ${
+                            isCorrect ? 'border-emerald-300 bg-emerald-50/50' : 'border-red-300 bg-red-50/50'
+                          }`}
+                        >
+                          {/* Question header */}
+                          <div className="px-4 py-3 flex items-start gap-3">
+                            <div
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-black text-sm ${
+                                isCorrect ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
+                              }`}
+                            >
+                              {isCorrect ? <Check className="w-4 h-4" strokeWidth={3} /> : <X className="w-4 h-4" strokeWidth={3} />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Question {i + 1}</div>
+                              <div className="text-sm font-bold text-gray-900 leading-snug mt-0.5">{a.question_text || '—'}</div>
+                            </div>
+                          </div>
+
+                          {/* Options (if multiple choice) */}
+                          {opts.length > 0 && (
+                            <div className="px-4 pb-3 space-y-1.5">
+                              {opts.map((o) => {
+                                const isUser = o.letter === userLetter;
+                                const isCorrectOpt = o.letter === correctLetter;
+                                return (
+                                  <div
+                                    key={o.letter}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border ${
+                                      isCorrectOpt ? 'bg-emerald-100 border-emerald-300 text-emerald-900' :
+                                      isUser ? 'bg-red-100 border-red-300 text-red-900' :
+                                      'bg-white border-gray-200 text-gray-600'
+                                    }`}
+                                  >
+                                    <span className={`w-5 h-5 rounded text-[10px] font-black flex items-center justify-center flex-shrink-0 ${
+                                      isCorrectOpt ? 'bg-emerald-500 text-white' :
+                                      isUser ? 'bg-red-500 text-white' :
+                                      'bg-gray-200 text-gray-500'
+                                    }`}>
+                                      {o.letter}
+                                    </span>
+                                    <span className="flex-1 truncate">{o.text}</span>
+                                    {isCorrectOpt && <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Correct</span>}
+                                    {isUser && !isCorrectOpt && <span className="text-[10px] font-black uppercase tracking-wider text-red-700">Your pick</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Typed-answer fallback */}
+                          {opts.length === 0 && (
+                            <div className="px-4 pb-3 grid grid-cols-2 gap-2 text-sm">
+                              <div className="rounded-lg bg-white border border-gray-200 px-3 py-2">
+                                <div className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-0.5">Your answer</div>
+                                <div className={`font-bold ${isCorrect ? 'text-emerald-700' : 'text-red-700'}`}>{a.answer || '(blank)'}</div>
+                              </div>
+                              <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
+                                <div className="text-[10px] font-black uppercase tracking-wider text-emerald-600 mb-0.5">Correct</div>
+                                <div className="font-bold text-emerald-800">{a.correct_answer || '—'}</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Footer stats */}
+                          <div className="px-4 py-2 bg-white/60 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" strokeWidth={2.5} />
+                              {a.time_taken != null ? `${Number(a.time_taken).toFixed(1)}s` : '—'}
+                            </span>
+                            <span className="tabular-nums">+{a.points_earned || 0} pts</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

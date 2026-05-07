@@ -7,12 +7,20 @@ const FALLBACK_COLORS = [
 ];
 const fallbackColor = (id) => FALLBACK_COLORS[Math.abs((id || 0)) % FALLBACK_COLORS.length];
 
-// Stadium oval — same shape as before so the lane math still lines up.
-// Counter-clockwise from bottom-center, finish line at the start.
+// Stadium-oval centerline. Counter-clockwise from bottom-center, finish line
+// at the start. The track band is 100px wide so its outer edge sits 50px out
+// (toward the spectators) and its inner edge sits 50px in (toward the grass).
 const TRACK_PATH = 'M 800 460 L 1300 460 A 160 160 0 0 0 1300 140 L 300 140 A 160 160 0 0 0 300 460 Z';
-// Inner outline of the infield (centerline minus track-band/2 ≈ 50). Fills the
-// green grass with a slight curve — same oval but tightened.
-const INFIELD_PATH = 'M 800 410 L 1300 410 A 110 110 0 0 0 1300 190 L 300 190 A 110 110 0 0 0 300 410 Z';
+// Generate a parallel path inset by L pixels (positive = toward the infield).
+// Works because the centerline's straights are y-axis aligned and the curves
+// are circular with center at (300,300) and (1300,300).
+function offsetPath(L) {
+  const yBot = 460 - L;
+  const yTop = 140 + L;
+  const r = 160 - L;
+  return `M 800 ${yBot} L 1300 ${yBot} A ${r} ${r} 0 0 0 1300 ${yTop} L 300 ${yTop} A ${r} ${r} 0 0 0 300 ${yBot} Z`;
+}
+const INFIELD_PATH = offsetPath(50);  // inner edge of the track band
 
 // Helpful for lighten/darken without a CSS framework. Mixes a hex into white/black.
 function blend(hex, mix, towardsWhite) {
@@ -113,14 +121,22 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
         {/* Outer stadium background */}
         <rect width="1600" height="600" fill="url(#rt-outer)" />
 
-        {/* Concrete kerb — white outline just outside the track band */}
+        {/* Soft outer halo — concrete-ish ring that fades into the dark backdrop */}
         <path
           d={TRACK_PATH}
           fill="none"
-          stroke="#f1f5f9"
-          strokeWidth="118"
+          stroke="#475569"
+          strokeWidth="124"
           strokeLinecap="butt"
-          opacity="0.35"
+          opacity="0.45"
+        />
+        {/* Outer kerb — clean white edge of the track */}
+        <path
+          d={offsetPath(-52)}
+          fill="none"
+          stroke="white"
+          strokeWidth="3"
+          opacity="0.85"
         />
 
         {/* TRACK SURFACE — red clay band */}
@@ -132,40 +148,68 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
           strokeLinecap="butt"
         />
 
-        {/* Inner kerb (red/white candy stripe near the infield boundary) */}
+        {/* Green infield — drawn ON TOP of the track stroke so the inner edge
+            is crisp; the kerb stripes below sit on top of the boundary. */}
+        <path d={INFIELD_PATH} fill="url(#rt-grass)" />
+
+        {/* Lane separators — three dashed white lines that split the band into
+            four lanes. Each is a real offset path so they're truly parallel
+            on the curves (not just a transformed centerline). */}
+        {[-25, 0, 25].map((L) => (
+          <path
+            key={L}
+            d={offsetPath(L)}
+            fill="none"
+            stroke="white"
+            strokeOpacity="0.7"
+            strokeWidth="1.8"
+            strokeDasharray="20 18"
+          />
+        ))}
+
+        {/* Inner kerb — red/white candy stripe at the boundary between the
+            clay and the grass. Two passes with offset dash arrays produce the
+            alternating stripe look you see on real circuits. */}
         <path
-          d={INFIELD_PATH}
+          d={offsetPath(50)}
           fill="none"
           stroke="white"
           strokeWidth="6"
-          strokeDasharray="22 22"
+          strokeDasharray="20 20"
           opacity="0.95"
         />
         <path
-          d={INFIELD_PATH}
+          d={offsetPath(50)}
           fill="none"
           stroke="#dc2626"
           strokeWidth="6"
-          strokeDasharray="22 22"
-          strokeDashoffset="22"
-          opacity="0.9"
+          strokeDasharray="20 20"
+          strokeDashoffset="20"
+          opacity="0.95"
         />
 
-        {/* Green infield */}
-        <path d={INFIELD_PATH} fill="url(#rt-grass)" />
-
-        {/* Centerline — single dashed white stroke down the middle of the band.
-            Per-lane parallel lines aren't possible without computing offset
-            paths, but the kerbs above + this centerline read clearly as a track. */}
+        {/* Outer kerb — same red/white candy stripe on the outside edge */}
         <path
-          ref={trackRef}
-          d={TRACK_PATH}
+          d={offsetPath(-50)}
           fill="none"
           stroke="white"
-          strokeOpacity="0.5"
-          strokeWidth="2"
-          strokeDasharray="22 28"
+          strokeWidth="6"
+          strokeDasharray="20 20"
+          opacity="0.85"
         />
+        <path
+          d={offsetPath(-50)}
+          fill="none"
+          stroke="#dc2626"
+          strokeWidth="6"
+          strokeDasharray="20 20"
+          strokeDashoffset="20"
+          opacity="0.85"
+        />
+
+        {/* Hidden centerline path — drives the player-position math via
+            getTotalLength/getPointAtLength. Not visible. */}
+        <path ref={trackRef} d={TRACK_PATH} fill="none" stroke="none" />
 
         {/* FINISH line — bold checkered band crossing the track surface */}
         {pathLength > 0 && (() => {

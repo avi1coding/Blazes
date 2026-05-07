@@ -5,15 +5,20 @@ import CreateKit from '../components/CreateKit';
 import NotificationDropdown from '../components/NotificationDropdown';
 import Toast from '../components/Toast';
 import { Flame, Trophy, TrendingUp, Zap, Target, Award, Clock, Users, Play, ChevronRight, BarChart3, Shirt, X, Home, GraduationCap, ClipboardList, Check, BookOpen, Plus, Trash2, Settings, Crown, Lock, Sparkles } from 'lucide-react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { getGameModeName } from '../utils/gameModeName';
 
 export default function StudentHome() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { tab: urlTab } = useParams();
   const [cancelNotice, setCancelNotice] = useState(location.state?.notice || '');
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'dashboard');
+  // URL is the source of truth for which section is shown — each tab has its
+  // own page like /home/student/kits, /home/student/stats. Falls back to the
+  // legacy ?tab= query string for older links, then to 'dashboard'.
+  const activeTab = urlTab || searchParams.get('tab') || 'dashboard';
+  const setActiveTab = (next) => navigate('/home/student/' + next);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [gameCode, setGameCode] = useState('');

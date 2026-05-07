@@ -8,12 +8,17 @@ import SubjectPicker, { GradePicker } from '../components/SubjectPicker';
 import { getGameModeName } from '../utils/gameModeName';
 import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown, Layers, Award, Star } from 'lucide-react';
 import Toast from '../components/Toast';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 
 export default function TeacherHome() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'dashboard');
+  const { tab: urlTab } = useParams();
+  // URL is the source of truth for which section is shown — each tab has its
+  // own page like /home/teacher/kits, /home/teacher/stats, etc. Falls back to
+  // the legacy ?tab= query string for older links, then to 'dashboard'.
+  const activeTab = urlTab || searchParams.get('tab') || 'dashboard';
+  const setActiveTab = (next) => navigate('/home/teacher/' + next);
   const [user, setUser] = useState(null);
   const [equippedSkinId, setEquippedSkinId] = useState('default');
   const [blazesBucks, setBlazesBucks] = useState(0);

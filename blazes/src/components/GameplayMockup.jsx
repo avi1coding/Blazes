@@ -202,39 +202,106 @@ function ArenaMock({ className }) {
 }
 
 // ─── RACE ─────────────────────────────────────────────────
+// Mini stadium-oval mockup that mirrors RaceTrack.jsx so the preview matches
+// what players actually see in the live race.
 function RaceMock({ className }) {
+  // viewBox 160x90: stadium oval centered, straights along top/bottom, end-caps on the sides.
+  // Hardcoded racer positions placed around the centerline so each appears on a different
+  // section of the loop (mockup, not a live calculation).
+  const racers = [
+    { name: 'Maya', x: 50,  y: 73, color: '#a855f7' },
+    { name: 'You',  x: 130, y: 73, color: '#22d3ee', me: true },
+    { name: 'Liam', x: 138, y: 30, color: '#f97316' },
+    { name: 'Jin',  x: 60,  y: 17, color: '#10b981' },
+  ];
+
   return (
-    <div className={`w-full h-full bg-gradient-to-br from-cyan-50 to-sky-100 flex flex-col p-2 sm:p-3 gap-1.5 ${className}`}>
+    <div className={`w-full h-full bg-gradient-to-br from-slate-900 via-slate-950 to-cyan-950 flex flex-col p-2 sm:p-3 gap-1.5 ${className}`}>
       {/* Top bar */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-1">
-          <Rocket className="w-3 h-3 text-cyan-600" strokeWidth={2.5} />
-          <span className="text-[10px] font-black text-gray-900">RACE</span>
+          <Rocket className="w-3 h-3 text-cyan-400" strokeWidth={2.5} />
+          <span className="text-[10px] font-black text-white">RACE</span>
         </div>
-        <div className="flex items-center gap-1 bg-white rounded-md px-1.5 py-0.5 shadow-sm">
-          <Users className="w-2.5 h-2.5 text-gray-500" />
-          <span className="text-[9px] font-black text-gray-900">12</span>
+        <div className="flex items-center gap-1 bg-white/10 backdrop-blur rounded-md px-1.5 py-0.5">
+          <Users className="w-2.5 h-2.5 text-cyan-300" />
+          <span className="text-[9px] font-black text-white">12</span>
         </div>
       </div>
-      {/* Race tracks */}
-      <div className="flex-1 flex flex-col justify-center gap-1.5 min-h-0">
-        {[
-          { name: 'Maya', pos: 92, color: 'bg-purple-500' },
-          { name: 'You',  pos: 78, color: 'bg-cyan-500' },
-          { name: 'Liam', pos: 65, color: 'bg-orange-500' },
-          { name: 'Jin',  pos: 50, color: 'bg-green-500' },
-        ].map((p, i) => (
-          <div key={p.name}>
-            <div className="flex items-center justify-between mb-0.5">
-              <span className={`text-[8px] font-bold ${p.name === 'You' ? 'text-cyan-700' : 'text-gray-700'}`}>#{i + 1} {p.name}</span>
-              <span className="text-[7px] font-bold text-gray-500 tabular-nums">{p.pos}%</span>
-            </div>
-            <div className="relative h-2 bg-white rounded-full overflow-hidden border border-gray-200">
-              <div className={`h-full ${p.color}`} style={{ width: `${p.pos}%` }} />
-              <div className="absolute top-0 right-0 h-full w-0.5 bg-red-500" />
-            </div>
-          </div>
-        ))}
+      {/* Stadium oval */}
+      <div className="flex-1 flex items-center justify-center min-h-0">
+        <svg viewBox="0 0 160 90" className="w-full h-full" style={{ display: 'block' }} preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="rmck-surface" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#1f2937" />
+              <stop offset="100%" stopColor="#020617" />
+            </linearGradient>
+          </defs>
+          {/* Cyan rim glow under the track */}
+          <path
+            d="M 30 73 L 130 73 A 28 28 0 0 0 130 17 L 30 17 A 28 28 0 0 0 30 73 Z"
+            fill="none"
+            stroke="#22d3ee"
+            strokeOpacity="0.35"
+            strokeWidth="16"
+          />
+          {/* Track surface */}
+          <path
+            d="M 30 73 L 130 73 A 28 28 0 0 0 130 17 L 30 17 A 28 28 0 0 0 30 73 Z"
+            fill="none"
+            stroke="url(#rmck-surface)"
+            strokeWidth="13"
+          />
+          {/* Centerline dashes */}
+          <path
+            d="M 30 73 L 130 73 A 28 28 0 0 0 130 17 L 30 17 A 28 28 0 0 0 30 73 Z"
+            fill="none"
+            stroke="white"
+            strokeOpacity="0.45"
+            strokeWidth="0.6"
+            strokeDasharray="2.5 3"
+          />
+          {/* Finish line — checkered band at bottom-center */}
+          {(() => {
+            const fx = 80;
+            const fy = 73;
+            const cw = 2.2, ch = 1.7;
+            const cols = 2, rows = 8;
+            return (
+              <g>
+                <rect x={fx - cw - 0.6} y={fy - (rows * ch) / 2 - 0.4} width={cols * cw + 1.2} height={rows * ch + 0.8} fill="white" rx="0.4" />
+                {Array.from({ length: rows * cols }).map((_, i) => {
+                  const c = i % cols;
+                  const rr = Math.floor(i / cols);
+                  return (
+                    <rect key={i}
+                      x={fx - cw + c * cw}
+                      y={fy - (rows * ch) / 2 + rr * ch}
+                      width={cw} height={ch}
+                      fill={(c + rr) % 2 === 0 ? '#0a0e1a' : 'white'}
+                    />
+                  );
+                })}
+              </g>
+            );
+          })()}
+          {/* Racers */}
+          {racers.map((p) => {
+            const dotR = p.me ? 4.2 : 3.2;
+            return (
+              <g key={p.name}>
+                <circle cx={p.x} cy={p.y} r={dotR + 2.5} fill={p.color} opacity="0.4" />
+                <circle cx={p.x} cy={p.y} r={dotR} fill={p.color} stroke="white" strokeWidth="0.8" />
+                {p.me && (
+                  <circle cx={p.x} cy={p.y} r={dotR + 1.5} fill="none" stroke={p.color} strokeWidth="0.6" opacity="0.7">
+                    <animate attributeName="r" values={`${dotR + 1};${dotR + 4};${dotR + 1}`} dur="1.6s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.7;0;0.7" dur="1.6s" repeatCount="indefinite" />
+                  </circle>
+                )}
+              </g>
+            );
+          })}
+        </svg>
       </div>
     </div>
   );

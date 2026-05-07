@@ -7,10 +7,14 @@ export default function StudentJoinGame() {
   const navigate = useNavigate();
   const location = useLocation();
   const gameCode = location.state?.gameCode || '';
-  const user = (() => {
+  const storedUser = (() => {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); }
     catch { return null; }
   })();
+  // A stored 'guest' user is from a previous join — they're not a real
+  // logged-in account, so each new join should prompt for a name again
+  // instead of silently reusing the old one as if it were the account name.
+  const user = storedUser?.role === 'guest' ? null : storedUser;
 
   const [playerName, setPlayerName] = useState('');
   const [allowCustomNames, setAllowCustomNames] = useState(null); // null = loading

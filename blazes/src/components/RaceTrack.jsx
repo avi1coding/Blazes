@@ -201,7 +201,11 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
           );
         })()}
 
-        {/* PLAYERS — leader on top, clustered players spread across 4 lanes */}
+        {/* PLAYERS — leader on top, clustered players spread across 4 lanes.
+            Each runner is a translate group so SVG transform smoothly tweens
+            position changes. A nested group adds a continuous bobbing motion
+            so the runners feel like they're actively running rather than
+            sliding statically along the track. */}
         {pathLength > 0 && sortedAsc.map((p) => {
           const correct = p.correct_answers || 0;
           const lap = Math.floor(correct / distance);
@@ -213,80 +217,100 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
           const initial = (p.player_name || '?')[0].toUpperCase();
           const name = (p.player_name || 'Player').slice(0, 12);
           const labelW = name.length * 8 + 16;
+          // Stagger each runner's bob phase so they don't all bounce in sync —
+          // looks more like a real pack of runners.
+          const phase = ((Math.abs(p.user_id || 0) * 137) % 1000) / 1000;
+          const bobDur = isMe ? 0.55 : 0.6 + (phase * 0.2);
+          const bobBegin = -(phase * bobDur).toFixed(3) + 's';
 
           return (
-            <g key={p.user_id} style={{ transition: 'transform 700ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
-              {/* Soft colored aura */}
-              <circle cx={pos.x} cy={pos.y} r={r + 16} fill={color} opacity="0.3" filter="url(#rt-glow)" />
-              {/* Main dot with white ring + drop shadow */}
-              <g filter="url(#rt-dot-shadow)">
-                <circle cx={pos.x} cy={pos.y} r={r} fill={color} stroke="white" strokeWidth="3.5" />
-                {/* Glossy highlight on the dot for that 3D-orb feel */}
-                <ellipse
-                  cx={pos.x - r * 0.32}
-                  cy={pos.y - r * 0.4}
-                  rx={r * 0.4}
-                  ry={r * 0.25}
-                  fill="rgba(255,255,255,0.45)"
+            <g
+              key={p.user_id}
+              style={{ transform: `translate(${pos.x}px, ${pos.y}px)`, transition: 'transform 700ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+            >
+              {/* Bob layer — small Y oscillation = running motion */}
+              <g>
+                <animateTransform
+                  attributeName="transform"
+                  type="translate"
+                  values="0,0; 0,-3; 0,0; 0,1; 0,0"
+                  keyTimes="0; 0.25; 0.5; 0.75; 1"
+                  dur={`${bobDur}s`}
+                  begin={bobBegin}
+                  repeatCount="indefinite"
                 />
-                <text
-                  x={pos.x}
-                  y={pos.y + (isMe ? 6 : 5)}
-                  textAnchor="middle"
-                  fontSize={isMe ? 18 : 14}
-                  fontWeight="900"
-                  fill="white"
-                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-                >
-                  {initial}
-                </text>
-              </g>
-              {/* Pulsing ring for current user */}
-              {isMe && (
-                <circle cx={pos.x} cy={pos.y} r={r + 4} fill="none" stroke={color} strokeWidth="2" strokeOpacity="0.7">
-                  <animate attributeName="r" values={`${r + 2};${r + 14};${r + 2}`} dur="1.6s" repeatCount="indefinite" />
-                  <animate attributeName="stroke-opacity" values="0.7;0;0.7" dur="1.6s" repeatCount="indefinite" />
-                </circle>
-              )}
-              {/* Lap counter badge — gold disc with the lap number */}
-              {lap > 0 && (
+                {/* Soft colored aura */}
+                <circle cx="0" cy="0" r={r + 16} fill={color} opacity="0.3" filter="url(#rt-glow)" />
+                {/* Main dot with white ring + drop shadow */}
                 <g filter="url(#rt-dot-shadow)">
-                  <circle cx={pos.x + r - 4} cy={pos.y - r + 4} r="11" fill="#fbbf24" stroke="white" strokeWidth="2.5" />
+                  <circle cx="0" cy="0" r={r} fill={color} stroke="white" strokeWidth="3.5" />
+                  {/* Glossy highlight on the dot for that 3D-orb feel */}
+                  <ellipse
+                    cx={-r * 0.32}
+                    cy={-r * 0.4}
+                    rx={r * 0.4}
+                    ry={r * 0.25}
+                    fill="rgba(255,255,255,0.45)"
+                  />
                   <text
-                    x={pos.x + r - 4}
-                    y={pos.y - r + 8}
+                    x="0"
+                    y={isMe ? 6 : 5}
                     textAnchor="middle"
-                    fontSize="13"
+                    fontSize={isMe ? 18 : 14}
                     fontWeight="900"
-                    fill="#78350f"
+                    fill="white"
+                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
                   >
-                    {lap}
+                    {initial}
                   </text>
                 </g>
-              )}
-              {/* Name label — pill below the dot */}
-              <g>
-                <rect
-                  x={pos.x - labelW / 2}
-                  y={pos.y + r + 10}
-                  width={labelW}
-                  height="22"
-                  rx="11"
-                  fill="rgba(2,6,23,0.85)"
-                  stroke={color}
-                  strokeWidth="1.5"
-                  strokeOpacity="0.6"
-                />
-                <text
-                  x={pos.x}
-                  y={pos.y + r + 25}
-                  textAnchor="middle"
-                  fontSize="13"
-                  fontWeight="800"
-                  fill="white"
-                >
-                  {name}
-                </text>
+                {/* Pulsing ring for current user */}
+                {isMe && (
+                  <circle cx="0" cy="0" r={r + 4} fill="none" stroke={color} strokeWidth="2" strokeOpacity="0.7">
+                    <animate attributeName="r" values={`${r + 2};${r + 14};${r + 2}`} dur="1.6s" repeatCount="indefinite" />
+                    <animate attributeName="stroke-opacity" values="0.7;0;0.7" dur="1.6s" repeatCount="indefinite" />
+                  </circle>
+                )}
+                {/* Lap counter badge — gold disc with the lap number */}
+                {lap > 0 && (
+                  <g filter="url(#rt-dot-shadow)">
+                    <circle cx={r - 4} cy={-r + 4} r="11" fill="#fbbf24" stroke="white" strokeWidth="2.5" />
+                    <text
+                      x={r - 4}
+                      y={-r + 8}
+                      textAnchor="middle"
+                      fontSize="13"
+                      fontWeight="900"
+                      fill="#78350f"
+                    >
+                      {lap}
+                    </text>
+                  </g>
+                )}
+                {/* Name label — pill below the dot */}
+                <g>
+                  <rect
+                    x={-labelW / 2}
+                    y={r + 10}
+                    width={labelW}
+                    height="22"
+                    rx="11"
+                    fill="rgba(2,6,23,0.85)"
+                    stroke={color}
+                    strokeWidth="1.5"
+                    strokeOpacity="0.6"
+                  />
+                  <text
+                    x="0"
+                    y={r + 25}
+                    textAnchor="middle"
+                    fontSize="13"
+                    fontWeight="800"
+                    fill="white"
+                  >
+                    {name}
+                  </text>
+                </g>
               </g>
             </g>
           );

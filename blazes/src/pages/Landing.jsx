@@ -58,7 +58,7 @@ export default function Landing() {
             {/* Right side - Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Join a Game Card */}
-              <div className="bg-white rounded-2xl p-6 shadow-xl">
+              <div id="join-game-card" className="bg-white rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center gap-2 mb-4">
                   <Play className="w-5 h-5 text-red-600" />
                   <h3 className="font-black text-gray-900">Join a Game</h3>
@@ -343,7 +343,21 @@ export default function Landing() {
             Join students who are studying smarter, not harder. Your first game is just a code away!
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-            <button className="bg-white text-orange-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-black text-base sm:text-lg hover:bg-orange-50 transition-colors shadow-xl">
+            <button
+              onClick={() => {
+                const el = document.getElementById('join-game-card');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  setTimeout(() => {
+                    const input = el.querySelector('input');
+                    if (input) input.focus();
+                  }, 400);
+                } else {
+                  navigate('/game/join');
+                }
+              }}
+              className="bg-white text-orange-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-black text-base sm:text-lg hover:bg-orange-50 transition-colors shadow-xl"
+            >
               Join a Game →
             </button>
             <Link to="/signup" className="bg-red-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-black text-base sm:text-lg hover:bg-red-700 transition-colors shadow-xl">

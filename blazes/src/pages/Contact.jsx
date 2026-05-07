@@ -11,6 +11,7 @@ export default function Contact() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.category) { setError('Please pick a category.'); return; }
     setSending(true);
     setError('');
     try {
@@ -141,19 +142,18 @@ export default function Contact() {
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">What's this about?</label>
-                    <select
-                      required
+                    <StyledSelect
+                      placeholder="Select a category"
                       value={form.category}
-                      onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition-colors text-gray-700 bg-white"
-                    >
-                      <option value="">Select a category</option>
-                      <option value="bug">Bug Report</option>
-                      <option value="help">I need help</option>
-                      <option value="feedback">Feature idea / Feedback</option>
-                      <option value="account">Account issue</option>
-                      <option value="other">Something else</option>
-                    </select>
+                      onChange={(v) => setForm(f => ({ ...f, category: v }))}
+                      options={[
+                        { value: 'bug', label: 'Bug Report' },
+                        { value: 'help', label: 'I need help' },
+                        { value: 'feedback', label: 'Feature idea / Feedback' },
+                        { value: 'account', label: 'Account issue' },
+                        { value: 'other', label: 'Something else' },
+                      ]}
+                    />
                   </div>
 
                   <div>

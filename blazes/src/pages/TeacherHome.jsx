@@ -79,7 +79,6 @@ export default function TeacherHome() {
   const [newImagePreview, setNewImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [classrooms, setClassrooms] = useState([]);
-  const [teacherAssignments, setTeacherAssignments] = useState([]);
   const [showCreateClassroom, setShowCreateClassroom] = useState(false);
   const [newClassroom, setNewClassroom] = useState({ name: '', subject: '', gradeLevel: '', imageUrl: '' });
   const [showGoogleImport, setShowGoogleImport] = useState(false);
@@ -213,11 +212,9 @@ export default function TeacherHome() {
     fetchRecentActivity();
     fetchStudentsNeedingHelp();
     fetchKits();
-    // Fetch classrooms and assignments
+    // Fetch classrooms
     fetch(`${base}/api/classrooms/teacher/${parsedUser.id}`)
       .then(r => r.json()).then(setClassrooms).catch(() => {});
-    fetch(`${base}/api/assignments/teacher/${parsedUser.id}`)
-      .then(r => r.json()).then(setTeacherAssignments).catch(() => {});
   }, [navigate]);
 
   // Fetch skins for any student we haven't fetched yet
@@ -418,10 +415,6 @@ export default function TeacherHome() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {activeTab === 'dashboard' && (() => {
-          const activeAssignments = teacherAssignments.filter(a => {
-            const allDone = a.total_count > 0 && a.completed_count === a.total_count;
-            return !allDone;
-          });
           return (
           <>
             {/* Heading */}
@@ -429,56 +422,59 @@ export default function TeacherHome() {
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900">Home</h1>
             </div>
 
-            {/* Assignments */}
+            {/* Quick Actions */}
             <div className="mb-10">
-              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mb-4">Assignments</h2>
-              {teacherAssignments.length === 0 ? (
-                <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-6 sm:p-8 md:p-12 text-center">
-                  <ClipboardList className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 font-semibold">No assignments yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {(activeAssignments.length > 0 ? activeAssignments : teacherAssignments).slice(0, 5).map(a => {
-                    const pct = a.total_count > 0 ? Math.round((a.completed_count / a.total_count) * 100) : 0;
-                    const allDone = a.total_count > 0 && a.completed_count === a.total_count;
-                    const overdue = a.due_date && new Date(a.due_date) < new Date() && !allDone;
-                    return (
-                      <div key={a.id} onClick={() => navigate(`/classroom/${a.classroom_id}`)}
-                        className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-gray-50 transition-colors ${overdue ? 'border-red-200 bg-red-50/50' : allDone ? 'border-green-200 bg-green-50/50' : 'border-gray-200 bg-white'}`}>
-                        {allDone ? (
-                          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Check className="w-5 h-5 text-white" strokeWidth={3} />
-                          </div>
-                        ) : (
-                          <div className="relative w-10 h-10 flex-shrink-0">
-                            <svg className="w-10 h-10 -rotate-90">
-                              <circle cx="20" cy="20" r="16" fill="none" stroke="#e5e7eb" strokeWidth="3" />
-                              <circle cx="20" cy="20" r="16" fill="none" stroke={overdue ? '#dc2626' : '#3b82f6'} strokeWidth="3" strokeLinecap="round"
-                                strokeDasharray={`${pct * 1.005} 999`} />
-                            </svg>
-                            <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-gray-600">{pct}%</span>
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-900 text-sm truncate">{a.title}</span>
-                            {overdue && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold flex-shrink-0">OVERDUE</span>}
-                            {allDone && <span className="text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded font-bold flex-shrink-0">DONE</span>}
-                          </div>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {a.classroom_name}{a.due_date ? ` · Due ${new Date(a.due_date).toLocaleDateString()}` : ''}
-                          </p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className={`text-sm font-black ${allDone ? 'text-green-600' : 'text-gray-900'}`}>{a.completed_count}/{a.total_count}</div>
-                          <div className="text-[10px] text-gray-500">completed</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mb-4">Quick Actions</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <button
+                  onClick={() => setActiveTab('myKits')}
+                  className="group flex flex-col items-start gap-3 p-5 bg-white rounded-2xl border border-gray-200 hover:border-red-300 hover:shadow-md transition-all text-left"
+                >
+                  <div className="w-11 h-11 bg-red-100 group-hover:bg-red-600 rounded-xl flex items-center justify-center transition-colors">
+                    <Play className="w-5 h-5 text-red-600 group-hover:text-white transition-colors" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="font-black text-gray-900">Start a Game</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Pick a kit and host a session</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('createKit')}
+                  className="group flex flex-col items-start gap-3 p-5 bg-white rounded-2xl border border-gray-200 hover:border-orange-300 hover:shadow-md transition-all text-left"
+                >
+                  <div className="w-11 h-11 bg-orange-100 group-hover:bg-orange-500 rounded-xl flex items-center justify-center transition-colors">
+                    <Plus className="w-5 h-5 text-orange-600 group-hover:text-white transition-colors" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="font-black text-gray-900">New Kit</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Build a new question set</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('classrooms')}
+                  className="group flex flex-col items-start gap-3 p-5 bg-white rounded-2xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all text-left"
+                >
+                  <div className="w-11 h-11 bg-blue-100 group-hover:bg-blue-600 rounded-xl flex items-center justify-center transition-colors">
+                    <GraduationCap className="w-5 h-5 text-blue-600 group-hover:text-white transition-colors" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="font-black text-gray-900">Manage Classes</div>
+                    <div className="text-xs text-gray-500 mt-0.5">View or add a classroom</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('stats')}
+                  className="group flex flex-col items-start gap-3 p-5 bg-white rounded-2xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all text-left"
+                >
+                  <div className="w-11 h-11 bg-purple-100 group-hover:bg-purple-600 rounded-xl flex items-center justify-center transition-colors">
+                    <BarChart3 className="w-5 h-5 text-purple-600 group-hover:text-white transition-colors" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="font-black text-gray-900">View Stats</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Class & student insights</div>
+                  </div>
+                </button>
+              </div>
             </div>
 
             {/* Classes */}
@@ -1742,7 +1738,10 @@ export default function TeacherHome() {
             <div className="mb-8">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-2">My Question Kits 📚</h1>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mb-2 flex items-center gap-3">
+                    <BookOpen className="w-7 h-7 sm:w-8 sm:h-8 text-red-600" strokeWidth={2.5} />
+                    My Question Kits
+                  </h1>
                   <p className="text-gray-600">Manage and organize your question kits</p>
                 </div>
                 <button

@@ -2309,9 +2309,21 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
 });
 
 // Join a game
-app.post('/api/games/:gameCode/join', (req, res) => {
+app.post('/api/games/:gameCode/join', async (req, res) => {
   const { gameCode } = req.params;
   const { userId, playerName } = req.body;
+
+  // Guests join with a negative id that does not exist in `users`, which trips
+  // the FK constraint on game_participants. Insert a placeholder user row so
+  // the FK is satisfied. INSERT OR IGNORE makes this safe to call repeatedly.
+  if (userId < 0) {
+    try {
+      await dbRun(
+        `INSERT OR IGNORE INTO users (id, name, role) VALUES (?, ?, 'guest')`,
+        [userId, playerName || 'Guest']
+      );
+    } catch (e) { console.error('[join] guest user insert failed', e); }
+  }
 
   // First get the game + host role
   db.get(
@@ -2319,6 +2331,15 @@ app.post('/api/games/:gameCode/join', (req, res) => {
     [gameCode], (err, game) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!game) return res.status(404).json({ error: 'Game not found' });
+
+    // A rejoin within the leave grace window cancels the pending "Left" mark.
+    const key = `${game.id}:${userId}`;
+    if (pendingLeaves.has(key)) {
+      clearTimeout(pendingLeaves.get(key));
+      pendingLeaves.delete(key);
+    }
+    // Clear any prior left_at so the rejoin shows them as active again.
+    db.run('UPDATE game_participants SET left_at = NULL WHERE game_id = ? AND user_id = ?', [game.id, userId], () => {});
 
     // Check if player already joined
     db.get('SELECT * FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, userId], (err, existing) => {
@@ -2362,7 +2383,14 @@ app.post('/api/games/:gameCode/join', (req, res) => {
   });
 });
 
-// Mark a participant as left (called when student closes tab/leaves)
+// Pending-leave timers — give players a 5s grace period after a tab close so a
+// quick refresh doesn't show them as "Left" to the teacher. Cleared if the
+// player rejoins within the window. In-memory map; if the server restarts the
+// pending leaves are dropped, which is fine — the player's UI will rejoin.
+const pendingLeaves = new Map(); // key: `${gameId}:${userId}` -> timeoutId
+const LEAVE_GRACE_MS = 5000;
+
+// Mark a participant as left after a 5s grace period.
 app.post('/api/games/:gameCode/leave', async (req, res) => {
   try {
     const { gameCode } = req.params;
@@ -2370,7 +2398,15 @@ app.post('/api/games/:gameCode/leave', async (req, res) => {
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
     const game = await dbGet('SELECT id FROM games WHERE game_code = ?', [gameCode]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
-    await dbRun(`UPDATE game_participants SET left_at = datetime('now') WHERE game_id = ? AND user_id = ?`, [game.id, userId]);
+
+    const key = `${game.id}:${userId}`;
+    if (pendingLeaves.has(key)) clearTimeout(pendingLeaves.get(key));
+    pendingLeaves.set(key, setTimeout(async () => {
+      try {
+        await dbRun(`UPDATE game_participants SET left_at = datetime('now') WHERE game_id = ? AND user_id = ? AND left_at IS NULL`, [game.id, userId]);
+      } catch (_) {}
+      pendingLeaves.delete(key);
+    }, LEAVE_GRACE_MS));
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

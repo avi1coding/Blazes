@@ -246,6 +246,12 @@ export const AVATAR_SKINS = [
 const ALL_SKINS = [...AVATAR_SKINS, ...SEASONAL_SKINS];
 const SKIN_BY_ID = Object.fromEntries(ALL_SKINS.map(s => [s.id, s]));
 
+// Public lookups so other pages (race track, etc) can theme themselves to a
+// player's currently-equipped skin.
+export function getSkinById(skinId) { return SKIN_BY_ID[skinId] || null; }
+export function getSkinIcon(skinId) { return SKIN_ICONS[skinId] || null; }
+export function getSkinColor(skinId) { return SKIN_BY_ID[skinId]?.glow || null; }
+
 const FREE_SKIN_IDS = AVATAR_SKINS.filter(s => s.cost === 0).map(s => s.id);
 
 const TIER_COLORS = {
@@ -268,7 +274,35 @@ export function isBlazesPlusCached() {
     try { return localStorage.getItem('blazes_tier') === 'blazes_plus'; } catch { return false; }
 }
 
+// Equipped-skin cache, persisted to localStorage so we can render the
+// correct avatar on first paint instead of flashing the red 'default'
+// for a moment while the /api/skins/:id fetch is in flight.
+export function cacheEquippedSkin(userId, skinId) {
+    if (!userId || !skinId) return;
+    try { localStorage.setItem(`equipped_skin_${userId}`, skinId); } catch { /* storage unavailable */ }
+}
+export function getCachedEquippedSkin(userId) {
+    if (!userId) return null;
+    try { return localStorage.getItem(`equipped_skin_${userId}`) || null; } catch { return null; }
+}
+// Read the current user's equipped skin synchronously for `useState` initializers.
+// Falls back to 'default' so the avatar component still has something to render
+// when there's no cached value yet.
+export function initialEquippedSkin() {
+    try {
+        const u = JSON.parse(localStorage.getItem('user') || 'null');
+        return getCachedEquippedSkin(u?.id) || 'default';
+    } catch { return 'default'; }
+}
+
 export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, isPlus = false, userId }) {
+    // If the caller passed 'default' but we have a cached skin for this user
+    // (because the equipped-skin fetch is still in flight), use the cached
+    // value so the avatar doesn't flash the red placeholder for a moment.
+    if ((!skinId || skinId === 'default') && userId) {
+        const cached = getCachedEquippedSkin(userId);
+        if (cached) skinId = cached;
+    }
     // Auto-detect from cache if userId provided and isPlus not explicitly set
     if (!isPlus && userId && getCachedTier(userId) === 'blazes_plus') isPlus = true;
     const skin = SKIN_BY_ID[skinId];
@@ -791,6 +825,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
 
     const handleEquip = async (skin) => {
         setEquipped(prev => ({ ...prev, avatar_skin: skin.id }));
+        cacheEquippedSkin(userId, skin.id);  // persist so other pages don't flash 'default'
         onSkinEquip?.(skin.id);  // notify parent to update nav avatar instantly
         try {
             await fetch(`${base}/api/skins/equip`, {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Clock, Flag, Trophy, Rocket, BarChart3, X, Eye } from 'lucide-react';
+import { getSkinById, getSkinIcon, initialEquippedSkin } from './SkinsPage';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -160,6 +161,15 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
   const sortedPlayers = [...participants].sort((a, b) => (b.correct_answers || 0) - (a.correct_answers || 0));
   const myPosition = sortedPlayers.findIndex(p => p.user_id === user?.id) + 1;
 
+  // Pull the player's equipped skin for the mini-track car so it themes itself.
+  const me = participants.find(p => p.user_id === user?.id);
+  const meSkinId = me?.avatar_skin || initialEquippedSkin();
+  const meSkin = getSkinById(meSkinId);
+  const meColor = meSkin?.glow || '#06b6d4';
+  const MeSkinIcon = getSkinIcon(meSkinId);
+  const lapProgress = (myCorrect % distance) / distance; // 0..1 within current lap
+  const currentLap = Math.floor(myCorrect / distance);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-100 flex flex-col">
       {/* Lap completion toast */}
@@ -229,6 +239,73 @@ export default function RaceGamePlay({ gameCode: propCode, user: propUser }) {
           </div>
         </div>
       </header>
+
+      {/* Mini-track strip — visual progress through the current lap. The player's
+          car is themed by their equipped skin so the gameplay screen feels
+          continuous with the live race track view. */}
+      <div className="bg-gradient-to-b from-stone-800 to-stone-900 border-b border-stone-700 px-3 sm:px-4 py-2.5">
+        <div className="max-w-6xl mx-auto flex items-center gap-3">
+          <div className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex-shrink-0 w-12">
+            Lap {currentLap}
+          </div>
+          <div className="relative flex-1 h-9">
+            <svg viewBox="0 0 800 36" preserveAspectRatio="none" className="w-full h-full">
+              <defs>
+                <linearGradient id="rgp-clay" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#c2410c" />
+                  <stop offset="100%" stopColor="#7c2d12" />
+                </linearGradient>
+              </defs>
+              {/* Track band */}
+              <rect x="0" y="6" width="800" height="24" fill="url(#rgp-clay)" rx="3" />
+              {/* Top + bottom kerbs (white/red candy stripe) */}
+              {Array.from({ length: 40 }).map((_, i) => (
+                <rect key={`kt-${i}`} x={i * 20} y="3" width="10" height="3" fill={i % 2 === 0 ? 'white' : '#dc2626'} />
+              ))}
+              {Array.from({ length: 40 }).map((_, i) => (
+                <rect key={`kb-${i}`} x={i * 20} y="30" width="10" height="3" fill={i % 2 === 0 ? '#dc2626' : 'white'} />
+              ))}
+              {/* Centerline dashes */}
+              <line x1="0" y1="18" x2="800" y2="18" stroke="white" strokeOpacity="0.55" strokeWidth="1.5" strokeDasharray="14 16" />
+              {/* Finish line at the right end */}
+              <g>
+                {Array.from({ length: 8 }).map((_, i) => {
+                  const cw = 6, ch = 3;
+                  const c = i % 2;
+                  const r = Math.floor(i / 2);
+                  return (
+                    <rect key={i}
+                      x={780 + c * cw}
+                      y={6 + r * ch}
+                      width={cw} height={ch}
+                      fill={(c + r) % 2 === 0 ? '#0a0e1a' : 'white'}
+                    />
+                  );
+                })}
+              </g>
+              {/* Player car — themed dot moving through the lap */}
+              {(() => {
+                const cx = 8 + lapProgress * (780 - 16);
+                return (
+                  <g style={{ transform: `translate(${cx}px, 18px)`, transition: 'transform 700ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
+                    <ellipse cx="0" cy="3" rx="11" ry="2.5" fill={meColor} opacity="0.55" />
+                    <circle cx="0" cy="0" r="9" fill={meColor} stroke="white" strokeWidth="2" />
+                    {MeSkinIcon && (
+                      <g>
+                        <circle cx="0" cy="0" r="6" fill="white" />
+                        <MeSkinIcon x="-4" y="-4" width="8" height="8" color={meColor} strokeWidth="2.5" />
+                      </g>
+                    )}
+                  </g>
+                );
+              })()}
+            </svg>
+          </div>
+          <div className="text-[10px] font-black tabular-nums text-amber-400 flex-shrink-0">
+            {myCorrect % distance}/{distance}
+          </div>
+        </div>
+      </div>
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-4">
         {/* Question */}

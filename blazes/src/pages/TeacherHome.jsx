@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import SkinsPage, { AvatarPreview, isBlazesPlusCached, cacheTier } from './SkinsPage';
+import SkinsPage, { AvatarPreview, isBlazesPlusCached, cacheTier, cacheEquippedSkin, initialEquippedSkin } from './SkinsPage';
 import AchievementsMap from './AchievementsMap';
 import CreateKit from '../components/CreateKit';
 import AddQuestionForm from '../components/AddQuestionForm';
@@ -20,7 +20,7 @@ export default function TeacherHome() {
   const activeTab = urlTab || searchParams.get('tab') || 'dashboard';
   const setActiveTab = (next) => navigate('/home/teacher/' + next);
   const [user, setUser] = useState(null);
-  const [equippedSkinId, setEquippedSkinId] = useState('default');
+  const [equippedSkinId, setEquippedSkinId] = useState(initialEquippedSkin);
   const [blazesBucks, setBlazesBucks] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -123,7 +123,12 @@ export default function TeacherHome() {
     // Load equipped skin
     fetch(`${base}/api/skins/${parsedUser.id}`)
       .then(r => r.json())
-      .then(d => { if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin); })
+      .then(d => {
+        if (d.equipped?.avatar_skin) {
+          setEquippedSkinId(d.equipped.avatar_skin);
+          cacheEquippedSkin(parsedUser.id, d.equipped.avatar_skin);
+        }
+      })
       .catch(() => {});
 
     // Load BlazesBucks balance
@@ -392,7 +397,7 @@ export default function TeacherHome() {
             <div className="relative">
               <button onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors">
-                <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={32} isPlus={teacherTier === 'teacher_pro'} />
+                <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={32} isPlus={teacherTier === 'teacher_pro'} userId={user?.id} />
               </button>
               {showProfileMenu && (
                 <>

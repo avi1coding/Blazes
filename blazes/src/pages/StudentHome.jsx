@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AchievementsMap from './AchievementsMap';
-import SkinsPage, { AvatarPreview } from './SkinsPage';
+import SkinsPage, { AvatarPreview, cacheEquippedSkin, initialEquippedSkin } from './SkinsPage';
 import CreateKit from '../components/CreateKit';
 import NotificationDropdown from '../components/NotificationDropdown';
 import Toast from '../components/Toast';
@@ -26,7 +26,7 @@ export default function StudentHome() {
   const [activeGames, setActiveGames] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [blazesBucks, setBlazesBucks] = useState(0);
-  const [equippedSkinId, setEquippedSkinId] = useState('default');
+  const [equippedSkinId, setEquippedSkinId] = useState(initialEquippedSkin);
   const [myClassrooms, setMyClassrooms] = useState([]);
   const [myAssignments, setMyAssignments] = useState([]);
   const [gamesThisWeek, setGamesThisWeek] = useState(0);
@@ -84,7 +84,12 @@ export default function StudentHome() {
     const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
     fetch(`${base}/api/skins/${parsedUser.id}`)
       .then(r => r.json())
-      .then(d => { if (d.equipped?.avatar_skin) setEquippedSkinId(d.equipped.avatar_skin); })
+      .then(d => {
+        if (d.equipped?.avatar_skin) {
+          setEquippedSkinId(d.equipped.avatar_skin);
+          cacheEquippedSkin(parsedUser.id, d.equipped.avatar_skin);
+        }
+      })
       .catch(() => {});
 
     if (parsedUser.role === 'teacher') {
@@ -347,7 +352,7 @@ export default function StudentHome() {
               <div className="relative">
                 <button onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors">
-                  <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={32} isPlus={['blazes_plus'].includes(subscription?.tier)} />
+                  <AvatarPreview skinId={equippedSkinId} initial={userInitial} size={32} isPlus={['blazes_plus'].includes(subscription?.tier)} userId={user?.id} />
                 </button>
                 {showProfileMenu && (
                   <>

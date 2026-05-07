@@ -216,15 +216,15 @@ function RaceMock({ className }) {
   ];
 
   return (
-    <div className={`w-full h-full bg-gradient-to-br from-slate-900 via-slate-950 to-cyan-950 flex flex-col p-2 sm:p-3 gap-1.5 ${className}`}>
+    <div className={`w-full h-full bg-gradient-to-br from-stone-800 via-stone-900 to-zinc-950 flex flex-col p-2 sm:p-3 gap-1.5 ${className}`}>
       {/* Top bar */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-1">
-          <Rocket className="w-3 h-3 text-cyan-400" strokeWidth={2.5} />
+          <Rocket className="w-3 h-3 text-amber-400" strokeWidth={2.5} />
           <span className="text-[10px] font-black text-white">RACE</span>
         </div>
         <div className="flex items-center gap-1 bg-white/10 backdrop-blur rounded-md px-1.5 py-0.5">
-          <Users className="w-2.5 h-2.5 text-cyan-300" />
+          <Users className="w-2.5 h-2.5 text-amber-200" />
           <span className="text-[9px] font-black text-white">12</span>
         </div>
       </div>
@@ -232,33 +232,47 @@ function RaceMock({ className }) {
       <div className="flex-1 flex items-center justify-center min-h-0">
         <svg viewBox="0 0 160 90" className="w-full h-full" style={{ display: 'block' }} preserveAspectRatio="xMidYMid meet">
           <defs>
+            {/* Red clay track surface */}
             <linearGradient id="rmck-surface" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#1f2937" />
-              <stop offset="100%" stopColor="#020617" />
+              <stop offset="0%" stopColor="#c2410c" />
+              <stop offset="100%" stopColor="#7c2d12" />
             </linearGradient>
+            {/* Green infield */}
+            <radialGradient id="rmck-grass" cx="50%" cy="55%" r="70%">
+              <stop offset="0%" stopColor="#86efac" />
+              <stop offset="100%" stopColor="#15803d" />
+            </radialGradient>
           </defs>
-          {/* Cyan rim glow under the track */}
+          {/* Outer concrete kerb */}
           <path
             d="M 30 73 L 130 73 A 28 28 0 0 0 130 17 L 30 17 A 28 28 0 0 0 30 73 Z"
             fill="none"
-            stroke="#22d3ee"
-            strokeOpacity="0.35"
+            stroke="#f1f5f9"
             strokeWidth="16"
+            opacity="0.35"
           />
-          {/* Track surface */}
+          {/* Red clay track surface */}
           <path
             d="M 30 73 L 130 73 A 28 28 0 0 0 130 17 L 30 17 A 28 28 0 0 0 30 73 Z"
             fill="none"
             stroke="url(#rmck-surface)"
             strokeWidth="13"
           />
+          {/* Inner candy-stripe kerb */}
+          <path
+            d="M 35 67 L 125 67 A 22 22 0 0 0 125 23 L 35 23 A 22 22 0 0 0 35 67 Z"
+            fill="url(#rmck-grass)"
+            stroke="#dc2626"
+            strokeWidth="1.2"
+            strokeDasharray="3 3"
+          />
           {/* Centerline dashes */}
           <path
             d="M 30 73 L 130 73 A 28 28 0 0 0 130 17 L 30 17 A 28 28 0 0 0 30 73 Z"
             fill="none"
             stroke="white"
-            strokeOpacity="0.45"
-            strokeWidth="0.6"
+            strokeOpacity="0.5"
+            strokeWidth="0.5"
             strokeDasharray="2.5 3"
           />
           {/* Finish line — checkered band at bottom-center */}

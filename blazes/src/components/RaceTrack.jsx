@@ -1,15 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
+import { getSkinById, getSkinIcon } from '../pages/SkinsPage';
 
-const PLAYER_COLORS = [
+const FALLBACK_COLORS = [
   '#06b6d4', '#a855f7', '#f97316', '#10b981', '#ef4444',
   '#f59e0b', '#3b82f6', '#ec4899', '#84cc16', '#8b5cf6',
 ];
-const colorFor = (id) => PLAYER_COLORS[Math.abs((id || 0)) % PLAYER_COLORS.length];
+const fallbackColor = (id) => FALLBACK_COLORS[Math.abs((id || 0)) % FALLBACK_COLORS.length];
 
-// The race line. Stadium oval that starts at bottom-center so the FINISH line
-// sits where the eye expects it. Counter-clockwise direction (matches running
-// tracks in real life).
+// Stadium oval — same shape as before so the lane math still lines up.
+// Counter-clockwise from bottom-center, finish line at the start.
 const TRACK_PATH = 'M 800 460 L 1300 460 A 160 160 0 0 0 1300 140 L 300 140 A 160 160 0 0 0 300 460 Z';
+// Inner outline of the infield (centerline minus track-band/2 ≈ 50). Fills the
+// green grass with a slight curve — same oval but tightened.
+const INFIELD_PATH = 'M 800 410 L 1300 410 A 110 110 0 0 0 1300 190 L 300 190 A 110 110 0 0 0 300 410 Z';
+
+// Helpful for lighten/darken without a CSS framework. Mixes a hex into white/black.
+function blend(hex, mix, towardsWhite) {
+  if (!hex || !hex.startsWith('#') || (hex.length !== 7 && hex.length !== 4)) return hex;
+  const full = hex.length === 4
+    ? '#' + hex.slice(1).split('').map(c => c + c).join('')
+    : hex;
+  const r = parseInt(full.slice(1, 3), 16);
+  const g = parseInt(full.slice(3, 5), 16);
+  const b = parseInt(full.slice(5, 7), 16);
+  const target = towardsWhite ? 255 : 0;
+  const m = (c) => Math.round(c + (target - c) * mix);
+  const toHex = (c) => c.toString(16).padStart(2, '0');
+  return '#' + toHex(m(r)) + toHex(m(g)) + toHex(m(b));
+}
 
 export default function RaceTrack({ participants = [], distance = 10, currentUserId, className = '' }) {
   const trackRef = useRef(null);
@@ -21,22 +39,23 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
     }
   }, []);
 
-  // Position along the centerline at `progress` (0..1), then shifted perpendicular
-  // by `laneOffset` pixels — so players who are at the same progress (e.g. all at
-  // the starting line) don't pile on top of each other.
+  // Position + rotation along the centerline at `progress` (0..1), shifted perpendicular
+  // by `laneOffset` so players sharing the same progress fan into separate lanes.
+  // Returns { x, y, angle } where angle is the path tangent in degrees so a car
+  // rendered with rotate(angle) points the way it's running.
   const getPos = (progress, laneOffset = 0) => {
-    if (!trackRef.current || !pathLength) return { x: 800, y: 460 };
+    if (!trackRef.current || !pathLength) return { x: 800, y: 460, angle: 0 };
     const adjusted = (progress * pathLength) % pathLength;
     const p = trackRef.current.getPointAtLength(adjusted);
-    if (!laneOffset) return p;
-    // Tangent via a small forward step → rotate 90° for the perpendicular direction.
     const next = trackRef.current.getPointAtLength((adjusted + 1) % pathLength);
     const dx = next.x - p.x;
     const dy = next.y - p.y;
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (!laneOffset) return { x: p.x, y: p.y, angle };
     const perpX = -dy / len;
     const perpY = dx / len;
-    return { x: p.x + perpX * laneOffset, y: p.y + perpY * laneOffset };
+    return { x: p.x + perpX * laneOffset, y: p.y + perpY * laneOffset, angle };
   };
 
   const finishPoint = pathLength > 0
@@ -46,11 +65,9 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
   // Sort by total correct ascending so the leader renders LAST (and therefore on top)
   const sortedAsc = [...participants].sort((a, b) => (a.correct_answers || 0) - (b.correct_answers || 0));
 
-  // Cluster players that share the same progress and fan them across 4 lanes so
-  // each one stays visible. Using a Map keyed by exact correct_answers count means
-  // every player at the start is in the same cluster and gets a different lane.
+  // Cluster players that share the same progress and fan them across 4 lanes.
   const clusterIndex = new Map();
-  const LANE_OFFSETS = [-30, -10, 10, 30]; // 4 lanes spread across the ~100px track band
+  const LANE_OFFSETS = [-32, -11, 11, 32]; // 4 lanes spread across the ~100px track band
   for (const p of [...participants].sort((a, b) => (b.correct_answers || 0) - (a.correct_answers || 0))) {
     const key = p.correct_answers || 0;
     const i = clusterIndex.get(`__count_${key}`) || 0;
@@ -66,47 +83,47 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
     <div className={`relative ${className}`}>
       <svg viewBox="0 0 1600 600" className="w-full h-full" style={{ display: 'block' }}>
         <defs>
-          {/* Track surface gradient — graphite, top→bottom shading for depth */}
+          {/* Track surface — classic clay-red, slight top-down shading for depth */}
           <linearGradient id="rt-surface" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1f2937" />
-            <stop offset="50%" stopColor="#0f172a" />
-            <stop offset="100%" stopColor="#020617" />
+            <stop offset="0%" stopColor="#c2410c" />
+            <stop offset="50%" stopColor="#9a3412" />
+            <stop offset="100%" stopColor="#7c2d12" />
           </linearGradient>
-          {/* Cyan rim glow that sits just outside the track */}
-          <linearGradient id="rt-rim" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22d3ee" />
-            <stop offset="100%" stopColor="#0891b2" />
-          </linearGradient>
-          {/* Subtle radial vignette behind everything */}
-          <radialGradient id="rt-bg" cx="50%" cy="55%" r="65%">
-            <stop offset="0%" stopColor="rgba(56,189,248,0.07)" />
-            <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+          {/* Inner infield grass — bright green, vignette */}
+          <radialGradient id="rt-grass" cx="50%" cy="55%" r="70%">
+            <stop offset="0%" stopColor="#86efac" />
+            <stop offset="60%" stopColor="#22c55e" />
+            <stop offset="100%" stopColor="#15803d" />
           </radialGradient>
+          {/* Outer area — concrete/stadium ring */}
+          <linearGradient id="rt-outer" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1f2937" />
+            <stop offset="100%" stopColor="#0f172a" />
+          </linearGradient>
 
-          {/* Drop shadow + colored glow filters */}
-          <filter id="rt-dot-shadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#000" floodOpacity="0.55" />
+          {/* Drop shadow + glow filters for cars */}
+          <filter id="rt-car-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.55" />
           </filter>
           <filter id="rt-glow" x="-100%" y="-100%" width="300%" height="300%">
             <feGaussianBlur stdDeviation="6" />
           </filter>
         </defs>
 
-        {/* Background vignette */}
-        <rect width="1600" height="600" fill="url(#rt-bg)" />
+        {/* Outer stadium background */}
+        <rect width="1600" height="600" fill="url(#rt-outer)" />
 
-        {/* OUTER GLOW — soft cyan halo just outside the track band */}
+        {/* Concrete kerb — white outline just outside the track band */}
         <path
           d={TRACK_PATH}
           fill="none"
-          stroke="#06b6d4"
+          stroke="#f1f5f9"
           strokeWidth="118"
-          strokeOpacity="0.18"
           strokeLinecap="butt"
-          filter="url(#rt-glow)"
+          opacity="0.35"
         />
 
-        {/* TRACK SURFACE — the thick band players race around */}
+        {/* TRACK SURFACE — red clay band */}
         <path
           d={TRACK_PATH}
           fill="none"
@@ -115,34 +132,40 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
           strokeLinecap="butt"
         />
 
-        {/* Inner + outer rim highlights — bright thin strokes that read as the track edges */}
+        {/* Inner kerb (red/white candy stripe near the infield boundary) */}
         <path
+          d={INFIELD_PATH}
+          fill="none"
+          stroke="white"
+          strokeWidth="6"
+          strokeDasharray="22 22"
+          opacity="0.95"
+        />
+        <path
+          d={INFIELD_PATH}
+          fill="none"
+          stroke="#dc2626"
+          strokeWidth="6"
+          strokeDasharray="22 22"
+          strokeDashoffset="22"
+          opacity="0.9"
+        />
+
+        {/* Green infield */}
+        <path d={INFIELD_PATH} fill="url(#rt-grass)" />
+
+        {/* Centerline — single dashed white stroke down the middle of the band.
+            Per-lane parallel lines aren't possible without computing offset
+            paths, but the kerbs above + this centerline read clearly as a track. */}
+        <path
+          ref={trackRef}
           d={TRACK_PATH}
           fill="none"
-          stroke="rgba(56,189,248,0.55)"
-          strokeWidth="102"
-          strokeLinecap="butt"
-          opacity="0"
+          stroke="white"
+          strokeOpacity="0.5"
+          strokeWidth="2"
+          strokeDasharray="22 28"
         />
-        {/* Lane separators — concentric dashed strokes inside the track for depth */}
-        {[
-          { offset: -34, opacity: 0.06, dash: '8 14' },
-          { offset: 0, opacity: 0.45, dash: '14 18' },
-          { offset: 34, opacity: 0.06, dash: '8 14' },
-        ].map((cfg, i) => (
-          <path
-            key={i}
-            d={TRACK_PATH}
-            fill="none"
-            stroke="white"
-            strokeOpacity={cfg.opacity}
-            strokeWidth={cfg.offset === 0 ? 2 : 1.5}
-            strokeDasharray={cfg.dash}
-            transform={`translate(0,${cfg.offset * 0})`}
-            // The CENTERLINE is also our path-length reference for player position
-            ref={cfg.offset === 0 ? trackRef : null}
-          />
-        ))}
 
         {/* FINISH line — bold checkered band crossing the track surface */}
         {pathLength > 0 && (() => {
@@ -151,7 +174,7 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
           const cols = 2;
           const rows = 8; // 8 rows × 13 = 104, just over the 100-wide track band
           return (
-            <g filter="url(#rt-dot-shadow)">
+            <g filter="url(#rt-car-shadow)">
               {/* White backing card behind the checkers for emphasis */}
               <rect
                 x={finishPoint.x - 22}
@@ -201,108 +224,191 @@ export default function RaceTrack({ participants = [], distance = 10, currentUse
           );
         })()}
 
-        {/* PLAYERS — leader on top, clustered players spread across 4 lanes.
-            Each runner is a translate group so SVG transform smoothly tweens
-            position changes. A nested group adds a continuous bobbing motion
-            so the runners feel like they're actively running rather than
-            sliding statically along the track. */}
+        {/* CARS — leader on top, clustered players spread across 4 lanes.
+            Each player is a translate+rotate group so the car body faces the way
+            it's racing. A nested transform handles the bobbing motion. */}
         {pathLength > 0 && sortedAsc.map((p) => {
           const correct = p.correct_answers || 0;
           const lap = Math.floor(correct / distance);
           const progressInLap = (correct % distance) / distance;
           const pos = getPos(progressInLap, laneFor(p));
           const isMe = p.user_id === currentUserId;
-          const color = isMe ? '#06b6d4' : colorFor(p.user_id);
-          const r = isMe ? 22 : 18;
-          const initial = (p.player_name || '?')[0].toUpperCase();
+          // Car colors come from the player's equipped skin so each one is
+          // visually themed. Falls back to a per-id color if no skin info.
+          const skinId = p.avatar_skin || null;
+          const skin = skinId ? getSkinById(skinId) : null;
+          const SkinIcon = skinId ? getSkinIcon(skinId) : null;
+          const baseColor = skin?.glow || fallbackColor(p.user_id);
+          const bodyTop = blend(baseColor, 0.35, true);   // lighter top
+          const bodyMid = baseColor;
+          const bodyBot = blend(baseColor, 0.4, false);   // darker bottom
+          const trim = blend(baseColor, 0.55, false);     // dark trim
+          // Scale: leader/me bigger so they read clearly
+          const scale = isMe ? 1.15 : 1.0;
+          const carW = 56 * scale;   // length
+          const carH = 28 * scale;   // width
+          const wheelR = 5.5 * scale;
           const name = (p.player_name || 'Player').slice(0, 12);
           const labelW = name.length * 8 + 16;
-          // Stagger each runner's bob phase so they don't all bounce in sync —
-          // looks more like a real pack of runners.
+          // Phase offset so the cars don't all bob in sync.
           const phase = ((Math.abs(p.user_id || 0) * 137) % 1000) / 1000;
-          const bobDur = isMe ? 0.55 : 0.6 + (phase * 0.2);
+          const bobDur = 0.55 + phase * 0.25;
           const bobBegin = -(phase * bobDur).toFixed(3) + 's';
+          const carGradId = `rt-body-${Math.abs(p.user_id || 0)}`;
 
           return (
             <g
               key={p.user_id}
-              style={{ transform: `translate(${pos.x}px, ${pos.y}px)`, transition: 'transform 700ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+              style={{
+                transform: `translate(${pos.x}px, ${pos.y}px) rotate(${pos.angle}deg)`,
+                transition: 'transform 700ms cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
             >
-              {/* Bob layer — small Y oscillation = running motion */}
+              {/* Per-car gradient (defined inline so it picks up skin color) */}
+              <defs>
+                <linearGradient id={carGradId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={bodyTop} />
+                  <stop offset="50%" stopColor={bodyMid} />
+                  <stop offset="100%" stopColor={bodyBot} />
+                </linearGradient>
+              </defs>
+
+              {/* Bob layer — small Y oscillation = engine vibration / motion */}
               <g>
                 <animateTransform
                   attributeName="transform"
                   type="translate"
-                  values="0,0; 0,-3; 0,0; 0,1; 0,0"
+                  values="0,0; 0,-1.5; 0,0; 0,0.7; 0,0"
                   keyTimes="0; 0.25; 0.5; 0.75; 1"
                   dur={`${bobDur}s`}
                   begin={bobBegin}
                   repeatCount="indefinite"
                 />
-                {/* Soft colored aura */}
-                <circle cx="0" cy="0" r={r + 16} fill={color} opacity="0.3" filter="url(#rt-glow)" />
-                {/* Main dot with white ring + drop shadow */}
-                <g filter="url(#rt-dot-shadow)">
-                  <circle cx="0" cy="0" r={r} fill={color} stroke="white" strokeWidth="3.5" />
-                  {/* Glossy highlight on the dot for that 3D-orb feel */}
-                  <ellipse
-                    cx={-r * 0.32}
-                    cy={-r * 0.4}
-                    rx={r * 0.4}
-                    ry={r * 0.25}
-                    fill="rgba(255,255,255,0.45)"
-                  />
-                  <text
-                    x="0"
-                    y={isMe ? 6 : 5}
-                    textAnchor="middle"
-                    fontSize={isMe ? 18 : 14}
-                    fontWeight="900"
-                    fill="white"
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-                  >
-                    {initial}
-                  </text>
+
+                {/* Speed lines behind the car — short streaks fading away */}
+                <g opacity="0.55">
+                  {[0, 1, 2].map((i) => (
+                    <line
+                      key={i}
+                      x1={-carW / 2 - 4 - i * 6}
+                      y1={(-carH / 2) + 6 + i * 6}
+                      x2={-carW / 2 - 14 - i * 6}
+                      y2={(-carH / 2) + 6 + i * 6}
+                      stroke="white"
+                      strokeWidth={1.5}
+                      strokeOpacity={0.7 - i * 0.18}
+                      strokeLinecap="round"
+                    />
+                  ))}
                 </g>
-                {/* Pulsing ring for current user */}
+
+                {/* Soft colored aura under the car */}
+                <ellipse cx="0" cy={carH / 2 + 3} rx={carW / 2 + 2} ry={5} fill={baseColor} opacity="0.4" filter="url(#rt-glow)" />
+
+                {/* Car body — rounded rectangle with body gradient */}
+                <g filter="url(#rt-car-shadow)">
+                  <rect
+                    x={-carW / 2}
+                    y={-carH / 2}
+                    width={carW}
+                    height={carH}
+                    rx={carH * 0.42}
+                    fill={`url(#${carGradId})`}
+                    stroke={trim}
+                    strokeWidth={1.5}
+                  />
+                  {/* Hood top highlight */}
+                  <rect
+                    x={-carW / 2 + 4}
+                    y={-carH / 2 + 2}
+                    width={carW - 8}
+                    height={carH * 0.2}
+                    rx={3}
+                    fill="rgba(255,255,255,0.35)"
+                  />
+                  {/* Windshield + roof — darker tinted oval covering the cabin section */}
+                  <rect
+                    x={-carW * 0.18}
+                    y={-carH * 0.42}
+                    width={carW * 0.45}
+                    height={carH * 0.84}
+                    rx={carH * 0.32}
+                    fill="rgba(15,23,42,0.78)"
+                    stroke={blend(trim, 0.2, true)}
+                    strokeWidth={0.8}
+                  />
+                  {/* Skin emblem on the roof — counter-rotated so it stays upright
+                      regardless of which way the car is facing on the oval. */}
+                  {SkinIcon && (
+                    <g transform={`rotate(${-pos.angle})`}>
+                      <circle cx="0" cy="0" r={carH * 0.32} fill="white" />
+                      <SkinIcon
+                        x={-carH * 0.22}
+                        y={-carH * 0.22}
+                        width={carH * 0.44}
+                        height={carH * 0.44}
+                        color={baseColor}
+                        strokeWidth={2.5}
+                      />
+                    </g>
+                  )}
+                  {/* Headlights — small cream rounds at the front */}
+                  <circle cx={carW / 2 - 4} cy={-carH * 0.22} r={2} fill="#fef3c7" />
+                  <circle cx={carW / 2 - 4} cy={carH * 0.22} r={2} fill="#fef3c7" />
+                  {/* Rear lights — tiny red squares at the back */}
+                  <rect x={-carW / 2 + 2} y={-carH * 0.32} width={2} height={carH * 0.18} fill="#dc2626" rx={1} />
+                  <rect x={-carW / 2 + 2} y={carH * 0.14} width={2} height={carH * 0.18} fill="#dc2626" rx={1} />
+                </g>
+
+                {/* Wheels — four black circles with a chrome highlight */}
+                {[
+                  { x: -carW / 2 + carH * 0.35, y: -carH / 2 - 1 },
+                  { x:  carW / 2 - carH * 0.35, y: -carH / 2 - 1 },
+                  { x: -carW / 2 + carH * 0.35, y:  carH / 2 + 1 },
+                  { x:  carW / 2 - carH * 0.35, y:  carH / 2 + 1 },
+                ].map((w, i) => (
+                  <g key={i}>
+                    <circle cx={w.x} cy={w.y} r={wheelR} fill="#0a0e1a" stroke="#1f2937" strokeWidth={0.8} />
+                    <circle cx={w.x} cy={w.y} r={wheelR * 0.45} fill="#475569" />
+                  </g>
+                ))}
+
+                {/* Pulsing aura ring on current user — counter-rotated so it stays circular */}
                 {isMe && (
-                  <circle cx="0" cy="0" r={r + 4} fill="none" stroke={color} strokeWidth="2" strokeOpacity="0.7">
-                    <animate attributeName="r" values={`${r + 2};${r + 14};${r + 2}`} dur="1.6s" repeatCount="indefinite" />
-                    <animate attributeName="stroke-opacity" values="0.7;0;0.7" dur="1.6s" repeatCount="indefinite" />
-                  </circle>
+                  <g transform={`rotate(${-pos.angle})`}>
+                    <circle cx="0" cy="0" r={carW / 2 + 6} fill="none" stroke={baseColor} strokeWidth="2.5" strokeOpacity="0.7">
+                      <animate attributeName="r" values={`${carW / 2 + 4};${carW / 2 + 16};${carW / 2 + 4}`} dur="1.6s" repeatCount="indefinite" />
+                      <animate attributeName="stroke-opacity" values="0.7;0;0.7" dur="1.6s" repeatCount="indefinite" />
+                    </circle>
+                  </g>
                 )}
-                {/* Lap counter badge — gold disc with the lap number */}
+
+                {/* Lap counter badge — gold disc with the lap number, counter-rotated */}
                 {lap > 0 && (
-                  <g filter="url(#rt-dot-shadow)">
-                    <circle cx={r - 4} cy={-r + 4} r="11" fill="#fbbf24" stroke="white" strokeWidth="2.5" />
-                    <text
-                      x={r - 4}
-                      y={-r + 8}
-                      textAnchor="middle"
-                      fontSize="13"
-                      fontWeight="900"
-                      fill="#78350f"
-                    >
+                  <g transform={`rotate(${-pos.angle}) translate(${carW / 2 - 4}, ${-carH / 2 - 4})`} filter="url(#rt-car-shadow)">
+                    <circle cx="0" cy="0" r="11" fill="#fbbf24" stroke="white" strokeWidth="2.5" />
+                    <text x="0" y="4" textAnchor="middle" fontSize="13" fontWeight="900" fill="#78350f">
                       {lap}
                     </text>
                   </g>
                 )}
-                {/* Name label — pill below the dot */}
-                <g>
+
+                {/* Name label — pill above the car, counter-rotated to stay readable */}
+                <g transform={`rotate(${-pos.angle}) translate(0, ${-(carH / 2 + 18)})`}>
                   <rect
                     x={-labelW / 2}
-                    y={r + 10}
+                    y={-11}
                     width={labelW}
                     height="22"
                     rx="11"
                     fill="rgba(2,6,23,0.85)"
-                    stroke={color}
+                    stroke={baseColor}
                     strokeWidth="1.5"
-                    strokeOpacity="0.6"
+                    strokeOpacity="0.7"
                   />
                   <text
                     x="0"
-                    y={r + 25}
+                    y="5"
                     textAnchor="middle"
                     fontSize="13"
                     fontWeight="800"

@@ -698,6 +698,9 @@ db.run(`ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 1`, () => {}
 db.run(`ALTER TABLE users ADD COLUMN verification_token TEXT`, () => {});
 // Wager mode columns
 db.run(`ALTER TABLE game_participants ADD COLUMN wager_streak INTEGER DEFAULT 0`, () => { });
+// Elemental Markets columns
+db.run(`ALTER TABLE game_participants ADD COLUMN mkt_cash REAL DEFAULT 1000`, () => { });
+db.run(`ALTER TABLE game_participants ADD COLUMN mkt_holdings TEXT DEFAULT '{}'`, () => { });
 // Question image column
 db.run(`ALTER TABLE questions ADD COLUMN image_url TEXT`, () => { });
 // Inferno Tower columns
@@ -2492,8 +2495,10 @@ app.put('/api/games/:gameCode/end', (req, res) => {
 
   db.run('UPDATE games SET status = ?, ended_at = CURRENT_TIMESTAMP WHERE game_code = ?',
     ['ended', gameCode],
-    (err) => {
+    async (err) => {
       if (err) return res.status(500).json({ error: err.message });
+      // For Elemental Markets games, lock in portfolio values as final scores
+      try { await app.locals.settleMarketsScores?.(gameCode); } catch (_) {}
 
       // Placement BB: 10+ participants, game >= 5 min
       db.get('SELECT * FROM games WHERE game_code = ?', [gameCode], (err, game) => {
@@ -2558,8 +2563,9 @@ app.put('/api/games/:gameCode/abandon', (req, res) => {
   db.run(
     `UPDATE games SET status = 'ended', abandoned = 1, ended_at = CURRENT_TIMESTAMP WHERE game_code = ? AND status != 'ended'`,
     [gameCode],
-    function (err) {
+    async function (err) {
       if (err) return res.status(500).json({ error: err.message });
+      try { await app.locals.settleMarketsScores?.(gameCode); } catch (_) {}
       res.json({ message: 'Game abandoned', changed: this.changes });
     }
   );
@@ -7280,6 +7286,402 @@ app.get('/api/games/:gameCode/survival-state', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ─── Elemental Markets ─────────────────────────────────────────────────────
+// A real-feeling stock market game mode. Six elemental "stocks" with shared
+// server-side prices that everyone in a game sees identically. Players earn
+// cash by answering questions, then buy/sell shares. Highest portfolio value
+// (cash + holdings × current price) at time-out wins.
+
+const MKT_STOCKS = [
+  { sym: 'FYR', name: 'Fire',      element: 'fire',      vol: 0.040, crash: 1.5, color: '#ef4444' },
+  { sym: 'BLT', name: 'Lightning', element: 'lightning', vol: 0.045, crash: 1.4, color: '#facc15' },
+  { sym: 'AQR', name: 'Water',     element: 'water',     vol: 0.025, crash: 1.0, color: '#3b82f6' },
+  { sym: 'WND', name: 'Air',       element: 'air',       vol: 0.025, crash: 1.0, color: '#0ea5e9' },
+  { sym: 'TER', name: 'Earth',     element: 'earth',     vol: 0.012, crash: 0.5, color: '#84cc16' },
+  { sym: 'FRZ', name: 'Ice',       element: 'ice',       vol: 0.018, crash: 0.7, color: '#67e8f9' },
+];
+const MKT_NEWS_TEMPLATES = [
+  { msg: 'Wildfire spreads across the realm',     impact: { FYR: 0.22, AQR: -0.10, WND: -0.06 }, ticks: 6 },
+  { msg: 'Drought hits coastal regions',          impact: { AQR: -0.20, FYR: 0.06, FRZ: -0.04 }, ticks: 7 },
+  { msg: 'Ice age forecast spreads chill',        impact: { FRZ: 0.22, FYR: -0.16, AQR: -0.06 }, ticks: 7 },
+  { msg: 'Volcanic eruption rocks markets',       impact: { FYR: 0.26, TER: -0.14, AQR: -0.06 }, ticks: 8 },
+  { msg: 'Massive thunderstorm sweeps in',        impact: { BLT: 0.24, WND: 0.10, FRZ: -0.06 }, ticks: 5 },
+  { msg: 'Tsunami warning on the horizon',        impact: { AQR: 0.22, TER: -0.12, FRZ: 0.08 }, ticks: 6 },
+  { msg: 'Earthquake rattles foundations',        impact: { TER: -0.18, FYR: 0.06, BLT: 0.08 }, ticks: 6 },
+  { msg: 'Geothermal boom — earth heats up',      impact: { TER: 0.20, FYR: 0.10, FRZ: -0.05 }, ticks: 6 },
+  { msg: 'Steady trade winds bolster transport',  impact: { WND: 0.15, FRZ: 0.05 }, ticks: 5 },
+  { msg: 'Charged ions disrupt grids',            impact: { BLT: 0.18, TER: -0.06 }, ticks: 5 },
+  { msg: 'Glacial retreat opens new routes',      impact: { FRZ: -0.14, AQR: 0.10, TER: 0.04 }, ticks: 7 },
+  { msg: 'Mage council blesses the elements',     impact: { FYR: 0.05, AQR: 0.05, TER: 0.05, WND: 0.05 }, ticks: 5 },
+];
+const MKT_TICK_MS = 2000;
+const MKT_HISTORY_LEN = 90; // ~3 minutes of history at 2s/tick
+
+// In-memory state per game. Cleared on server restart (markets are ephemeral).
+const marketsState = new Map();
+
+function gaussian(mean = 0, std = 1) {
+  // Box-Muller — fine for our uses
+  const u = 1 - Math.random();
+  const v = Math.random();
+  return mean + std * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function initMarketState() {
+  const prices = {}, history = {};
+  for (const s of MKT_STOCKS) { prices[s.sym] = 100; history[s.sym] = [100]; }
+  return {
+    prices, history,
+    events: [],          // active impact events (decremented per tick)
+    eventLog: [],        // recent triggered events for the news ticker (most recent first)
+    regime: 'normal',    // 'normal' | 'bull' | 'bear' | 'crash' | 'recovery'
+    regimeTicksLeft: 30,
+    totalTicks: 0,
+    lastTickAt: Date.now(),
+  };
+}
+
+function shiftRegime(state) {
+  // Markov-ish. After a crash we always recover.
+  const r = Math.random();
+  if (state.regime === 'crash')      { state.regime = 'recovery'; state.regimeTicksLeft = 18 + Math.floor(Math.random() * 12); }
+  else if (state.regime === 'recovery') { state.regime = 'normal'; state.regimeTicksLeft = 30 + Math.floor(Math.random() * 30); }
+  else if (state.regime === 'bull') {
+    if (r < 0.55) { state.regime = 'bull'; state.regimeTicksLeft = 18 + Math.floor(Math.random() * 18); }
+    else if (r < 0.92) { state.regime = 'normal'; state.regimeTicksLeft = 25 + Math.floor(Math.random() * 25); }
+    else { state.regime = 'bear'; state.regimeTicksLeft = 18 + Math.floor(Math.random() * 18); }
+  } else if (state.regime === 'bear') {
+    if (r < 0.50) { state.regime = 'bear'; state.regimeTicksLeft = 15 + Math.floor(Math.random() * 18); }
+    else if (r < 0.88) { state.regime = 'normal'; state.regimeTicksLeft = 25 + Math.floor(Math.random() * 25); }
+    else { state.regime = 'crash'; state.regimeTicksLeft = 6 + Math.floor(Math.random() * 5); }
+  } else { // normal
+    if (r < 0.18) { state.regime = 'bull'; state.regimeTicksLeft = 18 + Math.floor(Math.random() * 18); }
+    else if (r < 0.30) { state.regime = 'bear'; state.regimeTicksLeft = 15 + Math.floor(Math.random() * 18); }
+    else if (r < 0.32) { state.regime = 'crash'; state.regimeTicksLeft = 6 + Math.floor(Math.random() * 5); }
+    else { state.regime = 'normal'; state.regimeTicksLeft = 25 + Math.floor(Math.random() * 25); }
+  }
+  if (state.regime === 'crash') {
+    state.eventLog.unshift({ id: Date.now() + Math.random(), msg: 'MARKET CRASH — all elements down sharply', impact: {}, kind: 'crash' });
+    state.eventLog = state.eventLog.slice(0, 8);
+  } else if (state.regime === 'recovery') {
+    state.eventLog.unshift({ id: Date.now() + Math.random(), msg: 'Recovery underway — markets stabilising', impact: {}, kind: 'recovery' });
+    state.eventLog = state.eventLog.slice(0, 8);
+  } else if (state.regime === 'bull') {
+    state.eventLog.unshift({ id: Date.now() + Math.random(), msg: 'Bull run begins', impact: {}, kind: 'bull' });
+    state.eventLog = state.eventLog.slice(0, 8);
+  } else if (state.regime === 'bear') {
+    state.eventLog.unshift({ id: Date.now() + Math.random(), msg: 'Bearish sentiment building', impact: {}, kind: 'bear' });
+    state.eventLog = state.eventLog.slice(0, 8);
+  }
+}
+
+function maybeTriggerNews(state) {
+  // ~2% chance per tick = roughly one event per 100 seconds
+  if (Math.random() < 0.022 && state.regime !== 'crash') {
+    const tpl = MKT_NEWS_TEMPLATES[Math.floor(Math.random() * MKT_NEWS_TEMPLATES.length)];
+    const evt = {
+      id: Date.now() + Math.random(),
+      msg: tpl.msg,
+      impact: tpl.impact,
+      ticks: tpl.ticks,
+      ticksRemaining: tpl.ticks,
+      kind: 'news',
+    };
+    state.events.push(evt);
+    state.eventLog.unshift(evt);
+    state.eventLog = state.eventLog.slice(0, 8);
+  }
+}
+
+function simulateTick(state) {
+  state.totalTicks++;
+  state.regimeTicksLeft--;
+  if (state.regimeTicksLeft <= 0) shiftRegime(state);
+  maybeTriggerNews(state);
+
+  for (const stock of MKT_STOCKS) {
+    let pct = 0;
+
+    // 1. Random walk
+    pct += gaussian(0, stock.vol);
+
+    // 2. Mild mean reversion toward the $100 baseline
+    const old = state.prices[stock.sym];
+    pct += ((100 - old) / old) * 0.004;
+
+    // 3. Regime drift
+    if (state.regime === 'bull')          pct += 0.006;
+    else if (state.regime === 'bear')     pct -= 0.005;
+    else if (state.regime === 'crash')    pct -= 0.045 * stock.crash;
+    else if (state.regime === 'recovery') pct += 0.012 * stock.crash;
+
+    // 4. Active news event impact, distributed over the event's duration
+    for (const ev of state.events) {
+      const perTick = (ev.impact[stock.sym] || 0) / ev.ticks;
+      pct += perTick;
+    }
+
+    state.prices[stock.sym] = Math.max(5, old * (1 + pct));
+    state.history[stock.sym].push(Math.round(state.prices[stock.sym] * 100) / 100);
+    if (state.history[stock.sym].length > MKT_HISTORY_LEN) state.history[stock.sym].shift();
+  }
+
+  // Decrement event timers
+  for (const ev of state.events) ev.ticksRemaining--;
+  state.events = state.events.filter(ev => ev.ticksRemaining > 0);
+}
+
+// Advance the per-game market by however many ticks have elapsed since the
+// last call. Lazy simulation — no setInterval needed; the next state request
+// drives the catch-up.
+function advanceMarket(gameCode) {
+  let state = marketsState.get(gameCode);
+  if (!state) {
+    state = initMarketState();
+    marketsState.set(gameCode, state);
+  }
+  const now = Date.now();
+  let ticksToProcess = Math.floor((now - state.lastTickAt) / MKT_TICK_MS);
+  // Hard cap to avoid a flood after a long pause
+  ticksToProcess = Math.min(ticksToProcess, 60);
+  for (let i = 0; i < ticksToProcess; i++) {
+    simulateTick(state);
+    state.lastTickAt += MKT_TICK_MS;
+  }
+  return state;
+}
+
+function parseHoldings(rawJson) {
+  if (!rawJson) return {};
+  try { const obj = JSON.parse(rawJson); return obj && typeof obj === 'object' ? obj : {}; }
+  catch (_) { return {}; }
+}
+
+function portfolioValue(cash, holdings, prices) {
+  let total = Number(cash) || 0;
+  for (const sym of Object.keys(holdings)) {
+    total += (holdings[sym] || 0) * (prices[sym] || 0);
+  }
+  return Math.round(total * 100) / 100;
+}
+
+// GET /api/games/:gameCode/markets/state?userId=...
+app.get('/api/games/:gameCode/markets/state', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const userId = req.query.userId ? parseInt(req.query.userId) : null;
+    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+
+    const state = advanceMarket(gameCode);
+    const stocks = MKT_STOCKS.map(s => ({
+      sym: s.sym, name: s.name, element: s.element, color: s.color,
+      price: Math.round(state.prices[s.sym] * 100) / 100,
+      history: state.history[s.sym],
+      changePct: Math.round(((state.prices[s.sym] - 100) / 100) * 10000) / 100,
+    }));
+
+    // Per-player snapshot (cash, holdings, portfolio value)
+    let me = null;
+    if (userId) {
+      const row = await dbGet(
+        'SELECT mkt_cash, mkt_holdings FROM game_participants WHERE game_id = ? AND user_id = ?',
+        [game.id, userId]
+      );
+      if (row) {
+        const holdings = parseHoldings(row.mkt_holdings);
+        me = {
+          cash: Math.round((row.mkt_cash || 0) * 100) / 100,
+          holdings,
+          portfolio: portfolioValue(row.mkt_cash, holdings, state.prices),
+        };
+      }
+    }
+
+    // Leaderboard
+    const everyone = await dbAll(
+      'SELECT user_id, player_name, mkt_cash, mkt_holdings FROM game_participants WHERE game_id = ?',
+      [game.id]
+    );
+    const leaderboard = everyone.map(p => {
+      const h = parseHoldings(p.mkt_holdings);
+      return {
+        user_id: p.user_id,
+        player_name: p.player_name,
+        portfolio: portfolioValue(p.mkt_cash, h, state.prices),
+      };
+    }).sort((a, b) => b.portfolio - a.portfolio);
+
+    res.json({
+      regime: state.regime,
+      tick: state.totalTicks,
+      stocks,
+      events: state.eventLog,
+      me,
+      leaderboard,
+      gameStatus: game.status,
+    });
+  } catch (err) {
+    console.error('[markets/state]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/games/:gameCode/markets/buy { userId, symbol, shares }
+app.post('/api/games/:gameCode/markets/buy', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const { userId, symbol, shares } = req.body;
+    const sharesInt = Math.max(0, Math.floor(Number(shares) || 0));
+    if (!sharesInt) return res.status(400).json({ error: 'Shares must be at least 1' });
+    if (!MKT_STOCKS.find(s => s.sym === symbol)) return res.status(400).json({ error: 'Unknown symbol' });
+
+    const game = await dbGet('SELECT id, status FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.status === 'ended') return res.status(400).json({ error: 'Game has ended' });
+
+    const state = advanceMarket(gameCode);
+    const price = state.prices[symbol];
+    const cost = price * sharesInt;
+
+    const row = await dbGet(
+      'SELECT mkt_cash, mkt_holdings FROM game_participants WHERE game_id = ? AND user_id = ?',
+      [game.id, userId]
+    );
+    if (!row) return res.status(404).json({ error: 'Not a participant in this game' });
+    const cash = Number(row.mkt_cash) || 0;
+    if (cost > cash) return res.status(400).json({ error: `Need $${cost.toFixed(2)}, only have $${cash.toFixed(2)}` });
+
+    const holdings = parseHoldings(row.mkt_holdings);
+    holdings[symbol] = (holdings[symbol] || 0) + sharesInt;
+    const newCash = Math.round((cash - cost) * 100) / 100;
+    await dbRun(
+      'UPDATE game_participants SET mkt_cash = ?, mkt_holdings = ? WHERE game_id = ? AND user_id = ?',
+      [newCash, JSON.stringify(holdings), game.id, userId]
+    );
+
+    res.json({
+      cash: newCash,
+      holdings,
+      filledAt: Math.round(price * 100) / 100,
+      portfolio: portfolioValue(newCash, holdings, state.prices),
+    });
+  } catch (err) {
+    console.error('[markets/buy]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/games/:gameCode/markets/sell { userId, symbol, shares }
+app.post('/api/games/:gameCode/markets/sell', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const { userId, symbol, shares } = req.body;
+    const sharesInt = Math.max(0, Math.floor(Number(shares) || 0));
+    if (!sharesInt) return res.status(400).json({ error: 'Shares must be at least 1' });
+    if (!MKT_STOCKS.find(s => s.sym === symbol)) return res.status(400).json({ error: 'Unknown symbol' });
+
+    const game = await dbGet('SELECT id, status FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.status === 'ended') return res.status(400).json({ error: 'Game has ended' });
+
+    const state = advanceMarket(gameCode);
+    const price = state.prices[symbol];
+
+    const row = await dbGet(
+      'SELECT mkt_cash, mkt_holdings FROM game_participants WHERE game_id = ? AND user_id = ?',
+      [game.id, userId]
+    );
+    if (!row) return res.status(404).json({ error: 'Not a participant in this game' });
+    const holdings = parseHoldings(row.mkt_holdings);
+    const owned = holdings[symbol] || 0;
+    if (sharesInt > owned) return res.status(400).json({ error: `Only own ${owned} shares of ${symbol}` });
+
+    holdings[symbol] = owned - sharesInt;
+    if (!holdings[symbol]) delete holdings[symbol];
+    const proceeds = price * sharesInt;
+    const newCash = Math.round(((Number(row.mkt_cash) || 0) + proceeds) * 100) / 100;
+    await dbRun(
+      'UPDATE game_participants SET mkt_cash = ?, mkt_holdings = ? WHERE game_id = ? AND user_id = ?',
+      [newCash, JSON.stringify(holdings), game.id, userId]
+    );
+
+    res.json({
+      cash: newCash,
+      holdings,
+      filledAt: Math.round(price * 100) / 100,
+      portfolio: portfolioValue(newCash, holdings, state.prices),
+    });
+  } catch (err) {
+    console.error('[markets/sell]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/games/:gameCode/markets/answer { userId, questionId, isCorrect, timeTaken }
+// Cash payout for question outcomes — the only way to add capital to your portfolio.
+app.post('/api/games/:gameCode/markets/answer', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const { userId, questionId, isCorrect, timeTaken, selectedAnswer } = req.body;
+    const game = await dbGet('SELECT id, status FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.status === 'ended') return res.status(400).json({ error: 'Game has ended' });
+
+    // Compute reward — base $50 correct, −$10 wrong, +$5 if answered fast
+    let reward = 0;
+    if (isCorrect) {
+      reward = 50;
+      if ((timeTaken || 999) <= 5) reward += 5;
+    } else {
+      reward = -10;
+    }
+    const row = await dbGet(
+      'SELECT mkt_cash FROM game_participants WHERE game_id = ? AND user_id = ?',
+      [game.id, userId]
+    );
+    if (!row) return res.status(404).json({ error: 'Not a participant' });
+    const newCash = Math.max(0, Math.round(((Number(row.mkt_cash) || 0) + reward) * 100) / 100);
+    await dbRun(
+      'UPDATE game_participants SET mkt_cash = ? WHERE game_id = ? AND user_id = ?',
+      [newCash, game.id, userId]
+    );
+
+    // Log the answer for stats consistency with other modes
+    await dbRun(
+      'INSERT INTO game_answers (game_id, user_id, question_id, selected_answer, is_correct, time_taken) VALUES (?, ?, ?, ?, ?, ?)',
+      [game.id, userId, questionId, selectedAnswer || '', isCorrect ? 1 : 0, timeTaken || 0]
+    );
+
+    res.json({ cash: newCash, reward });
+  } catch (err) {
+    console.error('[markets/answer]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Lock in final scores when the game ends so the existing results page works.
+// Called explicitly by /end and /abandon below.
+async function settleMarketsScores(gameCode) {
+  const state = marketsState.get(gameCode);
+  if (!state) return;
+  const game = await dbGet('SELECT id, game_mode FROM games WHERE game_code = ?', [gameCode]);
+  if (!game || game.game_mode !== 'elemental_markets') return;
+  const rows = await dbAll(
+    'SELECT user_id, mkt_cash, mkt_holdings FROM game_participants WHERE game_id = ?',
+    [game.id]
+  );
+  for (const r of rows) {
+    const holdings = parseHoldings(r.mkt_holdings);
+    const final = portfolioValue(r.mkt_cash, holdings, state.prices);
+    await dbRun(
+      'UPDATE game_participants SET score = ? WHERE game_id = ? AND user_id = ?',
+      [Math.round(final), game.id, r.user_id]
+    );
+  }
+}
+app.locals.settleMarketsScores = settleMarketsScores;
 
 // Serve frontend static files in production
 const clientBuildPath = path.join(__dirname, '..', 'blazes', 'dist');

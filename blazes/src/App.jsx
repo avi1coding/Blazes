@@ -60,6 +60,7 @@ const ElementalClashSetupPage = lazy(() => import("./pages/ElementalClashSetupPa
 const ElementalWagerSetupPage = lazy(() => import("./pages/ElementalWagerSetupPage"));
 const ArenaSetupPage = lazy(() => import("./pages/ArenaSetupPage"));
 const RaceSetupPage = lazy(() => import("./pages/RaceSetupPage"));
+const ElementalMarketsSetupPage = lazy(() => import("./pages/ElementalMarketsSetupPage"));
 const RaceTrackView = lazy(() => import("./pages/RaceTrackView"));
 const HubPage = lazy(() => import("./pages/HubPage"));
 const About = lazy(() => import("./pages/About"));
@@ -143,6 +144,7 @@ function App() {
           <Route path="/game/elemental-wager-setup" element={<ElementalWagerSetupPage />} />
           <Route path="/game/arena-setup" element={<ArenaSetupPage />} />
           <Route path="/game/race-setup" element={<RaceSetupPage />} />
+          <Route path="/game/elemental-markets-setup" element={<ElementalMarketsSetupPage />} />
           <Route path="/game/race-view/:gameCode" element={<RaceTrackView />} />
           <Route path="/hub" element={<HubPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />

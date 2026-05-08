@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap, Crown, Dice5, Rocket, X, BookOpen, Check } from 'lucide-react';
+import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap, Crown, Dice5, Rocket, X, BookOpen, Check, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GameplayMockup from './GameplayMockup';
 
@@ -139,6 +139,29 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
         'Game ends when time runs out or host stops it'
       ],
       available: true
+    },
+    {
+      id: 'elemental_markets',
+      name: 'Elemental Markets',
+      tagline: 'Trade six elements. Highest portfolio wins.',
+      icon: TrendingUp,
+      gradient: 'from-emerald-500 to-green-600',
+      solid: 'bg-emerald-600',
+      glow: 'shadow-emerald-500/30',
+      accent: 'emerald',
+      screenshot: '/screenshots/markets.png',
+      tags: ['solo', 'multi'],
+      description: 'A real-feeling stock market with six elemental tickers — Fire, Water, Earth, Air, Lightning, Ice. Earn cash by answering questions, then buy and sell shares as prices fluctuate. Bull runs, bear markets, news events, and rare crashes shape the market everyone trades against.',
+      difficulty: 'Medium',
+      players: '1-50',
+      duration: '10-20 min',
+      features: [
+        'Six elemental stocks with real-time charts',
+        'Random news events and rare market crashes',
+        'Earn cash from quiz answers, invest with strategy',
+        'Highest portfolio value at time-out wins'
+      ],
+      available: true
     }
   ];
 
@@ -148,6 +171,7 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
     else if (selectedMode === 'elemental_wager') navigate('/game/elemental-wager-setup', { state: { kit, user } });
     else if (selectedMode === 'arena') navigate('/game/arena-setup', { state: { kit, user } });
     else if (selectedMode === 'race') navigate('/game/race-setup', { state: { kit, user } });
+    else if (selectedMode === 'elemental_markets') navigate('/game/elemental-markets-setup', { state: { kit, user } });
   };
 
   const selected = gameModes.find(m => m.id === selectedMode);

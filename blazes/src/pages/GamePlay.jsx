@@ -6,6 +6,7 @@ import ElementalClashGamePlay from './ElementalClashGamePlay';
 import ElementalWagerGamePlay from './ElementalWagerGamePlay';
 import ArenaGamePlay from './ArenaGamePlay';
 import RaceGamePlay from './RaceGamePlay';
+import ElementalMarketsGamePlay from './ElementalMarketsGamePlay';
 
 function getFullImageUrl(url) {
   if (!url) return null;
@@ -1093,6 +1094,9 @@ export default function GamePlay() {
   }
   if (game.game_mode === 'race') {
     return <RaceGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
+  }
+  if (game.game_mode === 'elemental_markets') {
+    return <ElementalMarketsGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
   }
   return <ClassicGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
 }

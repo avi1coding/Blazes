@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Plus, BookOpen, X, Trash2, ImagePlus, Pencil, Zap, Lock, ChevronDown } from 'lucide-react';
 import Toast from '../components/Toast';
 import SubjectPicker, { GradePicker } from './SubjectPicker';
+import ImagePicker from './ImagePicker';
 
 export default function CreateKit({ user, onBack, onKitCreated }) {
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -20,8 +21,6 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
     questionText: '', answerType: 'multiple_choice', correctAnswer: '', options: ['', '', '', ''], imageUrl: ''
   });
   const [editingIndex, setEditingIndex] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'error' });
   const [publishing, setPublishing] = useState(false);
   const [labelPins, setLabelPins] = useState([]);
@@ -83,26 +82,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
 
   const resetQuestionForm = () => {
     setCurrentQuestion({ questionText: '', answerType: 'multiple_choice', correctAnswer: '', options: ['', '', '', ''], imageUrl: '' });
-    setImagePreview('');
     setLabelPins([]);
-  };
-
-  const handleFileUpload = async (file) => {
-    if (!file) return;
-    setUploadingImage(true);
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const res = await fetch(`${base}/api/upload-image`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageData: reader.result })
-        });
-        const data = await res.json();
-        if (data.url) { setCurrentQuestion(prev => ({ ...prev, imageUrl: data.url })); setImagePreview(data.url); }
-        setUploadingImage(false);
-      };
-      reader.readAsDataURL(file);
-    } catch (_) { setUploadingImage(false); }
   };
 
   const handlePublishKit = async () => {
@@ -284,7 +264,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setCurrentQuestion(q); setImagePreview(q.imageUrl || ''); setEditingIndex(index); setShowQuestionModal(true); }}
+                    <button onClick={() => { setCurrentQuestion(q); setEditingIndex(index); setShowQuestionModal(true); }}
                       className="p-2 hover:bg-white rounded-lg transition-colors">
                       <Pencil className="w-4 h-4 text-gray-500" />
                     </button>
@@ -342,24 +322,12 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
                   <ImagePlus className="w-4 h-4 text-gray-400" /> Image
                   <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
-                {imagePreview && (
-                  <div className="relative mb-3">
-                    <img src={imagePreview} alt="Preview" className="w-full max-h-44 object-contain rounded-xl bg-gray-50 border border-gray-200 p-2" />
-                    <button type="button" onClick={() => { setCurrentQuestion({...currentQuestion, imageUrl: ''}); setImagePreview(''); }}
-                      className="absolute top-2 right-2 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center text-sm hover:bg-black/80 transition-colors">×</button>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <input type="text" value={currentQuestion.imageUrl}
-                    onChange={(e) => { setCurrentQuestion({...currentQuestion, imageUrl: e.target.value}); setImagePreview(e.target.value); }}
-                    placeholder="Paste image URL..."
-                    className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-red-500 focus:outline-none transition-colors" />
-                  <label className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-colors border-2 ${uploadingImage ? 'bg-gray-50 text-gray-400 border-gray-200' : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-gray-100'}`}>
-                    <ImagePlus className="w-4 h-4" />
-                    {uploadingImage ? 'Uploading...' : 'Upload'}
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { handleFileUpload(e.target.files?.[0]); e.target.value = ''; }} />
-                  </label>
-                </div>
+                <ImagePicker
+                  value={currentQuestion.imageUrl}
+                  onChange={(url) => setCurrentQuestion({ ...currentQuestion, imageUrl: url })}
+                  searchQuery={currentQuestion.questionText}
+                  onError={(msg) => setToast({ show: true, message: msg, type: 'error' })}
+                />
               </div>
 
               {/* Answer type tabs */}

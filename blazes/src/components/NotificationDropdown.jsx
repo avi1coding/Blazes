@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, X, Trash2, Trophy } from 'lucide-react';
+import { Bell, Check, X, Trash2, Trophy, GraduationCap, FileText, CheckCircle2 } from 'lucide-react';
 
 export default function NotificationDropdown({ userId }) {
   const [notifications, setNotifications] = useState([]);
@@ -71,12 +71,15 @@ export default function NotificationDropdown({ userId }) {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
+  // Each notification type maps to a Lucide icon component (no emojis).
   const getIcon = (type) => {
-    if (type === 'classroom_invite' || type === 'classroom_accepted' || type === 'classroom_declined' || type === 'classroom_added' || type === 'student_joined') return '📚';
-    if (type === 'new_assignment') return '📝';
-    if (type === 'student_completed' || type === 'all_completed') return '✅';
-    if (type === 'achievement') return '🏆';
-    return '🔔';
+    if (type === 'classroom_invite' || type === 'classroom_accepted' || type === 'classroom_declined' || type === 'classroom_added' || type === 'student_joined') {
+      return { Icon: GraduationCap, color: 'text-red-600 bg-red-50' };
+    }
+    if (type === 'new_assignment') return { Icon: FileText, color: 'text-blue-600 bg-blue-50' };
+    if (type === 'student_completed' || type === 'all_completed') return { Icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' };
+    if (type === 'achievement') return { Icon: Trophy, color: 'text-amber-600 bg-amber-50' };
+    return { Icon: Bell, color: 'text-gray-600 bg-gray-100' };
   };
 
   return (
@@ -123,6 +126,7 @@ export default function NotificationDropdown({ userId }) {
               notifications.map(n => {
                 const isInvite = n.type === 'classroom_invite' && !n.is_read;
                 const isAchievement = n.type === 'achievement';
+                const { Icon, color } = getIcon(n.type);
                 return (
                   <div key={n.id}
                     onClick={() => {
@@ -141,7 +145,9 @@ export default function NotificationDropdown({ userId }) {
                           : 'bg-blue-50 hover:bg-blue-100'
                     } ${!isInvite ? 'cursor-pointer' : ''}`}>
                     <div className="flex items-start gap-3">
-                      <span className="text-lg mt-0.5 flex-shrink-0">{getIcon(n.type)}</span>
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
+                        <Icon className="w-4 h-4" strokeWidth={2.5} />
+                      </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className={`text-sm ${n.is_read ? 'text-gray-500' : 'text-gray-900 font-bold'}`}>{n.title}</p>

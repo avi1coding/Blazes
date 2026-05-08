@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Plus, Lock, Music, Sigma } from 'lucide-react';
+import ImagePicker from './ImagePicker';
 
 const MATH_SYMBOLS = [
   '+', '−', '×', '÷', '=', '≠', '≤', '≥', '<', '>',
@@ -231,23 +232,12 @@ export default function AddQuestionForm({
         {!isAudio && (
           <div className="bg-white border border-gray-200 rounded-lg p-3">
             <p className="text-xs font-bold text-gray-500 mb-2">Image (optional)</p>
-            {newImagePreview && (
-              <div className="relative mb-2">
-                <img src={newImagePreview} alt="Preview" className="w-full max-h-32 object-contain rounded-lg bg-gray-100" />
-                <button type="button" onClick={() => { setNewImageUrl(''); setNewImagePreview(''); }}
-                  className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-black hover:bg-red-600">×</button>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <input type="text" value={newImageUrl}
-                onChange={(e) => { setNewImageUrl(e.target.value); setNewImagePreview(e.target.value); }}
-                placeholder="Paste image URL..."
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:border-blue-500 focus:outline-none" />
-              <label className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-colors ${uploadingImage ? 'bg-gray-300 text-gray-500' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                {uploadingImage ? '...' : 'Upload'}
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-              </label>
-            </div>
+            <ImagePicker
+              value={newImageUrl}
+              onChange={(url) => { setNewImageUrl(url); setNewImagePreview(url); }}
+              searchQuery={questionTextRef.current?.value || ''}
+              onError={(msg) => setError(msg)}
+            />
           </div>
         )}
 

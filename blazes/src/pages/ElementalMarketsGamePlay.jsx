@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Clock, TrendingUp, TrendingDown, Trophy, BarChart3, X, Eye, ArrowUp, ArrowDown, DollarSign, Newspaper, Activity } from 'lucide-react';
+import { Clock, TrendingUp, Trophy, BarChart3, X, Eye, ArrowUp, ArrowDown, DollarSign, Newspaper, Activity, Briefcase } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -53,6 +53,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
   const [tradeBusy, setTradeBusy] = useState(false);
   const [tradeError, setTradeError] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showMarkets, setShowMarkets] = useState(false);
   const [cashFlash, setCashFlash] = useState(null); // { delta } briefly
 
   const startTimeRef = useRef(Date.now());
@@ -245,6 +246,13 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
               </div>
             )}
             <button
+              onClick={() => setShowMarkets(true)}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white rounded-lg px-3 py-2 font-black text-xs sm:text-sm transition-colors shadow-md shadow-emerald-500/20"
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>Markets</span>
+            </button>
+            <button
               onClick={() => setShowLeaderboard(true)}
               className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 rounded-lg px-3 py-2 font-black text-xs sm:text-sm transition-colors"
             >
@@ -278,145 +286,170 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
         )}
       </header>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Stock grid (2 cols on desktop) */}
-        <section className="lg:col-span-2">
-          <div className="text-xs font-black uppercase tracking-widest text-white/50 mb-3 ml-1">Markets</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {stocks.map(s => {
-              const owned = holdings[s.sym] || 0;
-              const positive = s.changePct >= 0;
-              return (
-                <button
-                  key={s.sym}
-                  onClick={() => { setTradeStock(s.sym); setTradeError(''); }}
-                  className="group relative bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] rounded-2xl p-4 text-left transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black tracking-widest" style={{ color: s.color }}>{s.sym}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">{s.name}</span>
-                      </div>
-                      <div className="text-2xl font-black tabular-nums mt-0.5">${s.price?.toFixed(2)}</div>
-                    </div>
-                    <div className={`flex items-center gap-1 text-xs font-black ${positive ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {positive ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
-                      {positive ? '+' : ''}{s.changePct?.toFixed(2)}%
-                    </div>
-                  </div>
-                  <Sparkline values={s.history || []} color={s.color} height={36} width={260} />
-                  <div className="flex items-center justify-between mt-2 text-[11px] font-bold">
-                    <span className="text-white/50">
-                      {owned > 0 ? <span className="text-white">{owned} shares · {fmtMoney(owned * s.price)}</span> : 'Click to trade'}
-                    </span>
-                    <span className="text-emerald-300/80">Trade →</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Question card */}
-        <section className="lg:col-span-1">
-          <div className="text-xs font-black uppercase tracking-widest text-white/50 mb-3 ml-1">Earn Cash</div>
-          <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-5">
-            {!q ? (
-              <div className="text-center text-white/50 py-12">Loading questions…</div>
-            ) : (
-              <>
-                <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">
+      {/* Question is the centerpiece — full-width centered card. The Markets button
+          up top opens the trading panel as a modal so trading never crowds the
+          question, even on a small screen. */}
+      <main className="flex-1 max-w-3xl w-full mx-auto px-3 sm:px-6 py-6 sm:py-10 flex flex-col">
+        <div className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-3xl p-6 sm:p-10 flex flex-col">
+          {!q ? (
+            <div className="flex-1 flex items-center justify-center text-white/50">Loading questions…</div>
+          ) : (
+            <>
+              <div className="text-center mb-5 sm:mb-7">
+                <span className="inline-flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 text-[11px] font-black uppercase tracking-widest rounded-full px-3 py-1">
                   Question {questionTick + 1} · +$50 correct · −$10 wrong
+                </span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-center leading-tight whitespace-pre-line mb-7 sm:mb-10">
+                {q.question_text}
+              </h2>
+              {q.image_url && (
+                <div className="flex justify-center mb-6">
+                  <img src={q.image_url} alt="" className="max-h-44 sm:max-h-56 rounded-xl" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-black leading-tight whitespace-pre-line mb-4">{q.question_text}</h2>
-                {q.image_url && (
-                  <div className="flex justify-center mb-4">
-                    <img src={q.image_url} alt="" className="max-h-32 rounded-lg" />
-                  </div>
-                )}
-                {(() => {
-                  const type = q.answer_type || 'multiple_choice';
-                  if (type === 'true_false') {
-                    return (
-                      <div className="grid grid-cols-2 gap-2">
-                        {['True', 'False'].map(value => {
-                          const isSelected = selected === value;
-                          const isCorrect = feedback && String(q.correct_answer).toLowerCase() === value.toLowerCase();
-                          const isWrong = feedback && isSelected && !feedback.isCorrect;
-                          return (
-                            <button key={value} onClick={() => { if (!answered) { setSelected(value); submitAnswer(value); } }}
-                              disabled={answered}
-                              className={`p-3 rounded-xl font-black border-2 transition-all min-h-[60px] ${
-                                isCorrect ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200 scale-[1.02]' :
-                                isWrong ? 'bg-red-500/30 border-red-400 text-red-200' :
-                                isSelected ? 'bg-white/10 border-white/30' :
-                                'bg-white/[0.05] border-white/10 hover:bg-white/[0.08]'
-                              } disabled:cursor-not-allowed`}>
-                              {value}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  }
-                  if (type === 'short_answer' || type === 'fill_blank' || type === 'math_equation') {
-                    return (
-                      <form onSubmit={(e) => {
-                        e.preventDefault();
-                        if (answered) return;
-                        const val = e.target.answer.value.trim();
-                        if (!val) return;
-                        setSelected(val);
-                        submitAnswer(val);
-                      }} className="flex flex-col gap-2">
-                        <input name="answer" type="text" disabled={answered}
-                          placeholder="Type your answer…"
-                          className="w-full px-4 py-3 bg-white/[0.05] border-2 border-white/10 rounded-lg text-base focus:border-emerald-500 focus:outline-none disabled:opacity-60" autoFocus />
-                        <button type="submit" disabled={answered}
-                          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-black disabled:opacity-50">Submit</button>
-                      </form>
-                    );
-                  }
+              )}
+              {(() => {
+                const type = q.answer_type || 'multiple_choice';
+                if (type === 'true_false') {
                   return (
-                    <div className="grid grid-cols-1 gap-2">
-                      {['option_a', 'option_b', 'option_c', 'option_d'].map((key, i) => {
-                        const opt = q[key];
-                        if (!opt) return null;
-                        const letter = ['A', 'B', 'C', 'D'][i];
-                        const isSelected = selected === letter;
-                        const isCorrectLetter = String(q.correct_answer || '').toUpperCase() === letter;
-                        const isCorrect = feedback && isCorrectLetter;
-                        const isWrong = feedback && isSelected && !isCorrectLetter;
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 flex-1 content-center">
+                      {['True', 'False'].map(value => {
+                        const isSelected = selected === value;
+                        const isCorrect = feedback && String(q.correct_answer).toLowerCase() === value.toLowerCase();
+                        const isWrong = feedback && isSelected && !feedback.isCorrect;
                         return (
-                          <button key={key}
-                            onClick={() => { if (!answered) { setSelected(letter); submitAnswer(letter); } }}
+                          <button key={value} onClick={() => { if (!answered) { setSelected(value); submitAnswer(value); } }}
                             disabled={answered}
-                            className={`p-3 rounded-xl text-left font-bold border-2 transition-all flex items-center gap-3 ${
-                              isCorrect ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200 scale-[1.01]' :
+                            className={`p-5 sm:p-7 rounded-xl font-black text-2xl border-2 transition-all min-h-[80px] flex items-center justify-center ${
+                              isCorrect ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200 scale-[1.02]' :
                               isWrong ? 'bg-red-500/30 border-red-400 text-red-200' :
                               isSelected ? 'bg-white/10 border-white/30' :
                               'bg-white/[0.05] border-white/10 hover:bg-white/[0.08]'
                             } disabled:cursor-not-allowed`}>
-                            <span className="text-lg font-black opacity-50 flex-shrink-0">{letter}</span>
-                            <span className="flex-1">{opt}</span>
+                            {value}
                           </button>
                         );
                       })}
                     </div>
                   );
-                })()}
+                }
+                if (type === 'short_answer' || type === 'fill_blank' || type === 'math_equation') {
+                  return (
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (answered) return;
+                      const val = e.target.answer.value.trim();
+                      if (!val) return;
+                      setSelected(val);
+                      submitAnswer(val);
+                    }} className="flex flex-col gap-3 max-w-xl mx-auto w-full">
+                      <input name="answer" type="text" disabled={answered}
+                        placeholder="Type your answer…"
+                        className="w-full px-5 py-4 bg-white/[0.05] border-2 border-white/10 rounded-xl text-lg focus:border-emerald-500 focus:outline-none disabled:opacity-60" autoFocus />
+                      <button type="submit" disabled={answered}
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black disabled:opacity-50">Submit</button>
+                    </form>
+                  );
+                }
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 flex-1 content-center">
+                    {['option_a', 'option_b', 'option_c', 'option_d'].map((key, i) => {
+                      const opt = q[key];
+                      if (!opt) return null;
+                      const letter = ['A', 'B', 'C', 'D'][i];
+                      const isSelected = selected === letter;
+                      const isCorrectLetter = String(q.correct_answer || '').toUpperCase() === letter;
+                      const isCorrect = feedback && isCorrectLetter;
+                      const isWrong = feedback && isSelected && !isCorrectLetter;
+                      return (
+                        <button key={key}
+                          onClick={() => { if (!answered) { setSelected(letter); submitAnswer(letter); } }}
+                          disabled={answered}
+                          className={`p-4 sm:p-5 rounded-xl text-left font-bold border-2 transition-all min-h-[70px] flex items-center gap-3 ${
+                            isCorrect ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200 scale-[1.01]' :
+                            isWrong ? 'bg-red-500/30 border-red-400 text-red-200' :
+                            isSelected ? 'bg-white/10 border-white/30' :
+                            'bg-white/[0.05] border-white/10 hover:bg-white/[0.08]'
+                          } disabled:cursor-not-allowed`}>
+                          <span className="text-lg sm:text-xl font-black opacity-50 flex-shrink-0">{letter}</span>
+                          <span className="text-sm sm:text-base flex-1">{opt}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
-                {feedback && (
-                  <div className={`mt-3 text-center font-black px-3 py-1.5 rounded-full text-sm ${feedback.isCorrect ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
+              {feedback && (
+                <div className="mt-5 text-center">
+                  <div className={`inline-block px-5 py-2 rounded-full font-black text-base ${feedback.isCorrect ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
                     {feedback.isCorrect ? '+$50 cash earned' : `Answer: ${feedback.correct}  ·  −$10`}
                   </div>
-                )}
-              </>
-            )}
-          </div>
-        </section>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </main>
+
+      {/* Markets modal — full-screen overlay with all six stock cards. Clicking
+          a card opens the per-stock buy/sell modal (existing flow). */}
+      {showMarkets && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-stretch sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowMarkets(false)}>
+          <div className="bg-slate-900 border border-white/10 sm:rounded-3xl w-full sm:max-w-4xl sm:max-h-[90vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                  <Briefcase className="w-5 h-5 text-white" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <div className="text-base font-black">Markets</div>
+                  <div className="text-xs text-white/50">Cash {fmtMoney(cash)} · Portfolio {fmtMoney(portfolio)}</div>
+                </div>
+              </div>
+              <button onClick={() => setShowMarkets(false)} className="p-2 hover:bg-white/10 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {stocks.map(s => {
+                  const owned = holdings[s.sym] || 0;
+                  const positive = s.changePct >= 0;
+                  return (
+                    <button
+                      key={s.sym}
+                      onClick={() => { setTradeStock(s.sym); setTradeError(''); }}
+                      className="group relative bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] rounded-2xl p-4 text-left transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black tracking-widest" style={{ color: s.color }}>{s.sym}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">{s.name}</span>
+                          </div>
+                          <div className="text-2xl font-black tabular-nums mt-0.5">${s.price?.toFixed(2)}</div>
+                        </div>
+                        <div className={`flex items-center gap-1 text-xs font-black ${positive ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {positive ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                          {positive ? '+' : ''}{s.changePct?.toFixed(2)}%
+                        </div>
+                      </div>
+                      <Sparkline values={s.history || []} color={s.color} height={36} width={260} />
+                      <div className="flex items-center justify-between mt-2 text-[11px] font-bold">
+                        <span className="text-white/50">
+                          {owned > 0 ? <span className="text-white">{owned} shares · {fmtMoney(owned * s.price)}</span> : 'Click to trade'}
+                        </span>
+                        <span className="text-emerald-300/80">Trade →</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Trade modal */}
       {tradeStock && (

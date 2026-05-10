@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair, X, Rocket } from 'lucide-react';
+import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair, X, Briefcase } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
 import VolumeControl from '../components/VolumeControl';
 import { createSeamlessLoop } from '../utils/seamlessAudio';
@@ -16,6 +16,7 @@ export default function TeacherMonitoringDashboard() {
   const [loading, setLoading] = useState(true);
   const [playerSkins, setPlayerSkins] = useState({});
   const [clashData, setClashData] = useState(null);
+  const [marketsLeaderboard, setMarketsLeaderboard] = useState([]); // [{user_id, portfolio}]
   const [clashTab, setClashTab] = useState('battlefield'); // 'battlefield' | 'dashboard'
   const [displayTimeLeft, setDisplayTimeLeft] = useState(null);
   const [battleEvents, setBattleEvents] = useState([]); // accumulated attack log for battlefield
@@ -89,6 +90,16 @@ export default function TeacherMonitoringDashboard() {
             try {
               const infernoRes = await fetch(`${baseUrl}/api/games/${gameCode}/inferno-state`);
               if (infernoRes.ok) setClashData(await infernoRes.json()); // reuse clashData state
+            } catch (_) { }
+          }
+          // Fetch markets state — leaderboard portfolio values are the live "score"
+          if (data.game_mode === 'elemental_markets' && data.status === 'started') {
+            try {
+              const mRes = await fetch(`${baseUrl}/api/games/${gameCode}/markets/state`);
+              if (mRes.ok) {
+                const mData = await mRes.json();
+                setMarketsLeaderboard(mData.leaderboard || []);
+              }
             } catch (_) { }
           }
           // Auto-navigate to results when game ends
@@ -486,34 +497,6 @@ export default function TeacherMonitoringDashboard() {
           );
         })()}
 
-        {/* Race: open presentation display + (if host is playing) gameplay in new tabs */}
-        {game?.game_mode === 'race' && (() => {
-          let raceSettings = {};
-          try { raceSettings = typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {}); } catch (_) {}
-          const hostIsPlaying = !!raceSettings.hostPlays;
-          return (
-            <div className={`mb-8 grid grid-cols-1 ${hostIsPlaying ? 'sm:grid-cols-2' : ''} gap-3`}>
-              <button
-                onClick={() => window.open(`/game/race-view/${gameCode}`, '_blank', 'noopener')}
-                className="flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black rounded-2xl hover:shadow-xl hover:shadow-cyan-500/30 transition-all text-base sm:text-lg"
-              >
-                <Rocket className="w-5 h-5" />
-                Open Race Display
-                <span className="text-xs font-bold opacity-80 hidden md:inline">— for the projector</span>
-              </button>
-              {hostIsPlaying && (
-                <button
-                  onClick={() => window.open(`/game/play/${gameCode}`, '_blank', 'noopener')}
-                  className="flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-black rounded-2xl hover:shadow-xl hover:shadow-emerald-500/30 transition-all text-base sm:text-lg"
-                >
-                  <Rocket className="w-5 h-5" />
-                  Open My Gameplay
-                  <span className="text-xs font-bold opacity-80 hidden md:inline">— answer questions</span>
-                </button>
-              )}
-            </div>
-          );
-        })()}
 
         {/* Elemental Clash */}
         {game?.game_mode === 'elemental_clash' && clashData && (() => {
@@ -689,10 +672,14 @@ export default function TeacherMonitoringDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {participants.map((player, index) => {
                 const isSurvival = game?.game_mode === 'survival';
+                const isMarkets = game?.game_mode === 'elemental_markets';
                 const isEliminated = isSurvival && player.eliminated;
                 const hasLeft = !!player.left_at;
                 const livesTotal = game?.settings?.livesPerPlayer || 3;
                 const livesLeft = player.lives ?? livesTotal;
+                const portfolio = isMarkets
+                  ? marketsLeaderboard.find(l => l.user_id === player.user_id)?.portfolio
+                  : null;
                 return (
                   <button
                     key={player.id}
@@ -732,10 +719,23 @@ export default function TeacherMonitoringDashboard() {
                     )}
 
                     <div className="flex items-center gap-2 pt-3 border-t border-gray-300">
-                      <TrendingUp className="w-4 h-4 text-green-600" />
-                      <span className="text-sm font-semibold text-gray-700">
-                        Score: <span className="text-green-600">{player.score || 0}</span>
-                      </span>
+                      {isMarkets ? (
+                        <>
+                          <Briefcase className="w-4 h-4 text-emerald-600" />
+                          <span className="text-sm font-semibold text-gray-700">
+                            Portfolio: <span className="text-emerald-600">
+                              ${portfolio != null ? portfolio.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
+                            </span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="w-4 h-4 text-green-600" />
+                          <span className="text-sm font-semibold text-gray-700">
+                            Score: <span className="text-green-600">{player.score || 0}</span>
+                          </span>
+                        </>
+                      )}
                     </div>
                   </button>
                 );

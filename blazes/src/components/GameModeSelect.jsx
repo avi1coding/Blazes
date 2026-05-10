@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap, Crown, Dice5, Rocket, X, BookOpen, Check, TrendingUp } from 'lucide-react';
+import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap, Crown, Dice5, X, BookOpen, Check, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GameplayMockup from './GameplayMockup';
 
@@ -118,29 +118,6 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
       teacherOnly: true,
     }] : []),
     {
-      id: 'race',
-      name: 'Race',
-      tagline: 'Run laps. Go furthest to win.',
-      icon: Rocket,
-      gradient: 'from-cyan-500 to-blue-600',
-      solid: 'bg-cyan-600',
-      glow: 'shadow-cyan-500/30',
-      accent: 'cyan',
-      screenshot: '/screenshots/race.png',
-      tags: ['solo', 'multi'],
-      description: 'Run laps around the track. Each correct answer moves you forward. When time runs out, the player with the most total progress wins. See exactly where everyone is in real time.',
-      difficulty: 'Easy',
-      players: '1-50',
-      duration: '5-15 min',
-      features: [
-        'Live lap track shows everyone in real time',
-        'No skips — wrong answers cost you progress',
-        'Multi-lap racing — get lapped or lap them',
-        'Game ends when time runs out or host stops it'
-      ],
-      available: true
-    },
-    {
       id: 'elemental_markets',
       name: 'Elemental Markets',
       tagline: 'Trade six elements. Highest portfolio wins.',
@@ -170,7 +147,6 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
     else if (selectedMode === 'elemental_clash') navigate('/game/elemental-clash-setup', { state: { kit, user } });
     else if (selectedMode === 'elemental_wager') navigate('/game/elemental-wager-setup', { state: { kit, user } });
     else if (selectedMode === 'arena') navigate('/game/arena-setup', { state: { kit, user } });
-    else if (selectedMode === 'race') navigate('/game/race-setup', { state: { kit, user } });
     else if (selectedMode === 'elemental_markets') navigate('/game/elemental-markets-setup', { state: { kit, user } });
   };
 

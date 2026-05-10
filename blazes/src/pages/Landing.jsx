@@ -153,15 +153,14 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10 sm:mb-14">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-3">See It In Action</h2>
-            <p className="text-base sm:text-lg md:text-xl text-gray-600">5 unique game modes. Each one feels different.</p>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600">4 unique game modes. Each one feels different.</p>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[
               { id: 'classic_timed', name: 'Classic Quiz', desc: 'The standard.' },
               { id: 'elemental_clash', name: 'Elemental Clash', desc: 'Team battles.' },
               { id: 'elemental_wager', name: 'Risk & Reward', desc: 'Bet your knowledge.' },
               { id: 'arena', name: 'Arena', desc: 'Strategic warfare.' },
-              { id: 'race', name: 'Race', desc: 'Go furthest to win.' },
             ].map(m => (
               <div key={m.id} className="bg-gray-100 rounded-xl overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
                 <div className="aspect-[4/3] relative">

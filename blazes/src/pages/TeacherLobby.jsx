@@ -126,14 +126,11 @@ export default function TeacherLobby() {
 
         setIsStarting(true);
 
-        // Pre-open popups SYNCHRONOUSLY (before any await) so the browser keeps
-        // them in the user-gesture chain. We redirect them once the start API call returns.
-        let raceViewWin = null;
+        // Pre-open the gameplay popup synchronously when the host is playing
+        // so the browser keeps it in the user-gesture chain. We redirect it
+        // once the start API call returns.
         let playWin = null;
         if (currentUser.role === 'teacher') {
-            if (game?.game_mode === 'race') {
-                raceViewWin = window.open('about:blank', '_blank');
-            }
             const willHostPlay = !!(game?.settings && (typeof game.settings === 'string' ? JSON.parse(game.settings).hostPlays : game.settings.hostPlays));
             if (willHostPlay) {
                 playWin = window.open('about:blank', '_blank');
@@ -152,14 +149,13 @@ export default function TeacherLobby() {
             console.log('start response:', response.status, data);
 
             if (response.ok) {
-                // Stop lobby music before navigating
                 if (lobbyAudioRef.current) lobbyAudioRef.current.stop();
                 if (currentUser.role === 'student') {
-                    if (raceViewWin) raceViewWin.close();
                     if (playWin) playWin.close();
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
                 } else if (hostPlays) {
-                    // Auto-join host as a participant first
+                    // Auto-join host as a participant, gameplay is the host's main
+                    // tab, monitoring opens in the pre-opened popup.
                     try {
                         await fetch(`${baseUrl}/api/games/${gameCode}/join`, {
                             method: 'POST',
@@ -167,24 +163,17 @@ export default function TeacherLobby() {
                             body: JSON.stringify({ userId: currentUser.id, playerName: currentUser.name }),
                         });
                     } catch (_) {}
-                    // Race-display popup opens, gameplay is the host's main tab,
-                    // and the second pre-opened popup (if any) becomes monitoring so the
-                    // host can still flip to the dashboard if they want.
-                    if (raceViewWin) raceViewWin.location.href = `/game/race-view/${gameCode}`;
                     if (playWin) playWin.location.href = `/game/monitor/${gameCode}/all`;
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
                 } else {
-                    if (raceViewWin) raceViewWin.location.href = `/game/race-view/${gameCode}`;
                     if (playWin) playWin.close();
                     navigate(`/game/monitor/${gameCode}/all`, { state: { game, user: currentUser } });
                 }
             } else {
-                if (raceViewWin) raceViewWin.close();
                 if (playWin) playWin.close();
                 setToast({ show: true, message: `Error starting game: ${data?.error || response.status}`, type: 'error' });
             }
         } catch (error) {
-            if (raceViewWin) raceViewWin.close();
             if (playWin) playWin.close();
             console.error('Error starting game:', error);
             setToast({ show: true, message: `Failed to start game: ${error.message}`, type: 'error' });

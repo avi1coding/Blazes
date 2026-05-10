@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair, X } from 'lucide-react';
+import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair, X, Maximize2 } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
 import VolumeControl from '../components/VolumeControl';
 import { createSeamlessLoop } from '../utils/seamlessAudio';
@@ -306,6 +306,14 @@ export default function TeacherMonitoringDashboard() {
               <VolumeControl audioRef={gameAudioRef} />
             </div>
             <button
+              onClick={() => window.open(`/game/present/${gameCode}`, '_blank', 'noopener')}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors font-bold"
+              title="Open a themed leaderboard screen for the projector"
+            >
+              <Maximize2 className="w-5 h-5" />
+              Present
+            </button>
+            <button
               onClick={handleEndGame}
               className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors font-bold"
             >
@@ -369,9 +377,10 @@ export default function TeacherMonitoringDashboard() {
           const ghosts = players.filter(p => p.is_ghost);
           return (
             <div className="mb-8">
-              {/* Fullscreen button */}
+              {/* Fullscreen button — routes to the unified Present view, which
+                  has an inferno-themed background + fire-level banner. */}
               <button
-                onClick={() => window.open(`/game/inferno-tower-view/${gameCode}`, '_blank')}
+                onClick={() => window.open(`/game/present/${gameCode}`, '_blank', 'noopener')}
                 className="w-full mb-4 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-600 to-red-500 text-white font-black rounded-xl hover:shadow-lg transition-all"
               >
                 <Flame className="w-5 h-5" />

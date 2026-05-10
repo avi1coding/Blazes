@@ -54,6 +54,7 @@ const GameResults = lazy(() => import("./pages/GameResults"));
 const ClassicTimedSetupPage = lazy(() => import("./pages/ClassicTimedSetupPage"));
 const RegularSetupPage = lazy(() => import("./pages/RegularSetupPage"));
 const TeacherMonitoringDashboard = lazy(() => import("./pages/TeacherMonitoringDashboard"));
+const TeacherPresentView = lazy(() => import("./pages/TeacherPresentView"));
 const StudentMonitor = lazy(() => import("./pages/StudentMonitor"));
 const TeacherGameResults = lazy(() => import("./pages/TeacherGameResults"));
 const ElementalClashSetupPage = lazy(() => import("./pages/ElementalClashSetupPage"));
@@ -133,6 +134,7 @@ function App() {
           <Route path="/game/stats/:gameCode" element={<GameStats />} />
           <Route path="/game/results/:gameCode" element={<GameResults />} />
           <Route path="/game/monitor/:gameCode/all" element={<TeacherMonitoringDashboard />} />
+          <Route path="/game/present/:gameCode" element={<TeacherPresentView />} />
           <Route path="/game/monitor/:gameCode/:userId" element={<StudentMonitor />} />
           <Route path="/game/teacher-results/:gameCode" element={<TeacherGameResults />} />
           <Route path="/game/mode-select" element={<GameModePage />} />

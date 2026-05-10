@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Flame, Users, Plus, Trash2, ArrowLeft, BookOpen, Clock, Check, X, ClipboardList, Play } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
 import StyledSelect from '../components/StyledSelect';
@@ -8,6 +8,7 @@ import Toast from '../components/Toast';
 export default function ClassroomPage() {
   const { classroomId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -125,7 +126,10 @@ export default function ClassroomPage() {
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(isTeacher ? '/home/teacher?tab=classrooms' : '/home/student?tab=classrooms')} className="p-2 hover:bg-gray-100 rounded-lg">
+            <button onClick={() => {
+              if (location.key !== 'default') navigate(-1);
+              else navigate(isTeacher ? '/home/teacher?tab=classrooms' : '/home/student?tab=classrooms');
+            }} className="p-2 hover:bg-gray-100 rounded-lg">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
             <div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Star, Shirt, Award, Crown, Sparkles, Flame, Zap, TrendingUp, Trophy, Lock, Check, Users, BarChart3, Gem, Calendar } from 'lucide-react';
 import SkinsPage, { AvatarPreview, cacheEquippedSkin, initialEquippedSkin } from './SkinsPage';
 import AchievementsMap from './AchievementsMap';
@@ -20,6 +20,7 @@ function readStoredUser() {
 
 export default function HubPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = useState(readStoredUser);
   // URL is the source of truth for the tab so the browser back/forward
@@ -70,6 +71,10 @@ export default function HubPage() {
   }
 
   const backPath = user.role === 'teacher' ? '/home/teacher' : '/home/student';
+  const goBack = () => {
+    if (location.key !== 'default') navigate(-1);
+    else navigate(backPath);
+  };
   const isPro = ['teacher_pro', 'blazes_plus', 'school'].includes(subscription?.tier);
 
   const tabs = [
@@ -86,7 +91,7 @@ export default function HubPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <button onClick={() => navigate(backPath)}
+              <button onClick={goBack}
                 className="p-2 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0">
                 <ArrowLeft className="w-5 h-5 text-gray-700" />
               </button>

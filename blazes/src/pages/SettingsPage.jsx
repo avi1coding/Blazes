@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, Bell, Gamepad2, Eye, Shield, Trash2, ChevronRight, Lock, BookOpen, BarChart3, Users, ClipboardList, Flame } from 'lucide-react';
 import Toast from '../components/Toast';
 
@@ -72,6 +72,7 @@ function getSections(userRole) {
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
   const [user, setUser] = useState(null);
@@ -290,6 +291,10 @@ export default function SettingsPage() {
   }
 
   const backPath = user.role === 'teacher' ? '/home/teacher' : '/home/student';
+  const goBack = () => {
+    if (location.key !== 'default') navigate(-1);
+    else navigate(backPath);
+  };
 
   const renderAccount = () => (
     <div className="space-y-6">
@@ -935,7 +940,7 @@ export default function SettingsPage() {
 
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate(backPath)} className="p-2 hover:bg-gray-100 rounded-lg">
+          <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-lg">
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <h1 className="text-xl font-black text-gray-900">Settings</h1>

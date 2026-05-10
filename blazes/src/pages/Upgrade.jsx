@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft, Check, Crown, Building2, Flame, Sparkles, Zap, BarChart3, FileText, Users as UsersIcon, Trophy, Shield } from 'lucide-react';
 
 export default function Upgrade() {
   const navigate = useNavigate();
+  const location = useLocation();
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
   const [user, setUser] = useState(null);
@@ -26,6 +27,10 @@ export default function Upgrade() {
   }, [navigate, base]);
 
   const homePath = user?.role === 'teacher' ? '/home/teacher' : '/home/student';
+  const goBack = () => {
+    if (location.key !== 'default') navigate(-1);
+    else navigate(homePath);
+  };
 
   const handleCheckout = async (plan) => {
     if (!user) return;
@@ -77,7 +82,7 @@ export default function Upgrade() {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate(homePath)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+          <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <h1 className="text-xl font-black text-gray-900">Plans & Pricing</h1>

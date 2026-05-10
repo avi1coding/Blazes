@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AvatarPreview } from './SkinsPage';
 import { ArrowLeft, Flame, Clock, Zap, Star, Sparkles } from 'lucide-react';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [progress, setProgress] = useState(null);
   const [badges, setBadges] = useState([]);
@@ -38,6 +39,13 @@ export default function ProfilePage() {
   }
 
   const backPath = user.role === 'teacher' ? '/home/teacher' : '/home/student';
+  // Prefer in-app history so the back arrow returns to the page the user came
+  // from. location.key === 'default' means this was the first navigation in
+  // this tab — no history to pop, so fall back to the role-appropriate home.
+  const goBack = () => {
+    if (location.key !== 'default') navigate(-1);
+    else navigate(backPath);
+  };
   const level = progress?.level || 1;
   const xpPct = progress?.xp_for_next > 0 ? Math.min((progress.xp_into_level / progress.xp_for_next) * 100, 100) : 0;
   const dailyPct = progress?.daily_cap > 0 ? Math.min((progress.xp_earned_today / progress.daily_cap) * 100, 100) : 0;
@@ -55,7 +63,7 @@ export default function ProfilePage() {
       {/* Nav */}
       <nav className="sticky top-0 z-10" style={{ background: 'rgba(31,31,35,0.95)', backdropFilter: 'blur(12px)' }}>
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate(backPath)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+          <button onClick={goBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
           <h1 className="text-lg font-black text-white">Levels</h1>

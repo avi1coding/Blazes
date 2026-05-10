@@ -62,6 +62,15 @@ export default function TeacherGameResults() {
 
     const participants = results?.participants || [];
     const totalRounds = results?.totalRoundsPlayed || 0;
+    const gameMode = results?.gameMode;
+    const isSurvival = gameMode === 'survival';
+    const isMarkets = gameMode === 'elemental_markets';
+    // For markets, the participant `score` column holds the final portfolio
+    // value in dollars (set by settleMarketsScores on game end). Render it as
+    // money instead of plain points.
+    const fmtScore = (n) => isMarkets
+        ? `$${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+        : String(n || 0);
 
     const sorted = rankParticipants(participants);
 
@@ -128,7 +137,7 @@ export default function TeacherGameResults() {
                     <div className="flex items-center justify-center gap-3 text-gray-500 font-semibold mt-2">
                         <span className="tracking-widest text-gray-700 bg-gray-100 px-3 py-1 rounded-lg text-sm">{gameCode}</span>
                         <span>&middot;</span>
-                        <span>{isSurvival ? 'Survival' : 'Classic'}</span>
+                        <span>{isSurvival ? 'Survival' : isMarkets ? 'Markets' : 'Classic'}</span>
                         <span>&middot;</span>
                         <span>{participants.length} player{participants.length !== 1 ? 's' : ''}</span>
                     </div>
@@ -153,8 +162,8 @@ export default function TeacherGameResults() {
                                 )}
                             </div>
                             <div className="text-right">
-                                <div className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900">{winner.score || 0}</div>
-                                <div className="text-sm font-bold text-gray-400">points</div>
+                                <div className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900">{fmtScore(winner.score)}</div>
+                                <div className="text-sm font-bold text-gray-400">{isMarkets ? 'portfolio' : 'points'}</div>
                             </div>
                         </div>
                     </div>
@@ -164,13 +173,13 @@ export default function TeacherGameResults() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
                     <div className="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-200">
                         <Zap className="w-6 h-6 text-yellow-500 mx-auto mb-2" strokeWidth={2.5} />
-                        <div className="text-2xl font-black text-gray-900">{topScore}</div>
-                        <div className="text-xs font-bold text-gray-500">Top Score</div>
+                        <div className="text-2xl font-black text-gray-900">{fmtScore(topScore)}</div>
+                        <div className="text-xs font-bold text-gray-500">{isMarkets ? 'Top Portfolio' : 'Top Score'}</div>
                     </div>
                     <div className="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-200">
                         <BarChart3 className="w-6 h-6 text-blue-500 mx-auto mb-2" strokeWidth={2.5} />
-                        <div className="text-2xl font-black text-gray-900">{avgScore}</div>
-                        <div className="text-xs font-bold text-gray-500">Avg Score</div>
+                        <div className="text-2xl font-black text-gray-900">{fmtScore(avgScore)}</div>
+                        <div className="text-xs font-bold text-gray-500">{isMarkets ? 'Avg Portfolio' : 'Avg Score'}</div>
                     </div>
                     <div className="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-200">
                         <Users className="w-6 h-6 text-green-500 mx-auto mb-2" strokeWidth={2.5} />
@@ -255,8 +264,8 @@ export default function TeacherGameResults() {
 
                                         {/* Score */}
                                         <div className="text-right flex-shrink-0">
-                                            <div className="text-xl font-black text-gray-900">{p.score || 0}</div>
-                                            <div className="text-xs font-bold text-gray-400">pts</div>
+                                            <div className="text-xl font-black text-gray-900">{fmtScore(p.score)}</div>
+                                            <div className="text-xs font-bold text-gray-400">{isMarkets ? 'portfolio' : 'pts'}</div>
                                         </div>
                                     </div>
                                 );

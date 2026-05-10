@@ -179,7 +179,7 @@ export default function GameResults() {
           )}
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-2">{hasWon ? 'You Won!' : 'Game Over!'}</h1>
           <p className="text-lg text-gray-600">
-            {gameMode === 'survival' ? 'Survival Mode' : 'Classic Mode'} &middot; Code: {gameCode}
+            {gameMode === 'survival' ? 'Survival Mode' : gameMode === 'elemental_markets' ? 'Markets Mode' : 'Classic Mode'} &middot; Code: {gameCode}
           </p>
         </div>
 
@@ -187,8 +187,12 @@ export default function GameResults() {
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-gray-200 mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
             <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl">
-              <div className="text-3xl sm:text-4xl font-black text-red-600 mb-1">{score}</div>
-              <div className="text-xs sm:text-sm font-bold text-gray-600">Score</div>
+              <div className="text-3xl sm:text-4xl font-black text-red-600 mb-1">
+                {gameMode === 'elemental_markets'
+                  ? `$${Number(score || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                  : score}
+              </div>
+              <div className="text-xs sm:text-sm font-bold text-gray-600">{gameMode === 'elemental_markets' ? 'Portfolio' : 'Score'}</div>
             </div>
             <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl">
               <div className="text-3xl sm:text-4xl font-black text-blue-600 mb-1">{accuracy}%</div>
@@ -275,8 +279,12 @@ export default function GameResults() {
 
                     {/* Score */}
                     <div className="text-right flex-shrink-0">
-                      <div className="text-xl font-black text-gray-900">{p.score || 0}</div>
-                      <div className="text-xs font-bold text-gray-400">pts</div>
+                      <div className="text-xl font-black text-gray-900">
+                        {gameMode === 'elemental_markets'
+                          ? `$${Number(p.score || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                          : (p.score || 0)}
+                      </div>
+                      <div className="text-xs font-bold text-gray-400">{gameMode === 'elemental_markets' ? 'portfolio' : 'pts'}</div>
                     </div>
                   </div>
                 );

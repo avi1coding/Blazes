@@ -729,6 +729,10 @@ db.run(`ALTER TABLE game_participants ADD COLUMN wager_streak INTEGER DEFAULT 0`
 // Elemental Markets columns
 db.run(`ALTER TABLE game_participants ADD COLUMN mkt_cash REAL DEFAULT 1000`, () => { });
 db.run(`ALTER TABLE game_participants ADD COLUMN mkt_holdings TEXT DEFAULT '{}'`, () => { });
+// Cost basis per symbol — weighted-avg price at which the player currently
+// holds those shares. Used to show profit/loss on the sell modal so players
+// can see what they'd earn or lose before clicking sell.
+db.run(`ALTER TABLE game_participants ADD COLUMN mkt_cost_basis TEXT DEFAULT '{}'`, () => { });
 // Question image column
 db.run(`ALTER TABLE questions ADD COLUMN image_url TEXT`, () => { });
 // Inferno Tower columns
@@ -7621,18 +7625,20 @@ app.get('/api/games/:gameCode/markets/state', async (req, res) => {
       changePct: Math.round(((state.prices[s.sym] - 100) / 100) * 10000) / 100,
     }));
 
-    // Per-player snapshot (cash, holdings, portfolio value)
+    // Per-player snapshot (cash, holdings, portfolio value, cost basis)
     let me = null;
     if (userId) {
       const row = await dbGet(
-        'SELECT mkt_cash, mkt_holdings FROM game_participants WHERE game_id = ? AND user_id = ?',
+        'SELECT mkt_cash, mkt_holdings, mkt_cost_basis FROM game_participants WHERE game_id = ? AND user_id = ?',
         [game.id, userId]
       );
       if (row) {
         const holdings = parseHoldings(row.mkt_holdings);
+        const costBasis = parseHoldings(row.mkt_cost_basis);
         me = {
           cash: Math.round((row.mkt_cash || 0) * 100) / 100,
           holdings,
+          costBasis,
           portfolio: portfolioValue(row.mkt_cash, holdings, state.prices),
         };
       }
@@ -7685,7 +7691,7 @@ app.post('/api/games/:gameCode/markets/buy', async (req, res) => {
     const cost = price * sharesInt;
 
     const row = await dbGet(
-      'SELECT mkt_cash, mkt_holdings FROM game_participants WHERE game_id = ? AND user_id = ?',
+      'SELECT mkt_cash, mkt_holdings, mkt_cost_basis FROM game_participants WHERE game_id = ? AND user_id = ?',
       [game.id, userId]
     );
     if (!row) return res.status(404).json({ error: 'Not a participant in this game' });
@@ -7693,16 +7699,23 @@ app.post('/api/games/:gameCode/markets/buy', async (req, res) => {
     if (cost > cash) return res.status(400).json({ error: `Need $${cost.toFixed(2)}, only have $${cash.toFixed(2)}` });
 
     const holdings = parseHoldings(row.mkt_holdings);
-    holdings[symbol] = (holdings[symbol] || 0) + sharesInt;
+    const costBasis = parseHoldings(row.mkt_cost_basis);
+    const prevShares = holdings[symbol] || 0;
+    const prevAvg = costBasis[symbol] || price;
+    holdings[symbol] = prevShares + sharesInt;
+    // Weighted-average cost basis so partial subsequent sells still know what
+    // the original purchase cost was.
+    costBasis[symbol] = Math.round(((prevShares * prevAvg + sharesInt * price) / holdings[symbol]) * 100) / 100;
     const newCash = Math.round((cash - cost) * 100) / 100;
     await dbRun(
-      'UPDATE game_participants SET mkt_cash = ?, mkt_holdings = ? WHERE game_id = ? AND user_id = ?',
-      [newCash, JSON.stringify(holdings), game.id, userId]
+      'UPDATE game_participants SET mkt_cash = ?, mkt_holdings = ?, mkt_cost_basis = ? WHERE game_id = ? AND user_id = ?',
+      [newCash, JSON.stringify(holdings), JSON.stringify(costBasis), game.id, userId]
     );
 
     res.json({
       cash: newCash,
       holdings,
+      costBasis,
       filledAt: Math.round(price * 100) / 100,
       portfolio: portfolioValue(newCash, holdings, state.prices),
     });
@@ -7729,27 +7742,33 @@ app.post('/api/games/:gameCode/markets/sell', async (req, res) => {
     const price = state.prices[symbol];
 
     const row = await dbGet(
-      'SELECT mkt_cash, mkt_holdings FROM game_participants WHERE game_id = ? AND user_id = ?',
+      'SELECT mkt_cash, mkt_holdings, mkt_cost_basis FROM game_participants WHERE game_id = ? AND user_id = ?',
       [game.id, userId]
     );
     if (!row) return res.status(404).json({ error: 'Not a participant in this game' });
     const holdings = parseHoldings(row.mkt_holdings);
+    const costBasis = parseHoldings(row.mkt_cost_basis);
     const owned = holdings[symbol] || 0;
     if (sharesInt > owned) return res.status(400).json({ error: `Only own ${owned} shares of ${symbol}` });
 
+    const avgCost = costBasis[symbol] || 0;
+    const realizedPL = Math.round((price - avgCost) * sharesInt * 100) / 100;
     holdings[symbol] = owned - sharesInt;
-    if (!holdings[symbol]) delete holdings[symbol];
+    if (!holdings[symbol]) { delete holdings[symbol]; delete costBasis[symbol]; }
+    // Selling doesn't change the weighted-avg cost of the remaining shares.
     const proceeds = price * sharesInt;
     const newCash = Math.round(((Number(row.mkt_cash) || 0) + proceeds) * 100) / 100;
     await dbRun(
-      'UPDATE game_participants SET mkt_cash = ?, mkt_holdings = ? WHERE game_id = ? AND user_id = ?',
-      [newCash, JSON.stringify(holdings), game.id, userId]
+      'UPDATE game_participants SET mkt_cash = ?, mkt_holdings = ?, mkt_cost_basis = ? WHERE game_id = ? AND user_id = ?',
+      [newCash, JSON.stringify(holdings), JSON.stringify(costBasis), game.id, userId]
     );
 
     res.json({
       cash: newCash,
       holdings,
+      costBasis,
       filledAt: Math.round(price * 100) / 100,
+      realizedPL,
       portfolio: portfolioValue(newCash, holdings, state.prices),
     });
   } catch (err) {

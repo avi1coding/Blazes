@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Clock, TrendingUp, Trophy, BarChart3, X, Eye, ArrowUp, ArrowDown, DollarSign, Newspaper, Activity, Briefcase } from 'lucide-react';
+import { Clock, TrendingUp, Trophy, BarChart3, X, Eye, ArrowUp, ArrowDown, DollarSign, Newspaper, Activity, Briefcase, StopCircle } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -54,6 +54,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
   const [tradeError, setTradeError] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showMarkets, setShowMarkets] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [cashFlash, setCashFlash] = useState(null); // { delta } briefly
 
   const startTimeRef = useRef(Date.now());
@@ -98,8 +99,14 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
     }
   }, [game]);
 
-  // Game timer
-  const handleGameOver = useCallback(() => {
+  // Game timer. When time hits zero we need the server to mark the game ended
+  // AND settle each participant's score to their final portfolio value — without
+  // this, the leaderboard on the results page shows 0 for everyone. The /end
+  // endpoint is idempotent, so it's safe for every client to call.
+  const handleGameOver = useCallback(async () => {
+    try {
+      await fetch(`${BASE}/api/games/${gameCode}/end`, { method: 'PUT' });
+    } catch (_) {}
     navigate(`/game/results/${gameCode}`, { state: { game, user } });
   }, [gameCode, navigate, game, user]);
 
@@ -184,6 +191,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
   const cash = marketState?.me?.cash ?? 1000;
   const portfolio = marketState?.me?.portfolio ?? 1000;
   const holdings = marketState?.me?.holdings ?? {};
+  const costBasis = marketState?.me?.costBasis ?? {};
   const stocks = marketState?.stocks ?? [];
   const events = marketState?.events ?? [];
   const regime = REGIME_THEME[marketState?.regime] || REGIME_THEME.normal;
@@ -222,7 +230,10 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
                 </span>
               )}
             </div>
-            <div className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-2 flex items-center gap-2">
+            <div
+              className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-2 flex items-center gap-2"
+              title="Portfolio = your cash + the current market value of every share you own. It's the number that decides the leaderboard."
+            >
               <BarChart3 className="w-4 h-4 text-white/70" />
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-white/50 leading-none">Portfolio</div>
@@ -260,13 +271,22 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
               <span className="hidden sm:inline">Leaderboard</span>
             </button>
             {game?.host_id && user?.id && game.host_id === user.id && (
-              <button
-                onClick={() => window.open(`/game/monitor/${gameCode}/all`, '_blank', 'noopener')}
-                className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-3 py-2 font-black text-xs sm:text-sm transition-colors"
-              >
-                <Eye className="w-4 h-4" />
-                <span className="hidden sm:inline">Monitor</span>
-              </button>
+              <>
+                <button
+                  onClick={() => window.open(`/game/monitor/${gameCode}/all`, '_blank', 'noopener')}
+                  className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-3 py-2 font-black text-xs sm:text-sm transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span className="hidden sm:inline">Monitor</span>
+                </button>
+                <button
+                  onClick={() => setShowEndConfirm(true)}
+                  className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg px-3 py-2 font-black text-xs sm:text-sm transition-colors"
+                >
+                  <StopCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">End Game</span>
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -415,6 +435,8 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {stocks.map(s => {
                   const owned = holdings[s.sym] || 0;
+                  const avg = costBasis[s.sym] || 0;
+                  const unrealized = owned > 0 && avg > 0 ? (s.price - avg) * owned : 0;
                   const positive = s.changePct >= 0;
                   return (
                     <button
@@ -438,9 +460,17 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
                       <Sparkline values={s.history || []} color={s.color} height={36} width={260} />
                       <div className="flex items-center justify-between mt-2 text-[11px] font-bold">
                         <span className="text-white/50">
-                          {owned > 0 ? <span className="text-white">{owned} shares · {fmtMoney(owned * s.price)}</span> : 'Click to trade'}
+                          {owned > 0
+                            ? <span className="text-white">{owned} shares · avg ${avg.toFixed(2)}</span>
+                            : 'Click to trade'}
                         </span>
-                        <span className="text-emerald-300/80">Trade →</span>
+                        {owned > 0 && avg > 0 ? (
+                          <span className={unrealized >= 0 ? 'text-emerald-300' : 'text-red-300'}>
+                            {unrealized >= 0 ? '+' : '−'}${Math.abs(unrealized).toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-emerald-300/80">Trade →</span>
+                        )}
                       </div>
                     </button>
                   );
@@ -457,6 +487,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
           symbol={tradeStock}
           stock={stocks.find(s => s.sym === tradeStock)}
           owned={holdings[tradeStock] || 0}
+          avgCost={costBasis[tradeStock] || 0}
           cash={cash}
           busy={tradeBusy}
           error={tradeError}
@@ -520,6 +551,30 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
         </div>
       )}
 
+      {/* End-game confirm — host only */}
+      {showEndConfirm && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowEndConfirm(false)}>
+          <div className="bg-slate-900 border border-red-500/30 rounded-3xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-11 h-11 bg-red-500/20 rounded-full flex items-center justify-center">
+                <StopCircle className="w-6 h-6 text-red-400" />
+              </div>
+              <h2 className="text-xl font-black">End Game?</h2>
+            </div>
+            <p className="text-white/70 text-sm mb-5">
+              This will lock in everyone's portfolio as their final score and show
+              the leaderboard. You can't undo it.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowEndConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl font-black bg-white/10 hover:bg-white/15">Cancel</button>
+              <button onClick={() => { setShowEndConfirm(false); handleGameOver(); }}
+                className="flex-1 py-2.5 rounded-xl font-black bg-red-600 hover:bg-red-500">End Game</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cash-flash keyframes via inline style — once-per-component is fine */}
       <style>{`@keyframes cashFlash {
         0% { opacity: 0; transform: translateY(0); }
@@ -530,13 +585,17 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
   );
 }
 
-function TradeModal({ symbol, stock, owned, cash, busy, error, onClose, onTrade }) {
+function TradeModal({ symbol, stock, owned, avgCost = 0, cash, busy, error, onClose, onTrade }) {
   const [tab, setTab] = useState('buy');
   const [sharesStr, setSharesStr] = useState('1');
   const sharesNum = Math.max(0, Math.floor(Number(sharesStr) || 0));
   const price = stock?.price || 0;
   const cost = sharesNum * price;
   const maxBuy = price > 0 ? Math.floor(cash / price) : 0;
+  // Profit/loss if you sell `sharesNum` shares at the current price, compared
+  // to what you paid on average. Negative means you'd take a loss.
+  const sellPL = (price - avgCost) * sharesNum;
+  const sellPLTotal = avgCost > 0 && sharesNum > 0;
 
   if (!stock) return null;
   const positive = stock.changePct >= 0;
@@ -585,7 +644,18 @@ function TradeModal({ symbol, stock, owned, cash, busy, error, onClose, onTrade 
 
           <div className="bg-white/[0.04] rounded-xl p-3 mb-3 text-sm space-y-1">
             <div className="flex justify-between"><span className="text-white/60">Price</span><span className="font-black tabular-nums">${price.toFixed(2)}</span></div>
+            {tab === 'sell' && avgCost > 0 && (
+              <div className="flex justify-between"><span className="text-white/60">Avg cost</span><span className="font-black tabular-nums text-white/80">${avgCost.toFixed(2)}</span></div>
+            )}
             <div className="flex justify-between"><span className="text-white/60">{tab === 'buy' ? 'Cost' : 'Proceeds'}</span><span className="font-black tabular-nums text-emerald-300">${cost.toFixed(2)}</span></div>
+            {tab === 'sell' && sellPLTotal && (
+              <div className="flex justify-between pt-1 border-t border-white/10">
+                <span className="text-white/60">Profit / loss</span>
+                <span className={`font-black tabular-nums ${sellPL >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                  {sellPL >= 0 ? '+' : '−'}${Math.abs(sellPL).toFixed(2)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between"><span className="text-white/60">{tab === 'buy' ? 'Cash after' : 'New cash'}</span><span className="font-black tabular-nums">${(cash + (tab === 'buy' ? -cost : cost)).toFixed(2)}</span></div>
           </div>
 

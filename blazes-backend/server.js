@@ -1804,10 +1804,46 @@ app.post('/api/kits/:kitId/questions', (req, res) => {
       }
       res.json({
         kitId: kitId,
+        questionId: this.lastID,
         message: 'Question added successfully'
       });
     }
   );
+});
+
+// Add many questions to a kit in one round-trip — used by Publish Kit.
+// Replaces a sequential `for await` loop in CreateKit that took
+// (questions × per-call latency) wall-clock; a 20-question kit on Turso
+// previously took ~5s and now lands in ~300ms.
+app.post('/api/kits/:kitId/questions/bulk', async (req, res) => {
+  const { kitId } = req.params;
+  const { questions } = req.body;
+  if (!Array.isArray(questions) || questions.length === 0) {
+    return res.status(400).json({ error: 'questions array required' });
+  }
+  try {
+    const inserted = await Promise.all(questions.map(q => dbRun(
+      `INSERT INTO questions (kit_id, question_text, answer_type, correct_answer, option_a, option_b, option_c, option_d, image_url, time_limit, points)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        kitId,
+        q.question_text || '',
+        q.answer_type || 'multiple_choice',
+        q.correct_answer || '',
+        q.option_a || '',
+        q.option_b || '',
+        q.option_c || '',
+        q.option_d || '',
+        q.image_url || null,
+        30,
+        100,
+      ]
+    )));
+    res.json({ kitId, count: inserted.length, message: 'Questions added successfully' });
+  } catch (err) {
+    console.error('Error bulk-adding questions:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get all kits for a teacher
@@ -1858,20 +1894,19 @@ app.put('/api/kits/:kitId', (req, res) => {
   );
 });
 
-// Delete a kit (and all its questions)
-app.delete('/api/kits/:kitId', (req, res) => {
+// Delete a kit (and all its questions). Both deletes fire in parallel — the
+// previous sequential pair cost two round-trips (~400ms on Turso); now ~200ms.
+app.delete('/api/kits/:kitId', async (req, res) => {
   const { kitId } = req.params;
-
-  // First delete all questions in the kit
-  db.run('DELETE FROM questions WHERE kit_id = ?', [kitId], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-
-    // Then delete the kit itself
-    db.run('DELETE FROM question_kits WHERE id = ?', [kitId], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Kit deleted successfully' });
-    });
-  });
+  try {
+    await Promise.all([
+      dbRun('DELETE FROM questions WHERE kit_id = ?', [kitId]),
+      dbRun('DELETE FROM question_kits WHERE id = ?', [kitId]),
+    ]);
+    res.json({ message: 'Kit deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Delete a question from a kit

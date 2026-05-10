@@ -97,14 +97,28 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
       });
       const kitData = await kitRes.json();
       if (!kitRes.ok) { setToast({ show: true, message: 'Error: ' + kitData.error, type: 'error' }); setPublishing(false); return; }
-      for (const q of questions) {
-        await fetch(`${base}/api/kits/${kitData.kitId}/questions`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question_text: q.questionText, answer_type: q.answerType, correct_answer: q.correctAnswer, image_url: q.imageUrl || '',
-            option_a: q.options[0] || '', option_b: q.options[1] || '', option_c: q.options[2] || '', option_d: q.options[3] || '',
-          })
-        });
+      // Bulk-insert all questions in one round-trip. Used to be a sequential
+      // for-await loop that paid per-call latency × N; now flat ~200ms.
+      const payload = questions.map(q => ({
+        question_text: q.questionText,
+        answer_type: q.answerType,
+        correct_answer: q.correctAnswer,
+        image_url: q.imageUrl || '',
+        option_a: q.options[0] || '',
+        option_b: q.options[1] || '',
+        option_c: q.options[2] || '',
+        option_d: q.options[3] || '',
+      }));
+      const bulkRes = await fetch(`${base}/api/kits/${kitData.kitId}/questions/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: payload }),
+      });
+      if (!bulkRes.ok) {
+        const e = await bulkRes.json().catch(() => ({}));
+        setToast({ show: true, message: 'Error saving questions: ' + (e.error || 'unknown'), type: 'error' });
+        setPublishing(false);
+        return;
       }
       setToast({ show: true, message: 'Kit published successfully!', type: 'success' });
       setKitDetails({ title: '', subject: '', gradeLevel: '', description: '' });

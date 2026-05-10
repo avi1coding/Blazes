@@ -1972,17 +1972,21 @@ export default function TeacherHome() {
                       Cancel
                     </button>
                     <button
-                      onClick={async () => {
-                        try {
-                          await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${deleteConfirm}`, {
-                            method: 'DELETE'
+                      onClick={() => {
+                        // Optimistic: drop from local state immediately, fire DELETE
+                        // in the background. If it fails, slot the kit back in.
+                        const kitId = deleteConfirm;
+                        const kitsBefore = kits;
+                        setKits(kits.filter(k => k.id !== kitId));
+                        setDeleteConfirm(null);
+                        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+                        fetch(`${base}/api/kits/${kitId}`, { method: 'DELETE' })
+                          .then(r => { if (!r.ok) throw new Error('Delete failed'); })
+                          .catch(error => {
+                            console.error('Error deleting kit:', error);
+                            setKits(kitsBefore);
+                            setToast({ show: true, message: 'Could not delete kit — restored.', type: 'error' });
                           });
-                          setKits(kits.filter(k => k.id !== deleteConfirm));
-                          setDeleteConfirm(null);
-                        } catch (error) {
-                          console.error('Error deleting kit:', error);
-                          setDeleteConfirm(null);
-                        }
                       }}
                       className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors"
                     >
@@ -2314,20 +2318,24 @@ export default function TeacherHome() {
                       Cancel
                     </button>
                     <button
-                      onClick={async () => {
-                        try {
-                          await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/kits/${selectedKit.id}/questions/${deleteQuestionConfirm}`, {
-                            method: 'DELETE'
+                      onClick={() => {
+                        // Optimistic delete: drop locally, fire request in the
+                        // background. Restore on failure.
+                        const qid = deleteQuestionConfirm;
+                        const before = selectedKit;
+                        setSelectedKit({
+                          ...selectedKit,
+                          questions: selectedKit.questions.filter(q => q.id !== qid),
+                        });
+                        setDeleteQuestionConfirm(null);
+                        const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+                        fetch(`${base}/api/kits/${before.id}/questions/${qid}`, { method: 'DELETE' })
+                          .then(r => { if (!r.ok) throw new Error('Delete failed'); })
+                          .catch(err => {
+                            console.error('Error deleting question:', err);
+                            setSelectedKit(before);
+                            setToast({ show: true, message: 'Could not delete question — restored.', type: 'error' });
                           });
-                          setSelectedKit({
-                            ...selectedKit,
-                            questions: selectedKit.questions.filter(q => q.id !== deleteQuestionConfirm)
-                          });
-                          setDeleteQuestionConfirm(null);
-                        } catch (error) {
-                          console.error('Error deleting question:', error);
-                          setDeleteQuestionConfirm(null);
-                        }
                       }}
                       className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors"
                     >

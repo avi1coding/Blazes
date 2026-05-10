@@ -192,7 +192,7 @@ export default function GameResults() {
                   ? `$${Number(score || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                   : score}
               </div>
-              <div className="text-xs sm:text-sm font-bold text-gray-600">{gameMode === 'elemental_markets' ? 'Portfolio' : 'Score'}</div>
+              <div className="text-xs sm:text-sm font-bold text-gray-600">Score</div>
             </div>
             <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl">
               <div className="text-3xl sm:text-4xl font-black text-blue-600 mb-1">{accuracy}%</div>
@@ -284,7 +284,7 @@ export default function GameResults() {
                           ? `$${Number(p.score || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                           : (p.score || 0)}
                       </div>
-                      <div className="text-xs font-bold text-gray-400">{gameMode === 'elemental_markets' ? 'portfolio' : 'pts'}</div>
+                      <div className="text-xs font-bold text-gray-400">{gameMode === 'elemental_markets' ? 'score' : 'pts'}</div>
                     </div>
                   </div>
                 );

@@ -232,11 +232,11 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
             </div>
             <div
               className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-2 flex items-center gap-2"
-              title="Portfolio = your cash + the current market value of every share you own. It's the number that decides the leaderboard."
+              title="Your current score — cash plus the market value of any shares you own. This is what gets saved when the game ends."
             >
-              <BarChart3 className="w-4 h-4 text-white/70" />
+              <Trophy className="w-4 h-4 text-yellow-300" />
               <div>
-                <div className="text-[10px] font-black uppercase tracking-wider text-white/50 leading-none">Portfolio</div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-white/50 leading-none">Score</div>
                 <div className="font-black tabular-nums text-sm sm:text-base leading-none mt-0.5">{fmtMoney(portfolio)}</div>
               </div>
             </div>
@@ -424,7 +424,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
                 </div>
                 <div>
                   <div className="text-base font-black">Markets</div>
-                  <div className="text-xs text-white/50">Cash {fmtMoney(cash)} · Portfolio {fmtMoney(portfolio)}</div>
+                  <div className="text-xs text-white/50">Cash {fmtMoney(cash)} · Score {fmtMoney(portfolio)}</div>
                 </div>
               </div>
               <button onClick={() => setShowMarkets(false)} className="p-2 hover:bg-white/10 rounded-lg">

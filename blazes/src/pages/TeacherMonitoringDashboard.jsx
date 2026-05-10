@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair, X, Briefcase } from 'lucide-react';
+import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, Heart, Zap, Swords, Clock, Mountain, Droplets, Wind, Ghost, Crosshair, X } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
 import VolumeControl from '../components/VolumeControl';
 import { createSeamlessLoop } from '../utils/seamlessAudio';
@@ -719,23 +719,14 @@ export default function TeacherMonitoringDashboard() {
                     )}
 
                     <div className="flex items-center gap-2 pt-3 border-t border-gray-300">
-                      {isMarkets ? (
-                        <>
-                          <Briefcase className="w-4 h-4 text-emerald-600" />
-                          <span className="text-sm font-semibold text-gray-700">
-                            Portfolio: <span className="text-emerald-600">
-                              ${portfolio != null ? portfolio.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
-                            </span>
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <TrendingUp className="w-4 h-4 text-green-600" />
-                          <span className="text-sm font-semibold text-gray-700">
-                            Score: <span className="text-green-600">{player.score || 0}</span>
-                          </span>
-                        </>
-                      )}
+                      <TrendingUp className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-semibold text-gray-700">
+                        Score: <span className="text-green-600">
+                          {isMarkets
+                            ? `$${(portfolio ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                            : (player.score || 0)}
+                        </span>
+                      </span>
                     </div>
                   </button>
                 );

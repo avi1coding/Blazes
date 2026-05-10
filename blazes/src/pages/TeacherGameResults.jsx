@@ -163,7 +163,7 @@ export default function TeacherGameResults() {
                             </div>
                             <div className="text-right">
                                 <div className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900">{fmtScore(winner.score)}</div>
-                                <div className="text-sm font-bold text-gray-400">{isMarkets ? 'portfolio' : 'points'}</div>
+                                <div className="text-sm font-bold text-gray-400">{isMarkets ? 'score' : 'points'}</div>
                             </div>
                         </div>
                     </div>
@@ -174,12 +174,12 @@ export default function TeacherGameResults() {
                     <div className="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-200">
                         <Zap className="w-6 h-6 text-yellow-500 mx-auto mb-2" strokeWidth={2.5} />
                         <div className="text-2xl font-black text-gray-900">{fmtScore(topScore)}</div>
-                        <div className="text-xs font-bold text-gray-500">{isMarkets ? 'Top Portfolio' : 'Top Score'}</div>
+                        <div className="text-xs font-bold text-gray-500">Top Score</div>
                     </div>
                     <div className="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-200">
                         <BarChart3 className="w-6 h-6 text-blue-500 mx-auto mb-2" strokeWidth={2.5} />
                         <div className="text-2xl font-black text-gray-900">{fmtScore(avgScore)}</div>
-                        <div className="text-xs font-bold text-gray-500">{isMarkets ? 'Avg Portfolio' : 'Avg Score'}</div>
+                        <div className="text-xs font-bold text-gray-500">Avg Score</div>
                     </div>
                     <div className="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-200">
                         <Users className="w-6 h-6 text-green-500 mx-auto mb-2" strokeWidth={2.5} />
@@ -265,7 +265,7 @@ export default function TeacherGameResults() {
                                         {/* Score */}
                                         <div className="text-right flex-shrink-0">
                                             <div className="text-xl font-black text-gray-900">{fmtScore(p.score)}</div>
-                                            <div className="text-xs font-bold text-gray-400">{isMarkets ? 'portfolio' : 'pts'}</div>
+                                            <div className="text-xs font-bold text-gray-400">{isMarkets ? 'score' : 'pts'}</div>
                                         </div>
                                     </div>
                                 );

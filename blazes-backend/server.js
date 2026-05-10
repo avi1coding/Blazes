@@ -716,6 +716,9 @@ db.run(`ALTER TABLE users ADD COLUMN google_refresh_token TEXT`, () => { });
 db.run(`ALTER TABLE users ADD COLUMN google_scopes TEXT`, () => { });
 db.run(`ALTER TABLE users ADD COLUMN password_changed_at TEXT`, () => {});
 db.run(`ALTER TABLE users ADD COLUMN subscription_tier TEXT DEFAULT 'free'`, () => {});
+// One-shot 3-day free trial of teacher_pro. Set to 1 once a teacher
+// has consumed their trial; prevents re-use.
+db.run(`ALTER TABLE users ADD COLUMN trial_used INTEGER DEFAULT 0`, () => {});
 db.run(`ALTER TABLE users ADD COLUMN subscription_id TEXT`, () => {});
 db.run(`ALTER TABLE users ADD COLUMN subscription_expires TEXT`, () => {});
 db.run(`ALTER TABLE users ADD COLUMN stripe_customer_id TEXT`, () => {});
@@ -6320,15 +6323,44 @@ app.get('/api/packs/available', async (req, res) => {
 // Get user subscription status
 app.get('/api/subscription/:userId', async (req, res) => {
   try {
-    const user = await dbGet('SELECT subscription_tier, subscription_expires, stripe_customer_id FROM users WHERE id = ?', [req.params.userId]);
+    const user = await dbGet('SELECT role, subscription_tier, subscription_expires, stripe_customer_id, trial_used FROM users WHERE id = ?', [req.params.userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     const tier = await getUserTier(req.params.userId);
+    // Eligible for the one-shot 3-day trial: teacher, on free tier, hasn't used it yet.
+    const trialEligible = user.role === 'teacher' && tier === 'free' && !user.trial_used;
     res.json({
       tier,
       expires: user.subscription_expires,
-      hasStripeCustomer: !!user.stripe_customer_id
+      hasStripeCustomer: !!user.stripe_customer_id,
+      trialUsed: !!user.trial_used,
+      trialEligible,
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Activate the 3-day Teacher Pro free trial. Server-validated: must be teacher,
+// must currently be on free, must not have used the trial before. Sets the
+// expiry timestamp and flips trial_used so the trial can never be replayed.
+app.post('/api/subscription/start-trial', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const user = await dbGet('SELECT role, subscription_tier, trial_used FROM users WHERE id = ?', [userId]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.role !== 'teacher') return res.status(403).json({ error: 'Trial is for teachers only' });
+    if (user.trial_used) return res.status(403).json({ error: 'You have already used your free trial' });
+    const currentTier = await getUserTier(userId);
+    if (currentTier !== 'free') return res.status(403).json({ error: 'Trial unavailable while another plan is active' });
+    const expires = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+    await dbRun(
+      `UPDATE users SET subscription_tier = 'teacher_pro', subscription_expires = ?, trial_used = 1 WHERE id = ?`,
+      [expires, userId]
+    );
+    res.json({ message: 'Trial started', tier: 'teacher_pro', expires });
+  } catch (err) {
+    console.error('[start-trial]', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Create Stripe checkout session

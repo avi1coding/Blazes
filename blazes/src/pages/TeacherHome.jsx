@@ -71,6 +71,7 @@ export default function TeacherHome() {
   const [studentSkins, setStudentSkins] = useState({});
   const [studentTiers, setStudentTiers] = useState({});
   const [kits, setKits] = useState([]);
+  const [kitsLoading, setKitsLoading] = useState(true);
   const [editingKit, setEditingKit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -210,10 +211,12 @@ export default function TeacherHome() {
       try {
         const response = await fetch(`${base}/api/kits/teacher/${parsedUser.id}`);
         const data = await response.json();
-        setKits(data);
+        setKits(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching kits:', error);
         setKits([]);
+      } finally {
+        setKitsLoading(false);
       }
     };
 
@@ -1763,7 +1766,23 @@ export default function TeacherHome() {
                 </button>
               </div>
 
-              {kits.length === 0 ? (
+              {kitsLoading ? (
+                // Skeleton cards so the user never sees the empty state during the
+                // initial fetch. Renders three placeholders that look like real cards.
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                      <div className="h-6 w-3/4 bg-gray-200 rounded-md mb-3 animate-pulse" />
+                      <div className="flex gap-2 mb-4">
+                        <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" />
+                        <div className="h-5 w-12 bg-gray-200 rounded-full animate-pulse" />
+                      </div>
+                      <div className="h-4 w-1/2 bg-gray-100 rounded mb-2 animate-pulse" />
+                      <div className="h-9 w-full bg-gray-100 rounded-lg mt-4 animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : kits.length === 0 ? (
                 <div className="bg-white rounded-2xl p-6 sm:p-8 md:p-12 text-center shadow-sm border border-gray-200">
                   <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-600 font-semibold mb-2">No kits yet</p>

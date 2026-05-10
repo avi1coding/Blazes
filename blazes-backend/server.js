@@ -842,6 +842,32 @@ const BASIC_SKIN_IDS = ['basic-red','basic-orange','basic-yellow','basic-green',
 const randomBasicSkin = () => BASIC_SKIN_IDS[Math.floor(Math.random() * BASIC_SKIN_IDS.length)];
 
 // =========== DB PROMISE HELPERS ===========
+// Turso/libsql refuses to bind `undefined` as a parameter (it throws
+// "Unsupported type of value"). The native sqlite3 driver silently coerces
+// undefined → null. Many endpoints destructure optional fields off req.body
+// and pass them straight through, so when a caller omits a column we'd
+// previously hit a runtime error and the INSERT/UPDATE was lost. We patch
+// the raw db.run/get/all methods so EVERY endpoint — even the ones using
+// the callback API — gets undefined → null sanitisation for free.
+const _safeParams = (params) => (Array.isArray(params) ? params : []).map(v => v === undefined ? null : v);
+const _origRun = db.run.bind(db);
+const _origGet = db.get.bind(db);
+const _origAll = db.all.bind(db);
+db.run = function (sql, params, cb) {
+  if (typeof params === 'function') return _origRun(sql, params); // (sql, cb) form
+  if (Array.isArray(params)) return _origRun(sql, _safeParams(params), cb);
+  return _origRun(sql, params, cb);
+};
+db.get = function (sql, params, cb) {
+  if (typeof params === 'function') return _origGet(sql, params);
+  if (Array.isArray(params)) return _origGet(sql, _safeParams(params), cb);
+  return _origGet(sql, params, cb);
+};
+db.all = function (sql, params, cb) {
+  if (typeof params === 'function') return _origAll(sql, params);
+  if (Array.isArray(params)) return _origAll(sql, _safeParams(params), cb);
+  return _origAll(sql, params, cb);
+};
 const dbGet = (sql, params = []) => new Promise((res, rej) => db.get(sql, params, (e, r) => e ? rej(e) : res(r)));
 const dbAll = (sql, params = []) => new Promise((res, rej) => db.all(sql, params, (e, r) => e ? rej(e) : res(r)));
 const dbRun = (sql, params = []) => new Promise((res, rej) => db.run(sql, params, function(e) { e ? rej(e) : res(this.changes); }));

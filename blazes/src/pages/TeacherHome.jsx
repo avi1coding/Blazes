@@ -1,4 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
+
+// ─── Stale-while-revalidate cache helpers ───────────────────────────────
+// Persist heavy dashboard pieces (stats, kits, classrooms, etc.) to
+// localStorage keyed by userId. Lazy-init state from cache so the page
+// renders instantly with the user's last-seen data, then the real fetch
+// hydrates the latest values in the background. Subsequent visits feel
+// instant even when the backend is slow.
+function _readUser() {
+  try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
+}
+function _cacheKey(suffix) {
+  const u = _readUser();
+  return u ? `th:${u.id}:${suffix}` : null;
+}
+function readCached(suffix, fallback) {
+  const k = _cacheKey(suffix);
+  if (!k) return fallback;
+  try {
+    const raw = localStorage.getItem(k);
+    return raw == null ? fallback : JSON.parse(raw);
+  } catch { return fallback; }
+}
+function writeCached(suffix, value) {
+  const k = _cacheKey(suffix);
+  if (!k) return;
+  try { localStorage.setItem(k, JSON.stringify(value)); } catch {}
+}
 import SkinsPage, { AvatarPreview, isBlazesPlusCached, cacheTier, cacheEquippedSkin, initialEquippedSkin } from './SkinsPage';
 import AchievementsMap from './AchievementsMap';
 import CreateKit from '../components/CreateKit';
@@ -58,20 +85,21 @@ export default function TeacherHome() {
       setJoinLoading(false);
     }
   };
-  const [teacherStats, setTeacherStats] = useState({
-    totalGames: 0,
-    avgScore: 0,
-    activeStudents: 0,
-    totalClasses: 0,
-    classesToday: 0
-  });
-  const [topPerformers, setTopPerformers] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [studentsNeedingHelp, setStudentsNeedingHelp] = useState([]);
+  // Lazy-init from localStorage cache so the dashboard renders with last-seen
+  // data immediately; the fetches below refresh it. First visit still pays the
+  // full network cost, every subsequent visit feels instant.
+  const [teacherStats, setTeacherStats] = useState(() => readCached('stats', {
+    totalGames: 0, avgScore: 0, activeStudents: 0, totalClasses: 0, classesToday: 0,
+  }));
+  const [topPerformers, setTopPerformers] = useState(() => readCached('top', []));
+  const [recentActivity, setRecentActivity] = useState(() => readCached('activity', []));
+  const [studentsNeedingHelp, setStudentsNeedingHelp] = useState(() => readCached('needhelp', []));
   const [studentSkins, setStudentSkins] = useState({});
   const [studentTiers, setStudentTiers] = useState({});
-  const [kits, setKits] = useState([]);
-  const [kitsLoading, setKitsLoading] = useState(true);
+  const [kits, setKits] = useState(() => readCached('kits', []));
+  // If we have a non-empty cached list we can skip the skeleton entirely —
+  // the fresh fetch will reconcile differences in the background.
+  const [kitsLoading, setKitsLoading] = useState(() => readCached('kits', []).length === 0);
   const [editingKit, setEditingKit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -84,7 +112,7 @@ export default function TeacherHome() {
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newImagePreview, setNewImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [classrooms, setClassrooms] = useState([]);
+  const [classrooms, setClassrooms] = useState(() => readCached('classrooms', []));
   const [showCreateClassroom, setShowCreateClassroom] = useState(false);
   const [newClassroom, setNewClassroom] = useState({ name: '', subject: '', gradeLevel: '', imageUrl: '' });
   const [showGoogleImport, setShowGoogleImport] = useState(false);
@@ -154,70 +182,47 @@ export default function TeacherHome() {
       navigate('/home/student');
     }
 
-    // Fetch stats from backend
+    // Every fetch writes its result into the SWR cache after success, so the
+    // next mount lazy-inits from a populated cache.
     const fetchStats = async () => {
       try {
-        const response = await fetch(`${base}/api/stats/${parsedUser.id}`);
-        const data = await response.json();
+        const data = await fetch(`${base}/api/stats/${parsedUser.id}`).then(r => r.json());
         setTeacherStats(data);
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        // Use default stats if fetch fails
-        const initialStats = {
-          totalGames: 0,
-          avgScore: 0,
-          activeStudents: 0,
-          totalClasses: 0,
-          classesToday: 0
-        };
-        setTeacherStats(initialStats);
-      }
+        writeCached('stats', data);
+      } catch (e) { console.error('Error fetching stats:', e); }
     };
-
     const fetchTopPerformers = async () => {
       try {
-        const response = await fetch(`${base}/api/students/top-performers/${parsedUser.id}`);
-        const data = await response.json();
-        setTopPerformers(data);
-      } catch (error) {
-        console.error('Error fetching top performers:', error);
-        setTopPerformers([]);
-      }
+        const data = await fetch(`${base}/api/students/top-performers/${parsedUser.id}`).then(r => r.json());
+        const arr = Array.isArray(data) ? data : [];
+        setTopPerformers(arr);
+        writeCached('top', arr);
+      } catch (e) { console.error('Error fetching top performers:', e); }
     };
-
     const fetchRecentActivity = async () => {
       try {
-        const response = await fetch(`${base}/api/activity/${parsedUser.id}/10`);
-        const data = await response.json();
-        setRecentActivity(data);
-      } catch (error) {
-        console.error('Error fetching recent activity:', error);
-        setRecentActivity([]);
-      }
+        const data = await fetch(`${base}/api/activity/${parsedUser.id}/10`).then(r => r.json());
+        const arr = Array.isArray(data) ? data : [];
+        setRecentActivity(arr);
+        writeCached('activity', arr);
+      } catch (e) { console.error('Error fetching recent activity:', e); }
     };
-
     const fetchStudentsNeedingHelp = async () => {
       try {
-        const response = await fetch(`${base}/api/students/needing-help/${parsedUser.id}`);
-        const data = await response.json();
-        setStudentsNeedingHelp(data);
-      } catch (error) {
-        console.error('Error fetching students needing help:', error);
-        setStudentsNeedingHelp([]);
-      }
+        const data = await fetch(`${base}/api/students/needing-help/${parsedUser.id}`).then(r => r.json());
+        const arr = Array.isArray(data) ? data : [];
+        setStudentsNeedingHelp(arr);
+        writeCached('needhelp', arr);
+      } catch (e) { console.error('Error fetching students needing help:', e); }
     };
-
     const fetchKits = async () => {
       try {
-        const response = await fetch(`${base}/api/kits/teacher/${parsedUser.id}`);
-        const data = await response.json();
-        setKits(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error('Error fetching kits:', error);
-        setKits([]);
-      } finally {
-        setKitsLoading(false);
-      }
+        const data = await fetch(`${base}/api/kits/teacher/${parsedUser.id}`).then(r => r.json());
+        const arr = Array.isArray(data) ? data : [];
+        setKits(arr);
+        writeCached('kits', arr);
+      } catch (e) { console.error('Error fetching kits:', e); }
+      finally { setKitsLoading(false); }
     };
 
     fetchStats();
@@ -225,9 +230,10 @@ export default function TeacherHome() {
     fetchRecentActivity();
     fetchStudentsNeedingHelp();
     fetchKits();
-    // Fetch classrooms
     fetch(`${base}/api/classrooms/teacher/${parsedUser.id}`)
-      .then(r => r.json()).then(setClassrooms).catch(() => {});
+      .then(r => r.json())
+      .then(data => { const arr = Array.isArray(data) ? data : []; setClassrooms(arr); writeCached('classrooms', arr); })
+      .catch(() => {});
   }, [navigate]);
 
   // Fetch skins for any student we haven't fetched yet

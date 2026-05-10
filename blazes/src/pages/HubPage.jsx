@@ -31,6 +31,12 @@ export default function HubPage() {
   const [subscription, setSubscription] = useState(null);
   const [badges, setBadges] = useState([]);
 
+  // /hub?tab=upgrade should send the user to the polished pricing page,
+  // not the inline UpgradeCard. Catch it before any data fetches.
+  useEffect(() => {
+    if (tab === 'upgrade') navigate('/upgrade', { replace: true });
+  }, [tab, navigate]);
+
   // Bounce to /login if there's no user; if there is, fan out the data fetches.
   useEffect(() => {
     if (!user) {
@@ -97,13 +103,14 @@ export default function HubPage() {
               <span className="font-black text-yellow-700 text-sm tabular-nums">{blazesBucks.toLocaleString()}</span>
             </div>
           </div>
-          {/* Tab strip */}
+          {/* Tab strip — Upgrade jumps to the polished /upgrade page, not an inline card */}
           <div className="flex items-center gap-1 overflow-x-auto pb-3 -mx-1 px-1">
             {tabs.map(t => {
               const Icon = t.icon;
               const isActive = tab === t.id;
+              const onClick = t.id === 'upgrade' ? () => navigate('/upgrade') : () => switchTab(t.id);
               return (
-                <button key={t.id} onClick={() => switchTab(t.id)}
+                <button key={t.id} onClick={onClick}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap flex-shrink-0 ${
                     isActive ? 'bg-red-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
                   }`}>

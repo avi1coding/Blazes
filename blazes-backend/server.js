@@ -592,6 +592,31 @@ db.run(`ALTER TABLE games ADD COLUMN team_2_score INTEGER DEFAULT 0`, () => { })
 // Set when the host bails out mid-game; results page renders a different
 // message ("host ended early") instead of the placement leaderboard.
 db.run(`ALTER TABLE games ADD COLUMN abandoned INTEGER DEFAULT 0`, () => { });
+
+// ─── Indexes ─────────────────────────────────────────────────────────────
+// These columns are queried/joined/filtered constantly (kit lookups, game
+// answers per question, participants per game, BB log per user, etc.).
+// Without indexes, every query did a full table scan. Adding these cuts
+// most read paths from O(n) to O(log n) and dramatically speeds up CRUD
+// + the teacher analytics endpoint. CREATE INDEX IF NOT EXISTS is idempotent.
+db.run(`CREATE INDEX IF NOT EXISTS idx_questions_kit_id ON questions(kit_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_game_answers_question_id ON game_answers(question_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_game_answers_game_id ON game_answers(game_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_game_answers_user_id ON game_answers(user_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_game_participants_game_id ON game_participants(game_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_game_participants_user_id ON game_participants(user_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_games_host_id ON games(host_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_games_kit_id ON games(kit_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_question_kits_teacher_id ON question_kits(teacher_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_assignments_kit_id ON assignments(kit_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_assignments_classroom_id ON assignments(classroom_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_assignment_submissions_student_id ON assignment_submissions(student_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_assignment_submissions_assignment_id ON assignment_submissions(assignment_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_classroom_students_student_id ON classroom_students(student_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_classroom_students_classroom_id ON classroom_students(classroom_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_classrooms_teacher_id ON classrooms(teacher_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_blazes_bucks_log_user_id ON blazes_bucks_log(user_id)`, () => {});
 db.run(`CREATE TABLE IF NOT EXISTS elemental_attacks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   game_id INTEGER,
@@ -1894,29 +1919,50 @@ app.put('/api/kits/:kitId', (req, res) => {
   );
 });
 
-// Delete a kit (and all its questions). Both deletes fire in parallel — the
-// previous sequential pair cost two round-trips (~400ms on Turso); now ~200ms.
+// Delete a kit (and all its questions).
+//
+// The previous version failed silently whenever the kit had ever been used
+// in a game or referenced by an assignment — every FK pointing at this kit
+// or its questions had to be cleared first or the deletes blew up. Now:
+//   1. parallel: drop game_answers for these questions, null out games.kit_id,
+//      null out assignments.kit_id  (preserves game/assignment history but
+//      disconnects them from the soon-to-be-gone questions)
+//   2. delete the questions
+//   3. delete the kit
 app.delete('/api/kits/:kitId', async (req, res) => {
   const { kitId } = req.params;
   try {
+    // Phase 1 — clear dependents/references in parallel
     await Promise.all([
-      dbRun('DELETE FROM questions WHERE kit_id = ?', [kitId]),
-      dbRun('DELETE FROM question_kits WHERE id = ?', [kitId]),
+      dbRun(
+        'DELETE FROM game_answers WHERE question_id IN (SELECT id FROM questions WHERE kit_id = ?)',
+        [kitId]
+      ),
+      dbRun('UPDATE games SET kit_id = NULL WHERE kit_id = ?', [kitId]),
+      dbRun('UPDATE assignments SET kit_id = NULL WHERE kit_id = ?', [kitId]),
     ]);
+    // Phase 2 — questions
+    await dbRun('DELETE FROM questions WHERE kit_id = ?', [kitId]);
+    // Phase 3 — the kit itself
+    await dbRun('DELETE FROM question_kits WHERE id = ?', [kitId]);
     res.json({ message: 'Kit deleted successfully' });
   } catch (err) {
+    console.error('[delete kit]', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Delete a question from a kit
-app.delete('/api/kits/:kitId/questions/:questionId', (req, res) => {
+// Delete a question from a kit. Clears game_answers first so the FK doesn't block.
+app.delete('/api/kits/:kitId/questions/:questionId', async (req, res) => {
   const { questionId } = req.params;
-
-  db.run('DELETE FROM questions WHERE id = ?', [questionId], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    await dbRun('DELETE FROM game_answers WHERE question_id = ?', [questionId]);
+    await dbRun('DELETE FROM questions WHERE id = ?', [questionId]);
     res.json({ message: 'Question deleted successfully' });
-  });
+  } catch (err) {
+    console.error('[delete question]', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Update a question

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import {
   Flame, Trophy, Crown, Users, Clock, Zap, TrendingUp, TrendingDown,
   Swords, Mountain, Droplets, Wind, Heart, Ghost, Newspaper, DollarSign,
-  BarChart3, Maximize2, Activity, Star,
+  BarChart3, Maximize2, Activity, Star, ArrowUp, Sparkles, Medal,
 } from 'lucide-react';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 
@@ -145,12 +145,29 @@ function AnimatedBackground({ theme }) {
         }
         @keyframes scoreBump {
           0%   { transform: scale(1); }
-          40%  { transform: scale(1.18); color: #fbbf24; }
+          40%  { transform: scale(1.22); color: #fbbf24; text-shadow: 0 0 24px rgba(251,191,36,0.7); }
           100% { transform: scale(1); }
         }
         @keyframes slideUp {
-          from { transform: translateY(8px); opacity: 0; }
+          from { transform: translateY(12px); opacity: 0; }
           to   { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes rowEnter {
+          from { transform: translateY(-6px); opacity: 0; }
+          to   { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes glowPulse {
+          0%, 100% { box-shadow: 0 0 24px var(--glow), 0 0 0 1px rgba(255,255,255,0.1) inset; }
+          50%      { box-shadow: 0 0 48px var(--glow), 0 0 0 1px rgba(255,255,255,0.15) inset; }
+        }
+        @keyframes podiumRise {
+          from { transform: translateY(60px); opacity: 0; }
+          to   { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes confetti {
+          0%   { transform: translateY(-100vh) rotate(0deg); opacity: 0; }
+          5%   { opacity: 1; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
       `}</style>
     </>
@@ -178,6 +195,9 @@ export default function TeacherPresentView() {
   const fetchedSkinIds = useRef(new Set());
   const seenEventIds = useRef(new Set());
   const prevScores = useRef({}); // user_id → last score, used to bump on change
+  const prevRanks = useRef({}); // user_id → last rank position, used to detect overtakes
+  const streakCount = useRef({}); // user_id → consecutive score-up polls (proxy for answer streak)
+  const eventCounter = useRef(0); // monotonic id for client-generated events
   const [bumped, setBumped] = useState({}); // user_id → timestamp of last bump
 
   // Poll the game every 2s. For modes that have their own live-state endpoint,
@@ -275,22 +295,100 @@ export default function TeacherPresentView() {
 
   // Bump a score when it changes so the projector audience can see who just
   // moved up. Trigger via a per-user timestamp that the row reads to set an
-  // inline animation.
+  // inline animation. Same pass also generates synthetic events for modes
+  // without their own event stream — streaks (consecutive score-ups), big
+  // jumps (fast correct answers), and rank overtakes ("upsets").
   useEffect(() => {
-    const next = { ...prevScores.current };
-    let changed = false;
+    const mode = game?.game_mode;
+    const nextScores = { ...prevScores.current };
+    const nextRanks = { ...prevRanks.current };
     const newBumps = {};
+    const generatedEvents = [];
+    let changed = false;
+
+    // Build current rank map from the freshly-ranked list
+    const currentRanks = {};
+    ranked.forEach((p, i) => { currentRanks[p.user_id] = i + 1; });
+
     for (const p of ranked) {
-      const prev = next[p.user_id];
-      if (prev != null && prev !== p.score) {
+      const prevScore = nextScores[p.user_id];
+      const prevRank = nextRanks[p.user_id];
+      const delta = prevScore != null ? p.score - prevScore : 0;
+
+      if (prevScore != null && prevScore !== p.score) {
         newBumps[p.user_id] = Date.now();
         changed = true;
       }
-      next[p.user_id] = p.score;
+
+      // Synthetic events — only meaningful for the "generic" modes that lack
+      // their own server-side event feed (classic, survival, wager, arena).
+      // Markets/clash/inferno already have rich event streams.
+      const wantsGenericEvents = mode === 'classic_timed' || mode === 'survival'
+        || mode === 'elemental_wager' || mode === 'arena';
+      if (wantsGenericEvents && prevScore != null) {
+        if (delta > 0) {
+          streakCount.current[p.user_id] = (streakCount.current[p.user_id] || 0) + 1;
+          const streak = streakCount.current[p.user_id];
+
+          // Big-jump event: a fast classic answer is in the 80-100 range, so
+          // surface it as a "speed" call-out the room can see.
+          if (delta >= 80) {
+            generatedEvents.push({
+              id: `fast-${p.user_id}-${++eventCounter.current}`,
+              icon: Zap,
+              color: '#fde047',
+              text: `${p.player_name} fast answer · +${delta}`,
+              ts: Date.now(),
+            });
+          }
+
+          // Streak milestones — 3, 5, 7, 10 in a row without missing one
+          if (streak === 3 || streak === 5 || streak === 7 || streak === 10) {
+            generatedEvents.push({
+              id: `streak-${p.user_id}-${streak}-${++eventCounter.current}`,
+              icon: Flame,
+              color: streak >= 7 ? '#fb923c' : '#fbbf24',
+              text: `${p.player_name} on a ${streak}-streak!`,
+              ts: Date.now(),
+            });
+          }
+        } else if (delta < 0 || (delta === 0 && p.score === prevScore && currentRanks[p.user_id] > prevRank)) {
+          // Score didn't go up — streak resets next time they get one wrong
+          streakCount.current[p.user_id] = 0;
+        }
+      }
+
+      // Upset/overtake event — someone moved from rank K → K-1 (or better)
+      // while the player above them stayed put. Skip the first poll where
+      // we have no previous rank to compare against.
+      if (wantsGenericEvents && prevRank != null) {
+        const newRank = currentRanks[p.user_id];
+        if (newRank < prevRank && newRank <= 5) {
+          // Find who used to be at newRank — the person they passed
+          const passedId = Object.keys(nextRanks).find(uid => nextRanks[uid] === newRank);
+          const passed = ranked.find(r => String(r.user_id) === String(passedId));
+          if (passed && passed.user_id !== p.user_id) {
+            generatedEvents.push({
+              id: `upset-${p.user_id}-${++eventCounter.current}`,
+              icon: ArrowUp,
+              color: '#a78bfa',
+              text: `${p.player_name} overtook ${passed.player_name} for #${newRank}`,
+              ts: Date.now(),
+            });
+          }
+        }
+      }
+
+      nextScores[p.user_id] = p.score;
     }
-    prevScores.current = next;
+
+    prevScores.current = nextScores;
+    prevRanks.current = currentRanks;
     if (changed) setBumped(b => ({ ...b, ...newBumps }));
-  }, [ranked]);
+    if (generatedEvents.length) {
+      setRecentEvents(prev => [...generatedEvents.reverse(), ...prev].slice(0, 12));
+    }
+  }, [ranked, game?.game_mode]);
 
   // Accumulate live events for the right-hand panel. Each mode populates
   // a unified [{id, icon, color, text, ts}] feed for rendering.
@@ -360,6 +458,13 @@ export default function TeacherPresentView() {
     <div className={`min-h-screen relative overflow-hidden ${textOn}`}>
       <AnimatedBackground theme={theme} />
 
+      {/* Final-results podium — overlays everything once the game ends. Top 3
+          if ≤ 10 players, top 5 if more, so a big classroom still gets a fair
+          shot at the spotlight. */}
+      {game?.status === 'ended' && ranked.length > 0 && (
+        <Podium ranked={ranked} theme={theme} mode={game?.game_mode} />
+      )}
+
       {/* Header bar */}
       <header className="px-6 sm:px-10 pt-6 pb-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -414,42 +519,57 @@ export default function TeacherPresentView() {
               Waiting for players…
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {ranked.slice(0, 12).map((p, i) => {
                 const place = i + 1;
                 const isBumped = bumped[p.user_id] && Date.now() - bumped[p.user_id] < 1200;
+                const isFirst = place === 1;
+                const isPodium = place <= 3;
+                const tone = theme.dark
+                  ? (isFirst ? 'bg-white/[0.09] border-white/20' : isPodium ? 'bg-white/[0.06] border-white/15' : 'bg-white/[0.04] border-white/10')
+                  : (isFirst ? 'bg-white/80 border-white/70' : isPodium ? 'bg-white/65 border-white/50' : 'bg-white/45 border-white/35');
                 return (
                   <div
                     key={p.user_id}
-                    className={`flex items-center gap-4 p-3 sm:p-4 rounded-2xl border-2 transition-all ${
-                      theme.dark ? 'bg-white/5 border-white/10' : 'bg-white/60 border-white/40 backdrop-blur'
-                    } ${place === 1 ? 'scale-[1.02]' : ''} ${p.eliminated || p.is_ghost ? 'opacity-50' : ''}`}
-                    style={place === 1 ? { boxShadow: `0 0 24px ${theme.accent}55` } : {}}
+                    className={`group flex items-center gap-4 sm:gap-5 px-4 py-3 sm:px-5 sm:py-4 rounded-2xl border-2 backdrop-blur-sm transition-all duration-500 ${tone} ${
+                      isFirst ? 'scale-[1.025]' : ''
+                    } ${p.eliminated || p.is_ghost ? 'opacity-45' : ''}`}
+                    style={{
+                      ...(isFirst ? { '--glow': `${theme.accent}66`, animation: 'glowPulse 3.2s ease-in-out infinite' } : {}),
+                      animation: isFirst ? 'glowPulse 3.2s ease-in-out infinite, rowEnter 0.45s ease-out' : 'rowEnter 0.45s ease-out',
+                    }}
                   >
                     {/* Placement */}
-                    <div className="flex-shrink-0 w-12 sm:w-14 text-center">
-                      {place === 1 ? (
-                        <Crown className="w-9 h-9 mx-auto" style={{ color: theme.accent }} strokeWidth={2.5} />
+                    <div className="flex-shrink-0 w-14 sm:w-16 text-center">
+                      {isFirst ? (
+                        <Crown className="w-11 h-11 mx-auto drop-shadow-lg" style={{ color: theme.accent }} strokeWidth={2.5} />
+                      ) : place === 2 ? (
+                        <Medal className="w-9 h-9 mx-auto" style={{ color: theme.dark ? '#e5e7eb' : '#6b7280' }} strokeWidth={2.5} />
+                      ) : place === 3 ? (
+                        <Medal className="w-9 h-9 mx-auto" style={{ color: '#f59e0b' }} strokeWidth={2.5} />
                       ) : (
-                        <span className={`text-2xl sm:text-3xl font-black ${place <= 3 ? '' : 'opacity-50'}`}>
-                          #{place}
+                        <span className={`text-2xl sm:text-3xl font-black ${isPodium ? '' : 'opacity-40'}`}>
+                          {place}
                         </span>
                       )}
                     </div>
 
                     {/* Avatar */}
-                    <AvatarPreview
-                      skinId={p.avatar}
-                      initial={(p.player_name || '?')[0].toUpperCase()}
-                      size={56}
-                      userId={p.user_id}
-                    />
+                    <div className={isFirst ? 'ring-4 ring-offset-2 rounded-full' : ''}
+                         style={isFirst ? { ringColor: theme.accent, '--tw-ring-color': theme.accent, '--tw-ring-offset-color': 'transparent' } : {}}>
+                      <AvatarPreview
+                        skinId={p.avatar}
+                        initial={(p.player_name || '?')[0].toUpperCase()}
+                        size={isFirst ? 64 : 56}
+                        userId={p.user_id}
+                      />
+                    </div>
 
                     {/* Name + sub-info */}
                     <div className="flex-1 min-w-0">
                       <div
-                        className="text-xl sm:text-2xl font-black truncate"
-                        style={{ color: place === 1 ? theme.accent : getNameColor(p.avatar) || undefined }}
+                        className={`font-black truncate ${isFirst ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'}`}
+                        style={{ color: isFirst ? theme.accent : getNameColor(p.avatar) || undefined }}
                       >
                         {p.player_name}
                       </div>
@@ -457,14 +577,14 @@ export default function TeacherPresentView() {
                     </div>
 
                     {/* Score */}
-                    <div className="text-right flex-shrink-0">
+                    <div className="text-right flex-shrink-0 min-w-[6rem]">
                       <div
-                        className="text-2xl sm:text-3xl md:text-4xl font-black tabular-nums"
+                        className={`font-black tabular-nums leading-none ${isFirst ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}
                         style={isBumped ? { animation: 'scoreBump 0.9s ease-out' } : {}}
                       >
                         {formatScore(p.score, game?.game_mode)}
                       </div>
-                      <div className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                      <div className="text-[10px] font-black uppercase tracking-widest opacity-60 mt-1">
                         {game?.game_mode === 'elemental_markets' ? 'score' : 'points'}
                       </div>
                     </div>
@@ -473,7 +593,7 @@ export default function TeacherPresentView() {
               })}
               {ranked.length > 12 && (
                 <div className={`text-center text-xs ${subtleText} font-bold pt-2`}>
-                  + {ranked.length - 12} more
+                  + {ranked.length - 12} more players
                 </div>
               )}
             </div>
@@ -574,6 +694,149 @@ function ModeBanner({ game, modeData, theme }) {
   }
 
   return null;
+}
+
+// End-of-game podium overlay. Slots are arranged 2 - 1 - 3 (with 4 - 2 - 1 - 3
+// - 5 for big classrooms) so #1 sits in the visual center on the tallest
+// pedestal. Each column rises in sequence so the room watches the reveal.
+function Podium({ ranked, theme, mode }) {
+  const showTop = ranked.length > 10 ? 5 : 3;
+  const winners = ranked.slice(0, showTop);
+  if (winners.length === 0) return null;
+
+  // Visual order maps placement → column index. We want #1 in the middle.
+  const orderTop3 = [2, 1, 3];                 // left to right
+  const orderTop5 = [4, 2, 1, 3, 5];
+  const visualOrder = showTop === 5 ? orderTop5 : orderTop3;
+
+  // Pedestal heights — center is tallest, outer columns are shortest.
+  const heightForPlace = (place) => {
+    if (showTop === 5) {
+      return { 1: 220, 2: 180, 3: 150, 4: 120, 5: 120 }[place] || 120;
+    }
+    return { 1: 220, 2: 170, 3: 140 }[place] || 140;
+  };
+
+  const placeColor = (place) => {
+    if (place === 1) return theme.accent;
+    if (place === 2) return theme.dark ? '#e5e7eb' : '#6b7280';
+    if (place === 3) return '#f59e0b';
+    return theme.dark ? '#cbd5e1' : '#475569';
+  };
+
+  // Confetti — drop a handful of accent-colored squares from the top of the
+  // screen so the moment feels celebratory without needing a heavy lib.
+  const confetti = useMemo(() => {
+    return Array.from({ length: 40 }).map((_, i) => ({
+      key: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 2.5,
+      duration: 4 + Math.random() * 3,
+      color: [theme.accent, '#fbbf24', '#fca5a5', '#a78bfa', '#86efac'][i % 5],
+      size: 6 + Math.random() * 10,
+    }));
+  }, [theme.accent]);
+
+  return (
+    <div
+      className="fixed inset-0 z-40 flex flex-col items-center justify-center px-6 sm:px-10 backdrop-blur-md"
+      style={{ background: theme.dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.5)' }}
+    >
+      {/* Confetti layer */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {confetti.map(c => (
+          <div
+            key={c.key}
+            className="absolute rounded-sm"
+            style={{
+              left: `${c.left}%`,
+              top: 0,
+              width: c.size,
+              height: c.size,
+              background: c.color,
+              animation: `confetti ${c.duration}s linear ${c.delay}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative z-10 w-full max-w-6xl text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-3"
+             style={{ background: `${theme.accent}26`, color: theme.accent }}>
+          <Sparkles className="w-4 h-4" />
+          <span className="text-xs font-black uppercase tracking-widest">Final standings</span>
+        </div>
+        <h1 className="text-4xl sm:text-6xl font-black mb-12">
+          {winners[0].player_name} <span className="opacity-60">wins</span>
+        </h1>
+
+        <div className={`grid ${showTop === 5 ? 'grid-cols-5' : 'grid-cols-3'} gap-3 sm:gap-6 items-end max-w-5xl mx-auto`}>
+          {visualOrder.map((place, idx) => {
+            const p = winners[place - 1];
+            if (!p) return <div key={place} />;
+            const h = heightForPlace(place);
+            const color = placeColor(place);
+            return (
+              <div
+                key={p.user_id}
+                className="flex flex-col items-center"
+                style={{ animation: `podiumRise 0.7s ease-out ${idx * 0.18}s both` }}
+              >
+                {/* Avatar + crown */}
+                <div className="relative mb-3">
+                  <AvatarPreview
+                    skinId={p.avatar}
+                    initial={(p.player_name || '?')[0].toUpperCase()}
+                    size={place === 1 ? 96 : 72}
+                    userId={p.user_id}
+                  />
+                  {place === 1 && (
+                    <Crown
+                      className="absolute -top-7 left-1/2 -translate-x-1/2 drop-shadow-lg"
+                      style={{ color: theme.accent, width: 48, height: 48 }}
+                      strokeWidth={2.5}
+                    />
+                  )}
+                </div>
+
+                {/* Name + score */}
+                <div className={`font-black ${place === 1 ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'} truncate max-w-full px-1`}
+                     style={{ color: place === 1 ? theme.accent : undefined }}>
+                  {p.player_name}
+                </div>
+                <div className={`font-black tabular-nums ${place === 1 ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl'} opacity-90`}>
+                  {formatScore(p.score, mode)}
+                </div>
+
+                {/* Pedestal */}
+                <div
+                  className="w-full mt-3 flex items-center justify-center rounded-t-xl border-t-2 border-x-2 relative overflow-hidden"
+                  style={{
+                    height: h,
+                    background: theme.dark
+                      ? `linear-gradient(180deg, ${color}30 0%, ${color}15 100%)`
+                      : `linear-gradient(180deg, ${color}50 0%, ${color}25 100%)`,
+                    borderColor: `${color}80`,
+                  }}
+                >
+                  <span
+                    className="font-black"
+                    style={{
+                      color,
+                      fontSize: place === 1 ? '5rem' : '3.5rem',
+                      textShadow: `0 0 24px ${color}80`,
+                    }}
+                  >
+                    {place}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Tiny sub-label under each player's name on the leaderboard — different per

@@ -2286,24 +2286,21 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
 
     // Scoring:
     // Arena mode: flat 10 points per correct (no time pressure — answer at your own pace)
-    // Other timed modes: 50-100 based on speed
+    // Other timed modes (classic, survival, wager): 50-100 based on speed. We
+    // used to fall back to flat 10 when a question lacked a time_limit, which
+    // made classic feel like it just counted by tens. Now we always use the
+    // speed curve with a 30s default budget so the score actually reflects
+    // how fast the player answered.
     // Wrong answer: 0
     let pointsEarned = 0;
     if (isCorrect) {
       if (game.game_mode === 'arena') {
         pointsEarned = 10;
       } else {
-        const questionTimeLimit = question.time_limit || 0;
-        if (questionTimeLimit > 0 && typeof timeTaken === 'number' && timeTaken >= 0) {
-          if (timeTaken > questionTimeLimit) {
-            pointsEarned = 0;
-          } else {
-            const ratio = timeTaken / questionTimeLimit;
-            pointsEarned = Math.round(50 + 50 * (1 - ratio));
-          }
-        } else {
-          pointsEarned = 10;
-        }
+        const questionTimeLimit = question.time_limit || 30;
+        const t = typeof timeTaken === 'number' && timeTaken >= 0 ? timeTaken : questionTimeLimit;
+        const ratio = Math.min(1, t / questionTimeLimit);
+        pointsEarned = Math.round(50 + 50 * (1 - ratio));
       }
     }
 

@@ -22,6 +22,19 @@ export default function TeacherLobby() {
       return () => audio.stop();
     }, []);
 
+    // Warm the browser cache for the in-game music while the teacher is still
+    // sitting in the lobby. Without this, GameMusic.mp3 starts downloading
+    // only when the monitoring dashboard mounts, so the music doesn't start
+    // until several seconds into the game. Fire-and-forget fetch — we don't
+    // need to use the response, we just want the bytes in the HTTP cache.
+    useEffect(() => {
+      const ctrl = new AbortController();
+      fetch('/audio/GameMusic.mp3', { signal: ctrl.signal, cache: 'force-cache' })
+        .then(r => r.arrayBuffer())
+        .catch(() => { /* offline, AbortError, etc. — silent */ });
+      return () => ctrl.abort();
+    }, []);
+
     // Cancel game if host closes/leaves the tab
     useEffect(() => {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';

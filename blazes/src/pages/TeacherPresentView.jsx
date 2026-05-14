@@ -9,56 +9,49 @@ import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
-// Each mode gets a base dark slate with a soft accent halo — the accent is the
-// only mode-specific color that bleeds into the background. Everything else
-// (cards, text, borders) is a neutral palette so the screen reads as polished
-// rather than carnival-bright. The accent is used for the leader, top-of-row
-// medals, and the live-feed icons so the room can still tell modes apart.
+// Single shared design across every mode. We used to vary the accent color
+// by game mode but the result was a kaleidoscope. Now the only thing that
+// changes is the mode label + icon shown in the header; the leaderboard,
+// background, medals, and live feed use a fixed gold/silver/bronze palette
+// the entire app over. Mode data still drives the live feed CONTENT — only
+// the colors are unified.
 const MODE_THEME = {
-  classic_timed:    { label: 'Classic Quiz',     icon: Trophy,     accent: '#fbbf24', accentSoft: 'rgba(251,191,36,0.18)' },
-  survival:         { label: 'Survival',         icon: Heart,      accent: '#f87171', accentSoft: 'rgba(248,113,113,0.20)' },
-  elemental_clash:  { label: 'Elemental Clash',  icon: Swords,     accent: '#a78bfa', accentSoft: 'rgba(167,139,250,0.20)' },
-  elemental_wager:  { label: 'Risk & Reward',    icon: TrendingUp, accent: '#34d399', accentSoft: 'rgba(52,211,153,0.20)' },
-  arena:            { label: 'Arena',            icon: Swords,     accent: '#fbbf24', accentSoft: 'rgba(251,191,36,0.18)' },
-  inferno_tower:    { label: 'Inferno Tower',    icon: Flame,      accent: '#fb923c', accentSoft: 'rgba(251,146,60,0.22)' },
-  elemental_markets:{ label: 'Elemental Markets',icon: TrendingUp, accent: '#10b981', accentSoft: 'rgba(16,185,129,0.20)' },
+  classic_timed:    { label: 'Classic Quiz',      icon: Trophy },
+  survival:         { label: 'Survival',          icon: Heart },
+  elemental_clash:  { label: 'Elemental Clash',   icon: Swords },
+  elemental_wager:  { label: 'Risk & Reward',     icon: TrendingUp },
+  arena:            { label: 'Arena',             icon: Swords },
+  inferno_tower:    { label: 'Inferno Tower',     icon: Flame },
+  elemental_markets:{ label: 'Elemental Markets', icon: TrendingUp },
 };
 
-// All modes share the same near-black gradient base. dark=true means the
-// foreground uses white text — the whole presenter is dark-mode now.
-function themeWithDefaults(t) {
-  return {
-    ...t,
-    dark: true,
-    textOnBg: '#e5e7eb',
-  };
-}
+// Shared design tokens — the only colors anyone should reach for. Anything
+// mode-specific (regime, team color, stock tint) stays inside its own pill.
+const GOLD   = '#fbbf24';
+const SILVER = '#cbd5e1';
+const BRONZE = '#d97706';
 
 function modeTheme(mode) {
-  return themeWithDefaults(MODE_THEME[mode] || MODE_THEME.classic_timed);
+  return MODE_THEME[mode] || MODE_THEME.classic_timed;
 }
 
-// Background layer — a clean dark base, two soft accent halos at top corners,
-// and a faint dot grid for texture. No bouncing icons; the design relies on
-// typography and the live cards to carry the mode personality.
-function AnimatedBackground({ theme }) {
+// Background — same on every mode. Deep slate gradient with a single warm
+// top-of-screen highlight and a faint dot-grid for texture. No mode tinting.
+function AnimatedBackground() {
   return (
     <>
-      {/* Base — near-black slate */}
       <div
         className="fixed inset-0 -z-10"
-        style={{ background: 'radial-gradient(ellipse at top, #1e293b 0%, #0f172a 60%, #020617 100%)' }}
+        style={{ background: 'linear-gradient(180deg, #0b1220 0%, #0a1426 45%, #050911 100%)' }}
       />
-      {/* Soft accent halos — bleed mode color in just enough to be felt */}
       <div
         className="fixed inset-0 -z-10 pointer-events-none"
         style={{
-          background: `radial-gradient(circle at 18% -10%, ${theme.accentSoft}, transparent 45%), radial-gradient(circle at 85% 110%, ${theme.accentSoft}, transparent 50%)`,
+          background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(251,191,36,0.10), transparent 60%)',
         }}
       />
-      {/* Faint dot grid for texture without noise */}
       <div
-        className="fixed inset-0 -z-10 pointer-events-none opacity-[0.06]"
+        className="fixed inset-0 -z-10 pointer-events-none opacity-[0.05]"
         style={{
           backgroundImage: 'radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px)',
           backgroundSize: '28px 28px',
@@ -362,8 +355,6 @@ export default function TeacherPresentView() {
 
   const theme = modeTheme(game?.game_mode);
   const HeaderIcon = theme.icon;
-  const textOn = theme.dark ? 'text-white' : 'text-gray-900';
-  const subtleText = theme.dark ? 'text-white/70' : 'text-gray-700';
 
   // Time-left for modes that report it
   const timeLeft = modeData?.timeLeft != null ? Math.max(0, Math.floor(modeData.timeLeft)) : null;
@@ -381,24 +372,24 @@ export default function TeacherPresentView() {
   }
 
   return (
-    <div className={`min-h-screen relative overflow-hidden ${textOn}`}>
-      <AnimatedBackground theme={theme} />
+    <div className="min-h-screen relative overflow-hidden text-white">
+      <AnimatedBackground />
 
       {/* Final-results podium — overlays everything once the game ends. Top 3
           if ≤ 10 players, top 5 if more, so a big classroom still gets a fair
           shot at the spotlight. */}
       {game?.status === 'ended' && ranked.length > 0 && (
-        <Podium ranked={ranked} theme={theme} mode={game?.game_mode} />
+        <Podium ranked={ranked} mode={game?.game_mode} />
       )}
 
-      {/* Header bar — minimal, tighter typography, accent ring instead of solid block */}
+      {/* Header bar — minimal, tighter typography */}
       <header className="px-8 sm:px-12 pt-8 pb-5 flex flex-wrap items-center justify-between gap-5">
         <div className="flex items-center gap-4">
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${theme.accent}55` }}
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
           >
-            <HeaderIcon className="w-6 h-6" style={{ color: theme.accent }} strokeWidth={2.5} />
+            <HeaderIcon className="w-6 h-6 text-white/85" strokeWidth={2.5} />
           </div>
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Now playing</div>
@@ -429,17 +420,17 @@ export default function TeacherPresentView() {
       </header>
 
       {/* Mode-specific banner — e.g. market regime, sudden death, team scores */}
-      <ModeBanner game={game} modeData={modeData} theme={theme} />
+      <ModeBanner game={game} modeData={modeData} />
 
       {/* Body: live feed (primary, 2/3) + leaderboard (compact, 1/3) */}
       <main className="px-8 sm:px-12 pb-10 grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Leaderboard — compact column */}
         <section className="lg:col-span-2">
           <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3 flex items-center gap-2">
-            <Trophy className="w-3.5 h-3.5" style={{ color: theme.accent }} /> Leaderboard
+            <Trophy className="w-3.5 h-3.5" style={{ color: GOLD }} /> Leaderboard
           </h2>
           {ranked.length === 0 ? (
-            <div className={`rounded-2xl ${theme.dark ? 'bg-white/5' : 'bg-white/40 backdrop-blur'} p-12 text-center ${subtleText}`}>
+            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-12 text-center text-white/50">
               Waiting for players…
             </div>
           ) : (
@@ -448,34 +439,34 @@ export default function TeacherPresentView() {
                 const place = i + 1;
                 const isBumped = bumped[p.user_id] && Date.now() - bumped[p.user_id] < 1200;
                 const isFirst = place === 1;
+                const medalColor = place === 1 ? GOLD : place === 2 ? SILVER : place === 3 ? BRONZE : null;
                 return (
                   <div
                     key={p.user_id}
-                    className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl backdrop-blur-sm transition-all duration-300 ${
+                    className={`group flex items-center gap-3 px-3.5 py-3 rounded-xl backdrop-blur-sm transition-all duration-300 ${
                       isFirst
                         ? 'bg-white/[0.07] border border-white/15'
                         : 'bg-white/[0.025] border border-white/[0.08] hover:bg-white/[0.05]'
                     } ${p.eliminated || p.is_ghost ? 'opacity-45' : ''}`}
                     style={{
                       animation: 'rowEnter 0.4s ease-out',
-                      ...(isFirst ? { boxShadow: `inset 0 0 0 1px ${theme.accent}40, 0 0 32px ${theme.accent}25` } : {}),
+                      ...(isFirst ? { boxShadow: `inset 0 0 0 1px ${GOLD}55, 0 0 28px ${GOLD}22` } : {}),
                     }}
                   >
-                    {/* Placement — small chip on the left */}
+                    {/* Placement — gold/silver/bronze for top 3, neutral for the rest */}
                     <div className="flex-shrink-0 w-8 text-center">
                       {isFirst ? (
-                        <Crown className="w-6 h-6 mx-auto" style={{ color: theme.accent }} strokeWidth={2.5} />
+                        <Crown className="w-6 h-6 mx-auto" style={{ color: GOLD }} strokeWidth={2.5} />
                       ) : (
                         <span
                           className="text-base font-black"
-                          style={{ color: place <= 3 ? theme.accent : 'rgba(255,255,255,0.35)' }}
+                          style={{ color: medalColor || 'rgba(255,255,255,0.4)' }}
                         >
                           {place}
                         </span>
                       )}
                     </div>
 
-                    {/* Avatar — smaller, fixed size */}
                     <AvatarPreview
                       skinId={p.avatar}
                       initial={(p.player_name || '?')[0].toUpperCase()}
@@ -483,24 +474,19 @@ export default function TeacherPresentView() {
                       userId={p.user_id}
                     />
 
-                    {/* Name + sub-info */}
                     <div className="flex-1 min-w-0">
                       <div
                         className="font-black truncate text-base leading-tight"
-                        style={{ color: isFirst ? theme.accent : getNameColor(p.avatar) || '#f1f5f9' }}
+                        style={{ color: isFirst ? GOLD : '#f1f5f9' }}
                       >
                         {p.player_name}
                       </div>
-                      <ModeSubInfo p={p} mode={game?.game_mode} theme={theme} />
+                      <ModeSubInfo p={p} mode={game?.game_mode} />
                     </div>
 
-                    {/* Score — refined, smaller */}
                     <div
-                      className="font-black tabular-nums text-xl leading-none flex-shrink-0"
-                      style={{
-                        color: isFirst ? theme.accent : '#f1f5f9',
-                        ...(isBumped ? { animation: 'scoreBump 0.9s ease-out' } : {}),
-                      }}
+                      className="font-black tabular-nums text-xl leading-none flex-shrink-0 text-white"
+                      style={isBumped ? { animation: 'scoreBump 0.9s ease-out' } : {}}
                     >
                       {formatScore(p.score, game?.game_mode)}
                     </div>
@@ -519,7 +505,7 @@ export default function TeacherPresentView() {
         {/* Live events — primary column, gets the room's attention */}
         <aside className="lg:col-span-3">
           <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3 flex items-center gap-2">
-            <Activity className="w-3.5 h-3.5" style={{ color: theme.accent }} /> Live feed
+            <Activity className="w-3.5 h-3.5" style={{ color: GOLD }} /> Live feed
           </h2>
           <div className="rounded-2xl bg-white/[0.025] border border-white/[0.06] p-5 min-h-[480px]">
             {recentEvents.length === 0 ? (
@@ -580,7 +566,7 @@ function Stat({ label, value, icon: Icon, accent, pulse }) {
 // Pill or row of mode-specific context shown right under the header. Keeps the
 // main leaderboard uncluttered while still surfacing the things that make each
 // mode feel different on the big screen.
-function ModeBanner({ game, modeData, theme }) {
+function ModeBanner({ game, modeData }) {
   const mode = game?.game_mode;
   if (!modeData) return null;
   const pill = 'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-black text-xs bg-white/[0.04] border border-white/10';
@@ -643,50 +629,45 @@ function ModeBanner({ game, modeData, theme }) {
 // End-of-game podium overlay. Slots are arranged 2 - 1 - 3 (with 4 - 2 - 1 - 3
 // - 5 for big classrooms) so #1 sits in the visual center on the tallest
 // pedestal. Each column rises in sequence so the room watches the reveal.
-function Podium({ ranked, theme, mode }) {
+function Podium({ ranked, mode }) {
   const showTop = ranked.length > 10 ? 5 : 3;
   const winners = ranked.slice(0, showTop);
   if (winners.length === 0) return null;
 
-  // Visual order maps placement → column index. We want #1 in the middle.
-  const orderTop3 = [2, 1, 3];                 // left to right
+  const orderTop3 = [2, 1, 3];
   const orderTop5 = [4, 2, 1, 3, 5];
   const visualOrder = showTop === 5 ? orderTop5 : orderTop3;
 
-  // Pedestal heights — center is tallest, outer columns are shortest.
   const heightForPlace = (place) => {
-    if (showTop === 5) {
-      return { 1: 220, 2: 180, 3: 150, 4: 120, 5: 120 }[place] || 120;
-    }
+    if (showTop === 5) return { 1: 220, 2: 180, 3: 150, 4: 120, 5: 120 }[place] || 120;
     return { 1: 220, 2: 170, 3: 140 }[place] || 140;
   };
 
   const placeColor = (place) => {
-    if (place === 1) return theme.accent;
-    if (place === 2) return theme.dark ? '#e5e7eb' : '#6b7280';
-    if (place === 3) return '#f59e0b';
-    return theme.dark ? '#cbd5e1' : '#475569';
+    if (place === 1) return GOLD;
+    if (place === 2) return SILVER;
+    if (place === 3) return BRONZE;
+    return '#94a3b8';
   };
 
-  // Confetti — drop a handful of accent-colored squares from the top of the
-  // screen so the moment feels celebratory without needing a heavy lib.
+  // Neutral confetti palette — gold/silver/bronze + soft accent splash.
   const confetti = useMemo(() => {
+    const palette = [GOLD, SILVER, BRONZE, '#a78bfa', '#86efac'];
     return Array.from({ length: 40 }).map((_, i) => ({
       key: i,
       left: Math.random() * 100,
       delay: Math.random() * 2.5,
       duration: 4 + Math.random() * 3,
-      color: [theme.accent, '#fbbf24', '#fca5a5', '#a78bfa', '#86efac'][i % 5],
+      color: palette[i % palette.length],
       size: 6 + Math.random() * 10,
     }));
-  }, [theme.accent]);
+  }, []);
 
   return (
     <div
       className="fixed inset-0 z-40 flex flex-col items-center justify-center px-6 sm:px-10 backdrop-blur-md"
-      style={{ background: theme.dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.5)' }}
+      style={{ background: 'rgba(0,0,0,0.7)' }}
     >
-      {/* Confetti layer */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {confetti.map(c => (
           <div
@@ -705,12 +686,14 @@ function Podium({ ranked, theme, mode }) {
       </div>
 
       <div className="relative z-10 w-full max-w-6xl text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-3"
-             style={{ background: `${theme.accent}26`, color: theme.accent }}>
+        <div
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-3"
+          style={{ background: `${GOLD}1f`, color: GOLD, border: `1px solid ${GOLD}55` }}
+        >
           <Sparkles className="w-4 h-4" />
           <span className="text-xs font-black uppercase tracking-widest">Final standings</span>
         </div>
-        <h1 className="text-4xl sm:text-6xl font-black mb-12">
+        <h1 className="text-4xl sm:text-6xl font-black mb-12 text-white">
           {winners[0].player_name} <span className="opacity-60">wins</span>
         </h1>
 
@@ -726,7 +709,6 @@ function Podium({ ranked, theme, mode }) {
                 className="flex flex-col items-center"
                 style={{ animation: `podiumRise 0.7s ease-out ${idx * 0.18}s both` }}
               >
-                {/* Avatar + crown */}
                 <div className="relative mb-3">
                   <AvatarPreview
                     skinId={p.avatar}
@@ -737,30 +719,29 @@ function Podium({ ranked, theme, mode }) {
                   {place === 1 && (
                     <Crown
                       className="absolute -top-7 left-1/2 -translate-x-1/2 drop-shadow-lg"
-                      style={{ color: theme.accent, width: 48, height: 48 }}
+                      style={{ color: GOLD, width: 48, height: 48 }}
                       strokeWidth={2.5}
                     />
                   )}
                 </div>
 
-                {/* Name + score */}
-                <div className={`font-black ${place === 1 ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'} truncate max-w-full px-1`}
-                     style={{ color: place === 1 ? theme.accent : undefined }}>
+                <div
+                  className={`font-black ${place === 1 ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'} truncate max-w-full px-1`}
+                  style={{ color: place === 1 ? GOLD : '#f1f5f9' }}
+                >
                   {p.player_name}
                 </div>
-                <div className={`font-black tabular-nums ${place === 1 ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl'} opacity-90`}>
+                <div className="font-black tabular-nums opacity-90 text-white"
+                     style={{ fontSize: place === 1 ? '2.25rem' : '1.5rem' }}>
                   {formatScore(p.score, mode)}
                 </div>
 
-                {/* Pedestal */}
                 <div
                   className="w-full mt-3 flex items-center justify-center rounded-t-xl border-t-2 border-x-2 relative overflow-hidden"
                   style={{
                     height: h,
-                    background: theme.dark
-                      ? `linear-gradient(180deg, ${color}30 0%, ${color}15 100%)`
-                      : `linear-gradient(180deg, ${color}50 0%, ${color}25 100%)`,
-                    borderColor: `${color}80`,
+                    background: `linear-gradient(180deg, ${color}28 0%, ${color}10 100%)`,
+                    borderColor: `${color}88`,
                   }}
                 >
                   <span
@@ -785,8 +766,8 @@ function Podium({ ranked, theme, mode }) {
 
 // Tiny sub-label under each player's name on the leaderboard — different per
 // mode so the projector audience gets at-a-glance context (lives, floor, team).
-function ModeSubInfo({ p, mode, theme }) {
-  const sub = theme.dark ? 'text-white/60' : 'text-gray-700';
+function ModeSubInfo({ p, mode }) {
+  const sub = 'text-white/55';
   if (mode === 'survival') {
     if (p.eliminated) return <span className={`text-xs font-bold ${sub}`}>Eliminated</span>;
     if (p.lives != null) {

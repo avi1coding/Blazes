@@ -35,28 +35,47 @@ function modeTheme(mode) {
   return MODE_THEME[mode] || MODE_THEME.classic_timed;
 }
 
-// Background — same on every mode. Deep slate gradient with a single warm
-// top-of-screen highlight and a faint dot-grid for texture. No mode tinting.
+// Background — solid deep navy (no gradient), a tessellating hex-grid SVG
+// pattern for texture, and four diagonal "spotlight" bars in the corners
+// that frame the leaderboard like a tournament stage. Same on every mode.
 function AnimatedBackground() {
+  const hexPattern = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'><g fill='none' stroke='%23ffffff' stroke-width='1' stroke-opacity='0.05'><path d='M28 0 L56 16 L56 48 L28 64 L0 48 L0 16 Z'/><path d='M28 64 L56 80 L56 112 L28 128 L0 112 L0 80 Z'/></g></svg>";
+
   return (
     <>
-      <div
-        className="fixed inset-0 -z-10"
-        style={{ background: 'linear-gradient(180deg, #0b1220 0%, #0a1426 45%, #050911 100%)' }}
-      />
+      {/* Solid base — no gradient, just deep navy */}
+      <div className="fixed inset-0 -z-10" style={{ backgroundColor: '#0a1024' }} />
+
+      {/* Hex grid pattern */}
       <div
         className="fixed inset-0 -z-10 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(251,191,36,0.10), transparent 60%)',
+          backgroundImage: `url("${hexPattern}")`,
+          backgroundSize: '56px 96px',
         }}
       />
+
+      {/* Inset vignette — darkens the edges so the leaderboard reads as the
+          centerpiece. This is a solid inset shadow, not a color gradient. */}
       <div
-        className="fixed inset-0 -z-10 pointer-events-none opacity-[0.05]"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px)',
-          backgroundSize: '28px 28px',
-        }}
+        className="fixed inset-0 -z-10 pointer-events-none"
+        style={{ boxShadow: 'inset 0 0 240px 60px rgba(0,0,0,0.55)' }}
       />
+
+      {/* Diagonal stage bars — four corner accents in gold to frame the
+          presentation. Pure solid shapes, transformed in place. */}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div className="absolute -top-1 left-0 right-0 h-1.5" style={{ backgroundColor: GOLD, opacity: 0.85 }} />
+        <div className="absolute -bottom-1 left-0 right-0 h-1.5" style={{ backgroundColor: GOLD, opacity: 0.5 }} />
+        <div
+          className="absolute top-0 -left-32 w-64 h-2 origin-top-left rotate-45"
+          style={{ backgroundColor: GOLD, opacity: 0.7 }}
+        />
+        <div
+          className="absolute top-0 -right-32 w-64 h-2 origin-top-right -rotate-45"
+          style={{ backgroundColor: GOLD, opacity: 0.7 }}
+        />
+      </div>
       <style>{`
         @keyframes float {
           0%   { transform: translateY(0) rotate(0deg); }
@@ -422,45 +441,65 @@ export default function TeacherPresentView() {
       {/* Mode-specific banner — e.g. market regime, sudden death, team scores */}
       <ModeBanner game={game} modeData={modeData} />
 
-      {/* Body: live feed (primary, 2/3) + leaderboard (compact, 1/3) */}
-      <main className="px-8 sm:px-12 pb-10 grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Leaderboard — compact column */}
-        <section className="lg:col-span-2">
-          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3 flex items-center gap-2">
-            <Trophy className="w-3.5 h-3.5" style={{ color: GOLD }} /> Leaderboard
-          </h2>
-          {ranked.length === 0 ? (
-            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-12 text-center text-white/50">
-              Waiting for players…
+      {/* Body — leaderboard is the centerpiece. Live feed lives below it as a
+          horizontal ticker so the room's eye lands on the standings first. */}
+      <main className="px-6 sm:px-10 pb-8 max-w-5xl mx-auto">
+        {ranked.length === 0 ? (
+          <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-16 text-center text-white/50 text-lg font-semibold">
+            Waiting for players to join…
+          </div>
+        ) : (
+          <div className="rounded-2xl overflow-hidden" style={{
+            backgroundColor: '#0d1430',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08)',
+          }}>
+            {/* Card header */}
+            <div
+              className="px-6 sm:px-8 py-4 flex items-center justify-between border-b"
+              style={{ background: '#0b1027', borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div className="flex items-center gap-3">
+                <Trophy className="w-5 h-5" style={{ color: GOLD }} />
+                <span className="text-sm font-black uppercase tracking-[0.18em] text-white/85">Leaderboard</span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-white/45">
+                <span>Rank</span><span>·</span><span>Player</span><span>·</span><span>Score</span>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-1.5">
-              {ranked.slice(0, 8).map((p, i) => {
+
+            {/* Rows — flush, no gaps, single divider between */}
+            <ul>
+              {ranked.slice(0, 10).map((p, i) => {
                 const place = i + 1;
                 const isBumped = bumped[p.user_id] && Date.now() - bumped[p.user_id] < 1200;
                 const isFirst = place === 1;
                 const medalColor = place === 1 ? GOLD : place === 2 ? SILVER : place === 3 ? BRONZE : null;
+                const stripeColor = medalColor || 'transparent';
+                const rowBg = isFirst
+                  ? 'rgba(251,191,36,0.06)'
+                  : place === 2 ? 'rgba(203,213,225,0.04)'
+                  : place === 3 ? 'rgba(217,119,6,0.05)'
+                  : i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent';
                 return (
-                  <div
+                  <li
                     key={p.user_id}
-                    className={`group flex items-center gap-3 px-3.5 py-3 rounded-xl backdrop-blur-sm transition-all duration-300 ${
-                      isFirst
-                        ? 'bg-white/[0.07] border border-white/15'
-                        : 'bg-white/[0.025] border border-white/[0.08] hover:bg-white/[0.05]'
-                    } ${p.eliminated || p.is_ghost ? 'opacity-45' : ''}`}
+                    className={`flex items-center gap-4 sm:gap-5 px-6 sm:px-8 py-3.5 border-b border-white/[0.04] last:border-b-0 ${
+                      p.eliminated || p.is_ghost ? 'opacity-40' : ''
+                    }`}
                     style={{
+                      background: rowBg,
                       animation: 'rowEnter 0.4s ease-out',
-                      ...(isFirst ? { boxShadow: `inset 0 0 0 1px ${GOLD}55, 0 0 28px ${GOLD}22` } : {}),
+                      borderLeft: `4px solid ${stripeColor}`,
                     }}
                   >
-                    {/* Placement — gold/silver/bronze for top 3, neutral for the rest */}
-                    <div className="flex-shrink-0 w-8 text-center">
+                    {/* Rank — big, prominent, gold/silver/bronze for top 3 */}
+                    <div className="flex-shrink-0 w-12 sm:w-14 flex items-center justify-center">
                       {isFirst ? (
-                        <Crown className="w-6 h-6 mx-auto" style={{ color: GOLD }} strokeWidth={2.5} />
+                        <Crown className="w-8 h-8" style={{ color: GOLD }} strokeWidth={2.5} />
                       ) : (
                         <span
-                          className="text-base font-black"
-                          style={{ color: medalColor || 'rgba(255,255,255,0.4)' }}
+                          className="text-2xl sm:text-3xl font-black tabular-nums"
+                          style={{ color: medalColor || 'rgba(255,255,255,0.32)' }}
                         >
                           {place}
                         </span>
@@ -470,14 +509,14 @@ export default function TeacherPresentView() {
                     <AvatarPreview
                       skinId={p.avatar}
                       initial={(p.player_name || '?')[0].toUpperCase()}
-                      size={40}
+                      size={isFirst ? 56 : 48}
                       userId={p.user_id}
                     />
 
                     <div className="flex-1 min-w-0">
                       <div
-                        className="font-black truncate text-base leading-tight"
-                        style={{ color: isFirst ? GOLD : '#f1f5f9' }}
+                        className={`font-black truncate leading-tight ${isFirst ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}
+                        style={{ color: isFirst ? GOLD : '#f8fafc' }}
                       >
                         {p.player_name}
                       </div>
@@ -485,62 +524,54 @@ export default function TeacherPresentView() {
                     </div>
 
                     <div
-                      className="font-black tabular-nums text-xl leading-none flex-shrink-0 text-white"
+                      className={`font-black tabular-nums leading-none flex-shrink-0 text-white ${isFirst ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl'}`}
                       style={isBumped ? { animation: 'scoreBump 0.9s ease-out' } : {}}
                     >
                       {formatScore(p.score, game?.game_mode)}
                     </div>
-                  </div>
+                  </li>
                 );
               })}
-              {ranked.length > 8 && (
-                <div className="text-center text-[10px] uppercase tracking-widest text-white/35 font-black pt-3">
-                  + {ranked.length - 8} more
-                </div>
-              )}
-            </div>
-          )}
-        </section>
+            </ul>
 
-        {/* Live events — primary column, gets the room's attention */}
-        <aside className="lg:col-span-3">
-          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3 flex items-center gap-2">
-            <Activity className="w-3.5 h-3.5" style={{ color: GOLD }} /> Live feed
-          </h2>
-          <div className="rounded-2xl bg-white/[0.025] border border-white/[0.06] p-5 min-h-[480px]">
-            {recentEvents.length === 0 ? (
-              <div className="text-center py-24 text-white/40 text-sm font-semibold">
-                {game?.status === 'started' ? 'Watching the action…' : "Game hasn't started yet"}
+            {/* Card footer */}
+            {ranked.length > 10 && (
+              <div className="px-6 py-3 text-center text-[11px] uppercase tracking-widest text-white/40 font-black border-t border-white/[0.05]"
+                   style={{ background: '#0b1027' }}>
+                + {ranked.length - 10} more players
               </div>
-            ) : (
-              <ul className="space-y-2.5">
-                {recentEvents.map((ev, idx) => {
-                  const Icon = ev.icon;
-                  const isLatest = idx === 0;
-                  return (
-                    <li
-                      key={ev.id}
-                      className={`flex items-center gap-4 px-4 py-3 rounded-xl border ${
-                        isLatest
-                          ? 'bg-white/[0.06] border-white/15'
-                          : 'bg-white/[0.02] border-white/[0.05]'
-                      }`}
-                      style={{ animation: 'slideUp 0.4s ease-out' }}
-                    >
-                      <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: `${ev.color}1f`, border: `1px solid ${ev.color}40` }}
-                      >
-                        <Icon className="w-5 h-5" style={{ color: ev.color }} />
-                      </div>
-                      <span className="text-base font-bold leading-snug text-white/90 flex-1">{ev.text}</span>
-                    </li>
-                  );
-                })}
-              </ul>
             )}
           </div>
-        </aside>
+        )}
+
+        {/* Live feed — horizontal strip beneath the leaderboard. Only renders
+            when something has actually happened so it doesn't take up empty
+            space on a fresh game. */}
+        {recentEvents.length > 0 && (
+          <div className="mt-6">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 flex items-center gap-2">
+              <Activity className="w-3.5 h-3.5" style={{ color: GOLD }} /> Live feed
+            </h2>
+            <ul className="flex flex-wrap gap-2">
+              {recentEvents.slice(0, 6).map((ev, idx) => {
+                const Icon = ev.icon;
+                const isLatest = idx === 0;
+                return (
+                  <li
+                    key={ev.id}
+                    className={`flex items-center gap-2.5 px-3.5 py-2 rounded-lg border ${
+                      isLatest ? 'bg-white/[0.06] border-white/15' : 'bg-white/[0.02] border-white/[0.06]'
+                    }`}
+                    style={{ animation: 'slideUp 0.4s ease-out' }}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" style={{ color: ev.color }} />
+                    <span className="text-sm font-bold text-white/90 whitespace-nowrap">{ev.text}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </main>
     </div>
   );

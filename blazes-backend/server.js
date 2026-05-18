@@ -2463,6 +2463,34 @@ app.post('/api/games/:gameCode/join', async (req, res) => {
         return res.json({ participantId: existing.id, alreadyJoined: true });
       }
 
+      // Display-name uniqueness within a game. Account names can collide
+      // freely (two real users named "Alex" both signing up is fine), but a
+      // single game with two "Alex"es on the leaderboard is confusing for
+      // the teacher and the room. Compare case-insensitively against any
+      // already-joined player who isn't this same user. If a guest is using
+      // a default "Guest"/"Player" name, skip the check — collisions there
+      // are expected and the teacher can spot them visually.
+      const trimmedName = String(playerName || '').trim();
+      const isPlaceholder = !trimmedName || /^(guest|player)$/i.test(trimmedName);
+      const checkNameAndInsert = (insertFn) => {
+        if (isPlaceholder) return insertFn();
+        db.get(
+          `SELECT 1 FROM game_participants WHERE game_id = ? AND user_id != ?
+             AND LOWER(TRIM(player_name)) = LOWER(?) LIMIT 1`,
+          [game.id, userId, trimmedName],
+          (err, dup) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (dup) {
+              return res.status(409).json({
+                error: `The name "${trimmedName}" is already taken in this game. Try another.`,
+                code: 'name_taken',
+              });
+            }
+            insertFn();
+          }
+        );
+      };
+
       // Enforce player limit for student-hosted games (tier-based)
       if (game.host_role === 'student') {
         db.get('SELECT COUNT(*) AS count FROM game_participants WHERE game_id = ?', [game.id], async (err, row) => {
@@ -2472,7 +2500,20 @@ app.post('/api/games/:gameCode/join', async (req, res) => {
           if (row.count >= maxPlayers) {
             return res.status(400).json({ error: `This game is full (${maxPlayers} player max)` });
           }
-          // Add participant
+          checkNameAndInsert(() => {
+            db.run(
+              'INSERT INTO game_participants (game_id, user_id, player_name) VALUES (?, ?, ?)',
+              [game.id, userId, playerName || 'Player'],
+              function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ participantId: this.lastID, message: 'Joined successfully' });
+              }
+            );
+          });
+        });
+      } else {
+        // Teacher-hosted: no limit
+        checkNameAndInsert(() => {
           db.run(
             'INSERT INTO game_participants (game_id, user_id, player_name) VALUES (?, ?, ?)',
             [game.id, userId, playerName || 'Player'],
@@ -2482,16 +2523,6 @@ app.post('/api/games/:gameCode/join', async (req, res) => {
             }
           );
         });
-      } else {
-        // Teacher-hosted: no limit
-        db.run(
-          'INSERT INTO game_participants (game_id, user_id, player_name) VALUES (?, ?, ?)',
-          [game.id, userId, playerName || 'Player'],
-          function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ participantId: this.lastID, message: 'Joined successfully' });
-          }
-        );
       }
     });
   });

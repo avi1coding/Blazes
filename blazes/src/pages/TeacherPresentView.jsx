@@ -35,46 +35,29 @@ function modeTheme(mode) {
   return MODE_THEME[mode] || MODE_THEME.classic_timed;
 }
 
-// Background — solid deep navy (no gradient), a tessellating hex-grid SVG
-// pattern for texture, and four diagonal "spotlight" bars in the corners
-// that frame the leaderboard like a tournament stage. Same on every mode.
+// Background — solid deep navy, a thick gold rule at the very top edge of the
+// screen, and a soft vignette that frames the leaderboard. No gradients, no
+// patterns, no per-mode tinting — just a clean, focused stage.
 function AnimatedBackground() {
-  const hexPattern = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'><g fill='none' stroke='%23ffffff' stroke-width='1' stroke-opacity='0.05'><path d='M28 0 L56 16 L56 48 L28 64 L0 48 L0 16 Z'/><path d='M28 64 L56 80 L56 112 L28 128 L0 112 L0 80 Z'/></g></svg>";
-
   return (
     <>
-      {/* Solid base — no gradient, just deep navy */}
+      {/* Solid base */}
       <div className="fixed inset-0 -z-10" style={{ backgroundColor: '#0a1024' }} />
 
-      {/* Hex grid pattern */}
+      {/* Vignette — pure inset shadow, no color fade */}
       <div
         className="fixed inset-0 -z-10 pointer-events-none"
-        style={{
-          backgroundImage: `url("${hexPattern}")`,
-          backgroundSize: '56px 96px',
-        }}
+        style={{ boxShadow: 'inset 0 0 320px 80px rgba(0,0,0,0.6)' }}
       />
 
-      {/* Inset vignette — darkens the edges so the leaderboard reads as the
-          centerpiece. This is a solid inset shadow, not a color gradient. */}
-      <div
-        className="fixed inset-0 -z-10 pointer-events-none"
-        style={{ boxShadow: 'inset 0 0 240px 60px rgba(0,0,0,0.55)' }}
-      />
-
-      {/* Diagonal stage bars — four corner accents in gold to frame the
-          presentation. Pure solid shapes, transformed in place. */}
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute -top-1 left-0 right-0 h-1.5" style={{ backgroundColor: GOLD, opacity: 0.85 }} />
-        <div className="absolute -bottom-1 left-0 right-0 h-1.5" style={{ backgroundColor: GOLD, opacity: 0.5 }} />
-        <div
-          className="absolute top-0 -left-32 w-64 h-2 origin-top-left rotate-45"
-          style={{ backgroundColor: GOLD, opacity: 0.7 }}
-        />
-        <div
-          className="absolute top-0 -right-32 w-64 h-2 origin-top-right -rotate-45"
-          style={{ backgroundColor: GOLD, opacity: 0.7 }}
-        />
+      {/* Top + bottom gold rules — broadcast-graphic bars that frame the screen */}
+      <div className="fixed inset-x-0 top-0 -z-10 pointer-events-none">
+        <div className="h-1" style={{ backgroundColor: GOLD }} />
+        <div className="h-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
+      </div>
+      <div className="fixed inset-x-0 bottom-0 -z-10 pointer-events-none">
+        <div className="h-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
+        <div className="h-1" style={{ backgroundColor: GOLD, opacity: 0.6 }} />
       </div>
       <style>{`
         @keyframes float {
@@ -230,6 +213,20 @@ export default function TeacherPresentView() {
 
     return list.sort((a, b) => (b.score || 0) - (a.score || 0));
   }, [participants, modeData, game?.game_mode, playerSkins]);
+
+  // Tie-aware placements: two players on the same score share a rank. The next
+  // rank skips ahead by the number of tied players above (standard "1224"
+  // ranking, not dense). placements[i] is the visible rank for ranked[i].
+  const placements = useMemo(() => {
+    const out = [];
+    ranked.forEach((p, i) => {
+      if (i === 0) { out.push(1); return; }
+      const prev = ranked[i - 1];
+      if ((p.score || 0) === (prev.score || 0)) out.push(out[i - 1]);
+      else out.push(i + 1);
+    });
+    return out;
+  }, [ranked]);
 
   // Bump a score when it changes so the projector audience can see who just
   // moved up. Trigger via a per-user timestamp that the row reads to set an
@@ -449,73 +446,101 @@ export default function TeacherPresentView() {
             Waiting for players to join…
           </div>
         ) : (
-          <div className="rounded-2xl overflow-hidden" style={{
-            backgroundColor: '#0d1430',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08)',
+          <div className="rounded-xl overflow-hidden" style={{
+            backgroundColor: '#0e1535',
+            boxShadow: '0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)',
           }}>
-            {/* Card header */}
-            <div
-              className="px-6 sm:px-8 py-4 flex items-center justify-between border-b"
-              style={{ background: '#0b1027', borderColor: 'rgba(255,255,255,0.08)' }}
-            >
-              <div className="flex items-center gap-3">
-                <Trophy className="w-5 h-5" style={{ color: GOLD }} />
-                <span className="text-sm font-black uppercase tracking-[0.18em] text-white/85">Leaderboard</span>
+            {/* Card header — dark slab with a thin gold rule underneath */}
+            <div className="relative">
+              <div
+                className="px-6 sm:px-8 py-4 flex items-center justify-between"
+                style={{ background: '#080d24' }}
+              >
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-5 h-5" style={{ color: GOLD }} />
+                  <span className="text-sm font-black uppercase tracking-[0.22em] text-white">Leaderboard</span>
+                </div>
+                <div className="hidden sm:flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.22em] text-white/35">
+                  <span className="w-14 text-center">Rank</span>
+                  <span className="flex-1">Player</span>
+                  <span>Score</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-white/45">
-                <span>Rank</span><span>·</span><span>Player</span><span>·</span><span>Score</span>
-              </div>
+              <div className="h-px" style={{ backgroundColor: GOLD, opacity: 0.65 }} />
             </div>
 
-            {/* Rows — flush, no gaps, single divider between */}
+            {/* Rows */}
             <ul>
               {ranked.slice(0, 10).map((p, i) => {
-                const place = i + 1;
+                const place = placements[i];
                 const isBumped = bumped[p.user_id] && Date.now() - bumped[p.user_id] < 1200;
                 const isFirst = place === 1;
                 const medalColor = place === 1 ? GOLD : place === 2 ? SILVER : place === 3 ? BRONZE : null;
                 const stripeColor = medalColor || 'transparent';
+                // Top-3 rows are slightly taller, slightly tinted, and the
+                // accent stripe widens. Everyone else is the same neutral row
+                // with alternating zebra striping for scannability.
                 const rowBg = isFirst
-                  ? 'rgba(251,191,36,0.06)'
-                  : place === 2 ? 'rgba(203,213,225,0.04)'
-                  : place === 3 ? 'rgba(217,119,6,0.05)'
-                  : i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent';
+                  ? 'linear-gradient(90deg, rgba(251,191,36,0.10), rgba(251,191,36,0) 60%)'
+                  : place === 2 ? 'linear-gradient(90deg, rgba(203,213,225,0.06), rgba(203,213,225,0) 60%)'
+                  : place === 3 ? 'linear-gradient(90deg, rgba(217,119,6,0.07), rgba(217,119,6,0) 60%)'
+                  : i % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent';
                 return (
                   <li
                     key={p.user_id}
-                    className={`flex items-center gap-4 sm:gap-5 px-6 sm:px-8 py-3.5 border-b border-white/[0.04] last:border-b-0 ${
+                    className={`flex items-center gap-4 sm:gap-6 px-5 sm:px-7 ${
+                      place <= 3 ? 'py-4 sm:py-5' : 'py-3 sm:py-3.5'
+                    } border-b border-white/[0.04] last:border-b-0 ${
                       p.eliminated || p.is_ghost ? 'opacity-40' : ''
                     }`}
                     style={{
                       background: rowBg,
                       animation: 'rowEnter 0.4s ease-out',
-                      borderLeft: `4px solid ${stripeColor}`,
+                      borderLeft: `${place <= 3 ? 6 : 0}px solid ${stripeColor}`,
                     }}
                   >
-                    {/* Rank — big, prominent, gold/silver/bronze for top 3 */}
+                    {/* Rank — tabular monospace number, fixed width */}
                     <div className="flex-shrink-0 w-12 sm:w-14 flex items-center justify-center">
                       {isFirst ? (
-                        <Crown className="w-8 h-8" style={{ color: GOLD }} strokeWidth={2.5} />
+                        <Crown className="w-9 h-9 drop-shadow" style={{ color: GOLD }} strokeWidth={2.5} />
                       ) : (
                         <span
-                          className="text-2xl sm:text-3xl font-black tabular-nums"
-                          style={{ color: medalColor || 'rgba(255,255,255,0.32)' }}
+                          className="font-black tabular-nums leading-none"
+                          style={{
+                            color: medalColor || 'rgba(255,255,255,0.35)',
+                            fontSize: place <= 3 ? '2rem' : '1.5rem',
+                            letterSpacing: '-0.02em',
+                          }}
                         >
                           {place}
                         </span>
                       )}
                     </div>
 
-                    <AvatarPreview
-                      skinId={p.avatar}
-                      initial={(p.player_name || '?')[0].toUpperCase()}
-                      size={isFirst ? 56 : 48}
-                      userId={p.user_id}
-                    />
+                    {/* Avatar with ring on top 3 */}
+                    <div
+                      className="flex-shrink-0 rounded-full"
+                      style={medalColor ? {
+                        padding: 2,
+                        background: medalColor,
+                        boxShadow: isFirst ? `0 0 16px ${GOLD}55` : 'none',
+                      } : {}}
+                    >
+                      <div className={medalColor ? 'rounded-full bg-[#0e1535]' : ''} style={medalColor ? { padding: 2 } : {}}>
+                        <AvatarPreview
+                          skinId={p.avatar}
+                          initial={(p.player_name || '?')[0].toUpperCase()}
+                          size={isFirst ? 60 : place <= 3 ? 52 : 44}
+                          userId={p.user_id}
+                        />
+                      </div>
+                    </div>
 
                     <div className="flex-1 min-w-0">
                       <div
-                        className={`font-black truncate leading-tight ${isFirst ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}
+                        className={`font-black truncate leading-tight tracking-tight ${
+                          isFirst ? 'text-3xl sm:text-4xl' : place <= 3 ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'
+                        }`}
                         style={{ color: isFirst ? GOLD : '#f8fafc' }}
                       >
                         {p.player_name}
@@ -523,9 +548,12 @@ export default function TeacherPresentView() {
                       <ModeSubInfo p={p} mode={game?.game_mode} />
                     </div>
 
+                    {/* Score */}
                     <div
-                      className={`font-black tabular-nums leading-none flex-shrink-0 text-white ${isFirst ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl'}`}
-                      style={isBumped ? { animation: 'scoreBump 0.9s ease-out' } : {}}
+                      className={`font-black tabular-nums leading-none flex-shrink-0 text-white ${
+                        isFirst ? 'text-5xl sm:text-6xl' : place <= 3 ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'
+                      }`}
+                      style={isBumped ? { animation: 'scoreBump 0.9s ease-out' } : { letterSpacing: '-0.02em' }}
                     >
                       {formatScore(p.score, game?.game_mode)}
                     </div>
@@ -536,8 +564,8 @@ export default function TeacherPresentView() {
 
             {/* Card footer */}
             {ranked.length > 10 && (
-              <div className="px-6 py-3 text-center text-[11px] uppercase tracking-widest text-white/40 font-black border-t border-white/[0.05]"
-                   style={{ background: '#0b1027' }}>
+              <div className="px-6 py-3 text-center text-[10px] uppercase tracking-[0.22em] text-white/40 font-black border-t border-white/[0.05]"
+                   style={{ background: '#080d24' }}>
                 + {ranked.length - 10} more players
               </div>
             )}

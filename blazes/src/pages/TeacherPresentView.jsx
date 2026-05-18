@@ -388,7 +388,7 @@ export default function TeacherPresentView() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden text-white">
+    <div className="h-screen w-screen relative overflow-hidden text-white flex flex-col">
       <AnimatedBackground />
 
       {/* Final-results podium — overlays everything once the game ends. Top 3
@@ -398,8 +398,8 @@ export default function TeacherPresentView() {
         <Podium ranked={ranked} mode={game?.game_mode} />
       )}
 
-      {/* Header bar — minimal, tighter typography */}
-      <header className="px-8 sm:px-12 pt-8 pb-5 flex flex-wrap items-center justify-between gap-5">
+      {/* Header bar — minimal, fixed height so the leaderboard gets the rest */}
+      <header className="flex-shrink-0 px-8 sm:px-12 pt-6 pb-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center"
@@ -438,39 +438,34 @@ export default function TeacherPresentView() {
       {/* Mode-specific banner — e.g. market regime, sudden death, team scores */}
       <ModeBanner game={game} modeData={modeData} />
 
-      {/* Body — leaderboard is the centerpiece. Live feed lives below it as a
-          horizontal ticker so the room's eye lands on the standings first. */}
-      <main className="px-6 sm:px-10 pb-8 max-w-5xl mx-auto">
+      {/* Body — leaderboard is the centerpiece, sized to fill the viewport so
+          all top-10 rows are visible at once. No scrolling on the present
+          screen; if rows would overflow, we shrink them. */}
+      <main className="flex-1 min-h-0 px-6 sm:px-10 pb-6 w-full max-w-5xl mx-auto flex flex-col gap-3">
         {ranked.length === 0 ? (
           <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-16 text-center text-white/50 text-lg font-semibold">
             Waiting for players to join…
           </div>
         ) : (
-          <div className="rounded-xl overflow-hidden" style={{
-            backgroundColor: '#0e1535',
-            boxShadow: '0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)',
-          }}>
+          <div
+            className="rounded-xl overflow-hidden flex-1 min-h-0 flex flex-col"
+            style={{
+              backgroundColor: '#0e1535',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)',
+            }}
+          >
             {/* Card header — dark slab with a thin gold rule underneath */}
-            <div className="relative">
-              <div
-                className="px-6 sm:px-8 py-4 flex items-center justify-between"
-                style={{ background: '#080d24' }}
-              >
-                <div className="flex items-center gap-3">
-                  <Trophy className="w-5 h-5" style={{ color: GOLD }} />
-                  <span className="text-sm font-black uppercase tracking-[0.22em] text-white">Leaderboard</span>
-                </div>
-                <div className="hidden sm:flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.22em] text-white/35">
-                  <span className="w-14 text-center">Rank</span>
-                  <span className="flex-1">Player</span>
-                  <span>Score</span>
-                </div>
+            <div className="relative flex-shrink-0">
+              <div className="px-6 sm:px-8 py-3 flex items-center gap-3" style={{ background: '#080d24' }}>
+                <Trophy className="w-5 h-5" style={{ color: GOLD }} />
+                <span className="text-sm font-black uppercase tracking-[0.22em] text-white">Leaderboard</span>
               </div>
               <div className="h-px" style={{ backgroundColor: GOLD, opacity: 0.65 }} />
             </div>
 
-            {/* Rows */}
-            <ul>
+            {/* Rows — flex-1 column where each row gets an even share of space so
+                all 10 fit without scrolling, no matter the viewport height. */}
+            <ul className="flex-1 min-h-0 flex flex-col">
               {ranked.slice(0, 10).map((p, i) => {
                 const place = placements[i];
                 const isBumped = bumped[p.user_id] && Date.now() - bumped[p.user_id] < 1200;
@@ -488,15 +483,17 @@ export default function TeacherPresentView() {
                 return (
                   <li
                     key={p.user_id}
-                    className={`flex items-center gap-4 sm:gap-6 px-5 sm:px-7 ${
-                      place <= 3 ? 'py-4 sm:py-5' : 'py-3 sm:py-3.5'
-                    } border-b border-white/[0.04] last:border-b-0 ${
+                    className={`flex items-center gap-4 sm:gap-6 px-5 sm:px-7 border-b border-white/[0.04] last:border-b-0 min-h-0 overflow-hidden ${
                       p.eliminated || p.is_ghost ? 'opacity-40' : ''
                     }`}
                     style={{
                       background: rowBg,
                       animation: 'rowEnter 0.4s ease-out',
                       borderLeft: `${place <= 3 ? 6 : 0}px solid ${stripeColor}`,
+                      // Distribute available vertical space across all 10 rows
+                      // so they always fit on screen. Top-3 get a 1.3× share so
+                      // they're visibly taller than the rest.
+                      flex: place <= 3 ? '1.3 1 0' : '1 1 0',
                     }}
                   >
                     {/* Rank — tabular monospace number, fixed width */}
@@ -572,28 +569,26 @@ export default function TeacherPresentView() {
           </div>
         )}
 
-        {/* Live feed — horizontal strip beneath the leaderboard. Only renders
-            when something has actually happened so it doesn't take up empty
-            space on a fresh game. */}
+        {/* Live feed — single compact row of pills directly beneath the
+            leaderboard. flex-shrink-0 + overflow-hidden so it never pushes
+            rows off-screen, and we only show the 4 most recent events. */}
         {recentEvents.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 flex items-center gap-2">
-              <Activity className="w-3.5 h-3.5" style={{ color: GOLD }} /> Live feed
-            </h2>
-            <ul className="flex flex-wrap gap-2">
-              {recentEvents.slice(0, 6).map((ev, idx) => {
+          <div className="flex-shrink-0 flex items-center gap-2 overflow-hidden">
+            <Activity className="w-3.5 h-3.5 flex-shrink-0" style={{ color: GOLD }} />
+            <ul className="flex items-center gap-2 overflow-hidden">
+              {recentEvents.slice(0, 4).map((ev, idx) => {
                 const Icon = ev.icon;
                 const isLatest = idx === 0;
                 return (
                   <li
                     key={ev.id}
-                    className={`flex items-center gap-2.5 px-3.5 py-2 rounded-lg border ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border flex-shrink-0 ${
                       isLatest ? 'bg-white/[0.06] border-white/15' : 'bg-white/[0.02] border-white/[0.06]'
                     }`}
                     style={{ animation: 'slideUp 0.4s ease-out' }}
                   >
-                    <Icon className="w-4 h-4 flex-shrink-0" style={{ color: ev.color }} />
-                    <span className="text-sm font-bold text-white/90 whitespace-nowrap">{ev.text}</span>
+                    <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: ev.color }} />
+                    <span className="text-xs font-bold text-white/90 whitespace-nowrap">{ev.text}</span>
                   </li>
                 );
               })}
@@ -634,7 +629,7 @@ function ModeBanner({ game, modeData }) {
     const regime = modeData.regime || 'normal';
     const regimeColors = { normal: '#94a3b8', bull: '#34d399', bear: '#fbbf24', crash: '#f87171', recovery: '#22d3ee' };
     return (
-      <div className="px-8 sm:px-12 pb-4 flex flex-wrap items-center gap-2">
+      <div className="flex-shrink-0 px-8 sm:px-12 pb-3 flex flex-wrap items-center gap-2">
         <span className={pill} style={{ color: regimeColors[regime], borderColor: `${regimeColors[regime]}55` }}>
           <Activity className="w-3.5 h-3.5" /> {regime.toUpperCase()}
         </span>

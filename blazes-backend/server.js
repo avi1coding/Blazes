@@ -2303,6 +2303,7 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
         pointsEarned = Math.round(50 + 50 * (1 - ratio));
       }
     }
+    console.log(`[scoring] mode=${game.game_mode} q.time_limit=${question.time_limit} timeTaken=${timeTaken} isCorrect=${isCorrect} → pointsEarned=${pointsEarned}`);
 
     // Record the answer (with time_taken)
     await new Promise((resolve, reject) => {

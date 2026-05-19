@@ -75,6 +75,11 @@ export default function GameResults() {
         if (sorted.length > 0 && sorted[0].user_id === user?.id) {
           setHasWon(true);
         }
+        // Sync the "Your Score" stat to the server's tally — the value passed
+        // in via location.state is the client's local tally (off by a lot,
+        // since the client doesn't replicate the server's speed-curve scoring).
+        const me = (data.participants || []).find(p => p.user_id === user?.id);
+        if (me && typeof me.score === 'number') setScore(me.score);
         // Fetch skins for all participants
         sorted.forEach(p => {
           fetch(`${base}/api/skins/${p.user_id}`)

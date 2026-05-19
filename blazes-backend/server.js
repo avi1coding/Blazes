@@ -2743,12 +2743,12 @@ app.post('/api/games/:gameCode/answers', async (req, res) => {
       (err) => { if (err) console.error('Error updating user_stats:', err); }
     );
 
-    // Update participant final score
-    db.run(
-      'UPDATE game_participants SET score = ? WHERE game_id = ? AND user_id = ?',
-      [finalScore || 0, game.id, userId],
-      (err) => { if (err) console.error('Error updating participant score:', err); }
-    );
+    // We intentionally do NOT overwrite game_participants.score here. The
+    // server already accumulated the correct value via /api/games/:gameCode/answer
+    // (which applies the 50-100 speed curve per correct answer). The client-
+    // computed `finalScore` uses a different formula (pointsPerCorrectAnswer
+    // default 100) and overwriting clobbered the real tally — that's why
+    // classic-mode results were showing 10 instead of the real score.
 
     // Assignment completion check — must run before BB economy early returns
     if (game.assignment_id) {

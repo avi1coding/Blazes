@@ -2472,8 +2472,13 @@ app.post('/api/games/:gameCode/join', async (req, res) => {
       // are expected and the teacher can spot them visually.
       const trimmedName = String(playerName || '').trim();
       const isPlaceholder = !trimmedName || /^(guest|player)$/i.test(trimmedName);
+      // The host always wins any name collision in their own game — their
+      // account name is theirs, and silently failing their auto-join (so they
+      // never appear on the leaderboard) is much worse than a duplicate label
+      // for the teacher to notice.
+      const isHostJoining = Number(userId) === Number(game.host_id);
       const checkNameAndInsert = (insertFn) => {
-        if (isPlaceholder) return insertFn();
+        if (isPlaceholder || isHostJoining) return insertFn();
         db.get(
           `SELECT 1 FROM game_participants WHERE game_id = ? AND user_id != ?
              AND LOWER(TRIM(player_name)) = LOWER(?) LIMIT 1`,

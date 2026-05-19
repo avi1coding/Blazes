@@ -335,11 +335,10 @@ export default function TeacherLobby() {
                                             </button>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-2 mb-1">
+                                    <div className="flex items-center gap-2">
                                         <AvatarPreview skinId={participant.avatar_skin || playerSkins[participant.user_id] || 'default'} initial={participant.player_name?.[0]?.toUpperCase() || 'P'} size={32} userId={participant.user_id} />
                                         <p className="font-black truncate" style={{ color: getNameColor(participant.avatar_skin || playerSkins[participant.user_id]) }}>{participant.player_name || 'Player'}</p>
                                     </div>
-                                    <p className="text-xs text-gray-600">Score: {participant.score || 0}</p>
                                 </div>
                             ))}
                         </div>

@@ -36,13 +36,18 @@ export default function StudentMonitor() {
         const student = participants.find(p => Number(p.user_id) === targetId);
         setStudentData(student || null);
 
-        // Fetch student's answers for this game
+        // Fetch student's answers for this game. The endpoint returns an
+        // object `{ answers, totalScore, correctCount, game }` — unwrap the
+        // array so the timeline + stats below actually render.
         const answersResponse = await fetch(
           `${base}/api/games/${gameCode}/student/${userId}/answers`
         );
         if (answersResponse.ok) {
           const answersData = await answersResponse.json();
-          setStudentAnswers(Array.isArray(answersData) ? answersData : []);
+          const list = Array.isArray(answersData)
+            ? answersData
+            : Array.isArray(answersData?.answers) ? answersData.answers : [];
+          setStudentAnswers(list);
         }
 
         // Fetch skin

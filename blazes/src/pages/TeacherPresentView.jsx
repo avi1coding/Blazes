@@ -234,55 +234,35 @@ export default function TeacherPresentView() {
   }, [ranked]);
 
   // Bump a score when it changes so the projector audience can see who just
-  // moved up. Trigger via a per-user timestamp that the row reads to set an
-  // inline animation. Same pass also generates synthetic events for modes
-  // without their own event stream — streaks (consecutive score-ups), big
-  // jumps (fast correct answers), and rank overtakes ("upsets").
+  // moved up. Same pass generates narrative events for the live feed — only
+  // the dramatic stuff: streaks, overtakes, comebacks, fall-offs.
   useEffect(() => {
-    const mode = game?.game_mode;
     const nextScores = { ...prevScores.current };
     const nextRanks = { ...prevRanks.current };
     const newBumps = {};
     const generatedEvents = [];
     let changed = false;
 
-    // Build current rank map from the freshly-ranked list
+    // Current rank map from the freshly-ranked list
     const currentRanks = {};
     ranked.forEach((p, i) => { currentRanks[p.user_id] = i + 1; });
 
     for (const p of ranked) {
       const prevScore = nextScores[p.user_id];
       const prevRank = nextRanks[p.user_id];
-      const delta = prevScore != null ? p.score - prevScore : 0;
+      const newRank = currentRanks[p.user_id];
 
       if (prevScore != null && prevScore !== p.score) {
         newBumps[p.user_id] = Date.now();
         changed = true;
       }
 
-      // Synthetic events — only meaningful for the "generic" modes that lack
-      // their own server-side event feed (classic, survival, wager, arena).
-      // Markets/clash/inferno already have rich event streams.
-      const wantsGenericEvents = mode === 'classic_timed' || mode === 'survival'
-        || mode === 'elemental_wager' || mode === 'arena';
-      if (wantsGenericEvents && prevScore != null) {
+      if (prevScore != null) {
+        const delta = p.score - prevScore;
         if (delta > 0) {
+          // Streak: consecutive score-ups without a miss in between
           streakCount.current[p.user_id] = (streakCount.current[p.user_id] || 0) + 1;
           const streak = streakCount.current[p.user_id];
-
-          // Big-jump event: a fast classic answer is in the 80-100 range, so
-          // surface it as a "speed" call-out the room can see.
-          if (delta >= 80) {
-            generatedEvents.push({
-              id: `fast-${p.user_id}-${++eventCounter.current}`,
-              icon: Zap,
-              color: '#fde047',
-              text: `${p.player_name} fast answer · +${delta}`,
-              ts: Date.now(),
-            });
-          }
-
-          // Streak milestones — 3, 5, 7, 10 in a row without missing one
           if (streak === 3 || streak === 5 || streak === 7 || streak === 10) {
             generatedEvents.push({
               id: `streak-${p.user_id}-${streak}-${++eventCounter.current}`,
@@ -292,30 +272,49 @@ export default function TeacherPresentView() {
               ts: Date.now(),
             });
           }
-        } else if (delta < 0 || (delta === 0 && p.score === prevScore && currentRanks[p.user_id] > prevRank)) {
-          // Score didn't go up — streak resets next time they get one wrong
+        } else if (delta <= 0) {
+          // No score gain this tick — streak resets
           streakCount.current[p.user_id] = 0;
         }
       }
 
-      // Upset/overtake event — someone moved from rank K → K-1 (or better)
-      // while the player above them stayed put. Skip the first poll where
-      // we have no previous rank to compare against.
-      if (wantsGenericEvents && prevRank != null) {
-        const newRank = currentRanks[p.user_id];
-        if (newRank < prevRank && newRank <= 5) {
-          // Find who used to be at newRank — the person they passed
-          const passedId = Object.keys(nextRanks).find(uid => nextRanks[uid] === newRank);
-          const passed = ranked.find(r => String(r.user_id) === String(passedId));
-          if (passed && passed.user_id !== p.user_id) {
-            generatedEvents.push({
-              id: `upset-${p.user_id}-${++eventCounter.current}`,
-              icon: ArrowUp,
-              color: '#a78bfa',
-              text: `${p.player_name} overtook ${passed.player_name} for #${newRank}`,
-              ts: Date.now(),
-            });
+      // Rank-movement events — fire only when we have a previous rank to
+      // compare against, and the player still appears in the ranked list.
+      if (prevRank != null && newRank != null) {
+        const gain = prevRank - newRank; // positive = moved up
+        if (gain >= 3) {
+          // Comeback: jumped 3+ spots in a single tick
+          generatedEvents.push({
+            id: `comeback-${p.user_id}-${++eventCounter.current}`,
+            icon: TrendingUp,
+            color: '#34d399',
+            text: `${p.player_name} comeback! #${prevRank} → #${newRank}`,
+            ts: Date.now(),
+          });
+        } else if (gain === 1 || gain === 2) {
+          // Overtake: passed one or two players for a top-10 spot
+          if (newRank <= 5) {
+            const passedId = Object.keys(nextRanks).find(uid => nextRanks[uid] === newRank);
+            const passed = ranked.find(r => String(r.user_id) === String(passedId));
+            if (passed && passed.user_id !== p.user_id) {
+              generatedEvents.push({
+                id: `overtake-${p.user_id}-${++eventCounter.current}`,
+                icon: ArrowUp,
+                color: '#a78bfa',
+                text: `${p.player_name} overtook ${passed.player_name} for #${newRank}`,
+                ts: Date.now(),
+              });
+            }
           }
+        } else if (gain <= -3) {
+          // Fall-off: dropped 3+ spots in a single tick
+          generatedEvents.push({
+            id: `falloff-${p.user_id}-${++eventCounter.current}`,
+            icon: TrendingDown,
+            color: '#f87171',
+            text: `${p.player_name} fell off · #${prevRank} → #${newRank}`,
+            ts: Date.now(),
+          });
         }
       }
 
@@ -326,9 +325,10 @@ export default function TeacherPresentView() {
     prevRanks.current = currentRanks;
     if (changed) setBumped(b => ({ ...b, ...newBumps }));
     if (generatedEvents.length) {
-      setRecentEvents(prev => [...generatedEvents.reverse(), ...prev].slice(0, 12));
+      // Keep a short backlog (10) but the render only shows the latest 5.
+      setRecentEvents(prev => [...generatedEvents.reverse(), ...prev].slice(0, 10));
     }
-  }, [ranked, game?.game_mode]);
+  }, [ranked]);
 
   // Accumulate live events for the right-hand panel. Each mode populates
   // a unified [{id, icon, color, text, ts}] feed for rendering.
@@ -601,7 +601,7 @@ export default function TeacherPresentView() {
                 {game?.status === 'started' ? 'Watching for action…' : "Game hasn't started yet"}
               </li>
             ) : (
-              recentEvents.map((ev, idx) => {
+              recentEvents.slice(0, 5).map((ev, idx) => {
                 const Icon = ev.icon;
                 const isLatest = idx === 0;
                 return (

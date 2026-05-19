@@ -55,6 +55,26 @@ export default function TeacherMonitoringDashboard() {
     return () => { cancelled = true; clearTimeout(id); };
   }, [game, gameStatus, gameCode]);
 
+  // Teacher closing the monitoring tab abandons the game so students aren't
+  // left waiting on a host that's no longer watching. Skip when the game has
+  // already ended through the normal flow. fetch + keepalive (instead of
+  // sendBeacon) lets us hit the existing PUT endpoint without changing it.
+  useEffect(() => {
+    if (!gameCode) return;
+    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+    const handleUnload = () => {
+      if (gameStatus === 'ended') return;
+      try {
+        fetch(`${baseUrl}/api/games/${gameCode}/abandon`, {
+          method: 'PUT',
+          keepalive: true,
+        }).catch(() => {});
+      } catch (_) {}
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [gameCode, gameStatus]);
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     if (!user) {

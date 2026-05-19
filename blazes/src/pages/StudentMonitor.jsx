@@ -18,15 +18,23 @@ export default function StudentMonitor() {
       try {
         const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
-        // Fetch game data
+        // Fetch game data — wrap every access defensively so a bad response
+        // shape can't render-crash the page and trip the global ErrorBoundary
+        // (which silently redirects to /home/* — that's why this view kept
+        // bouncing teachers back to the home screen).
         const gameResponse = await fetch(`${base}/api/games/${gameCode}`);
-        const gameData = await gameResponse.json();
+        const gameData = gameResponse.ok ? await gameResponse.json() : null;
+        if (!gameData || gameData.error) {
+          setLoading(false);
+          return;
+        }
         setGame(gameData);
-        setGameEnded(gameData.status === 'ended'); // Set gameEnded status
+        setGameEnded(gameData.status === 'ended');
 
-        // Get student participant info
-        const student = gameData.participants.find(p => p.user_id === parseInt(userId));
-        setStudentData(student);
+        const participants = Array.isArray(gameData.participants) ? gameData.participants : [];
+        const targetId = parseInt(userId, 10);
+        const student = participants.find(p => Number(p.user_id) === targetId);
+        setStudentData(student || null);
 
         // Fetch student's answers for this game
         const answersResponse = await fetch(
@@ -34,7 +42,7 @@ export default function StudentMonitor() {
         );
         if (answersResponse.ok) {
           const answersData = await answersResponse.json();
-          setStudentAnswers(answersData);
+          setStudentAnswers(Array.isArray(answersData) ? answersData : []);
         }
 
         // Fetch skin

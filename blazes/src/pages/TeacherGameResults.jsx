@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Flame, Trophy, Home, Users, Crown, Medal, Shield, Skull, Heart, BarChart3, Zap, X as XIcon, Clock, Target } from 'lucide-react';
+import { Flame, Trophy, Home, Users, Crown, Medal, Shield, Skull, Heart, BarChart3, Zap, X as XIcon } from 'lucide-react';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 import { rankParticipants } from '../utils/ranking';
+import GameStatsModal from '../components/GameStatsModal';
 
 export default function TeacherGameResults() {
     const { gameCode } = useParams();
@@ -12,8 +13,6 @@ export default function TeacherGameResults() {
     const [error, setError] = useState('');
     const [playerSkins, setPlayerSkins] = useState({});
     const [showStats, setShowStats] = useState(false);
-    const [stats, setStats] = useState(null);
-    const [statsLoading, setStatsLoading] = useState(false);
 
     const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -172,21 +171,11 @@ export default function TeacherGameResults() {
                     </div>
                 )}
 
-                {/* View Stats — opens detailed-stats modal (replaces the
-                    three-card summary block). Lazy-fetches /details on click
-                    so we don't spend a request unless the teacher wants it. */}
+                {/* View Stats — opens the shared GameStatsModal (same UI used
+                    by the Recent Games table on the teacher home page). */}
                 <div className="mb-6">
                     <button
-                        onClick={async () => {
-                            setShowStats(true);
-                            if (stats) return;
-                            setStatsLoading(true);
-                            try {
-                                const r = await fetch(`${base}/api/games/${gameCode}/details`);
-                                if (r.ok) setStats(await r.json());
-                            } catch (_) {}
-                            setStatsLoading(false);
-                        }}
+                        onClick={() => setShowStats(true)}
                         className="w-full flex items-center justify-center gap-2 py-3.5 bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-2xl font-black text-gray-800 transition-colors"
                     >
                         <BarChart3 className="w-5 h-5 text-blue-600" />
@@ -288,88 +277,11 @@ export default function TeacherGameResults() {
                 )}
             </div>
 
-            {/* Stats modal — detailed per-player breakdown pulled from /details */}
+            {/* Shared Game Stats modal — same component used from
+                TeacherHome's Recent Games table for consistency. */}
             {showStats && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowStats(false)}>
-                    <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-                        <div className="px-5 sm:px-7 py-4 border-b border-gray-200 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                                    <BarChart3 className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <div>
-                                    <div className="text-lg font-black text-gray-900">Game Stats</div>
-                                    <div className="text-xs font-bold text-gray-500">{gameCode}{stats?.kit_title ? ` · ${stats.kit_title}` : ''}</div>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowStats(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                                <XIcon className="w-5 h-5 text-gray-500" />
-                            </button>
-                        </div>
-
-                        {statsLoading ? (
-                            <div className="flex-1 flex items-center justify-center py-16">
-                                <Flame className="w-10 h-10 text-red-500 animate-pulse" />
-                            </div>
-                        ) : !stats ? (
-                            <div className="flex-1 flex items-center justify-center py-16 text-gray-500 font-semibold text-sm">
-                                Couldn't load stats.
-                            </div>
-                        ) : (
-                            <div className="flex-1 overflow-y-auto">
-                                {/* Top summary */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-5 border-b border-gray-100">
-                                    <StatBox icon={Users} color="text-green-600" label="Players" value={stats.players} />
-                                    <StatBox icon={Zap} color="text-yellow-500" label="Top Score" value={fmtScore(topScore)} />
-                                    <StatBox icon={BarChart3} color="text-blue-600" label="Avg Score" value={fmtScore(stats.avg_score)} />
-                                    <StatBox icon={Clock} color="text-purple-600" label="Avg Time" value={stats.avg_time ? `${Number(stats.avg_time).toFixed(1)}s` : '—'} />
-                                </div>
-
-                                {/* Per-player breakdown */}
-                                <div className="p-5">
-                                    <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-2 flex items-center gap-2">
-                                        <Target className="w-3.5 h-3.5" /> Per-player breakdown
-                                    </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="text-left text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-200">
-                                                    <th className="py-2 pr-3">Player</th>
-                                                    <th className="py-2 px-3 text-right">Score</th>
-                                                    <th className="py-2 px-3 text-right">Correct</th>
-                                                    <th className="py-2 pl-3 text-right">Accuracy</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {(stats.participants || []).map(p => (
-                                                    <tr key={p.user_id} className="border-b border-gray-100 last:border-b-0">
-                                                        <td className="py-2.5 pr-3 font-bold text-gray-900 truncate">{p.player_name || p.user_name || 'Player'}</td>
-                                                        <td className="py-2.5 px-3 text-right font-black tabular-nums text-gray-900">{fmtScore(p.score)}</td>
-                                                        <td className="py-2.5 px-3 text-right font-bold text-gray-700 tabular-nums">{p.correct_answers}/{p.total_answered}</td>
-                                                        <td className="py-2.5 pl-3 text-right font-black tabular-nums" style={{ color: p.accuracy >= 80 ? '#059669' : p.accuracy >= 50 ? '#d97706' : '#dc2626' }}>
-                                                            {p.accuracy}%
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <GameStatsModal gameCode={gameCode} onClose={() => setShowStats(false)} />
             )}
-        </div>
-    );
-}
-
-function StatBox({ icon: Icon, color, label, value }) {
-    return (
-        <div className="bg-gray-50 rounded-xl p-3 text-center">
-            <Icon className={`w-5 h-5 mx-auto mb-1 ${color}`} strokeWidth={2.5} />
-            <div className="text-lg font-black text-gray-900">{value}</div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">{label}</div>
         </div>
     );
 }

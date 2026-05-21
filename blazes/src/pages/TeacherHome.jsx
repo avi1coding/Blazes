@@ -35,6 +35,7 @@ import SubjectPicker, { GradePicker } from '../components/SubjectPicker';
 import { getGameModeName } from '../utils/gameModeName';
 import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown, Layers, Award, Star } from 'lucide-react';
 import Toast from '../components/Toast';
+import GameStatsModal from '../components/GameStatsModal';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 
 export default function TeacherHome() {
@@ -992,13 +993,9 @@ export default function TeacherHome() {
                             return (
                               <tr
                                 key={i}
-                                onClick={() => {
-                                  if (teacherTier === 'teacher_pro' && g.game_code) {
-                                    setSelectedGameCode(g.game_code);
-                                  }
-                                }}
+                                onClick={() => g.game_code && setSelectedGameCode(g.game_code)}
                                 className={`border-b border-gray-100 last:border-0 ${
-                                  teacherTier === 'teacher_pro' && g.game_code
+                                  g.game_code
                                     ? 'cursor-pointer hover:bg-red-50 transition-colors'
                                     : 'hover:bg-gray-50'
                                 }`}
@@ -1262,13 +1259,9 @@ export default function TeacherHome() {
                                 {(detail.recentGames || []).slice(0, 5).map((g, i) => (
                                   <div
                                     key={i}
-                                    onClick={() => {
-                                      if (teacherTier === 'teacher_pro' && g.game_code) {
-                                        setSelectedGameCode(g.game_code);
-                                      }
-                                    }}
+                                    onClick={() => g.game_code && setSelectedGameCode(g.game_code)}
                                     className={`flex items-center gap-2 text-xs ${
-                                      teacherTier === 'teacher_pro' && g.game_code
+                                      g.game_code
                                         ? 'cursor-pointer hover:bg-red-50 p-1.5 rounded transition-colors'
                                         : ''
                                     }`}
@@ -1295,177 +1288,10 @@ export default function TeacherHome() {
           })()
         )}
 
-        {/* Game Details Modal (Pro Feature) */}
-        {selectedGameCode && gameDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-              {/* Header */}
-              <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-black text-gray-900">Game Details</h2>
-                  <p className="text-sm text-gray-500 mt-1">Game Code: <span className="font-mono font-bold">{selectedGameCode}</span></p>
-                </div>
-                <button
-                  onClick={() => setSelectedGameCode(null)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6 text-gray-500" />
-                </button>
-              </div>
-
-              {loadingGameDetails ? (
-                <div className="p-6 sm:p-8 md:p-12 text-center">
-                  <BarChart3 className="w-8 h-8 text-gray-300 mx-auto mb-2 animate-pulse" />
-                  <p className="text-gray-400 text-sm">Loading game details...</p>
-                </div>
-              ) : gameDetails ? (
-                <div className="p-6 space-y-6">
-                  {/* Basic Info Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-blue-50 rounded-xl p-4">
-                      <div className="text-xs font-bold text-blue-600 uppercase mb-1">Mode</div>
-                      <div className="text-lg font-black text-blue-900">{getGameModeName(gameDetails.game_mode)}</div>
-                    </div>
-                    <div className="bg-green-50 rounded-xl p-4">
-                      <div className="text-xs font-bold text-green-600 uppercase mb-1">Players</div>
-                      <div className="text-lg font-black text-green-900">{gameDetails.players || 0}</div>
-                    </div>
-                    <div className="bg-purple-50 rounded-xl p-4">
-                      <div className="text-xs font-bold text-purple-600 uppercase mb-1">Avg Score</div>
-                      <div className="text-lg font-black text-purple-900">{gameDetails.avg_score ? Math.round(gameDetails.avg_score) : '--'}</div>
-                    </div>
-                    <div className="bg-orange-50 rounded-xl p-4">
-                      <div className="text-xs font-bold text-orange-600 uppercase mb-1">Accuracy</div>
-                      <div className="text-lg font-black text-orange-900">
-                        {gameDetails.total > 0 ? Math.round((gameDetails.correct / gameDetails.total) * 100) : '--'}%
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Questions Breakdown */}
-                  {gameDetails.total > 0 && (
-                    <div className="border border-gray-200 rounded-2xl p-4">
-                      <h3 className="font-bold text-gray-900 mb-4">Overall Questions Performance</h3>
-                      <div className="space-y-3">
-                        <div>
-                          <div className="flex items-center justify-between text-sm mb-2">
-                            <span className="text-gray-600">Overall Accuracy</span>
-                            <span className="font-bold text-gray-900">{gameDetails.correct}/{gameDetails.total}</span>
-                          </div>
-                          <div className="bg-gray-100 rounded-full h-3 overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all"
-                              style={{ width: `${(gameDetails.correct / gameDetails.total) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Kit Information */}
-                  {gameDetails.kit_title && (
-                    <div className="border border-gray-200 rounded-2xl p-4">
-                      <h3 className="font-bold text-gray-900 mb-3">Kit Information</h3>
-                      <div className="text-sm text-gray-700">
-                        <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                          <span className="text-gray-600">Kit Name</span>
-                          <span className="font-semibold">{gameDetails.kit_title}</span>
-                        </div>
-                        {gameDetails.created_at && (
-                          <div className="flex items-center justify-between py-2">
-                            <span className="text-gray-600">Played On</span>
-                            <span className="font-semibold">
-                              {new Date(gameDetails.created_at).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Player Details */}
-                  {gameDetails.participants && gameDetails.participants.length > 0 && (
-                    <div className="border border-gray-200 rounded-2xl p-4">
-                      <h3 className="font-bold text-gray-900 mb-4">Player Performance</h3>
-                      <div className="space-y-3">
-                        {gameDetails.participants.map((p, idx) => (
-                          <div key={idx} className="border border-gray-100 rounded-lg overflow-hidden">
-                            <button
-                              onClick={() => setExpandedPlayerIndex(expandedPlayerIndex === idx ? null : idx)}
-                              className="w-full p-4 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
-                            >
-                              <div className="flex-1 text-left">
-                                <div className="font-bold text-gray-900">{p.player_name || p.user_name || 'Anonymous'}</div>
-                                <div className="text-xs text-gray-600 mt-1 flex items-center gap-4">
-                                  <span>
-                                    <strong>{p.correct_answers}/{p.total_answered}</strong> correct
-                                  </span>
-                                  <span>
-                                    <strong>{p.accuracy}%</strong> accuracy
-                                  </span>
-                                  <span>
-                                    <strong>{p.score}</strong> points
-                                  </span>
-                                </div>
-                              </div>
-                              <ChevronRight className={`w-5 h-5 text-gray-500 transition-transform ${expandedPlayerIndex === idx ? 'rotate-90' : ''}`} />
-                            </button>
-
-                            {/* Expanded player details */}
-                            {expandedPlayerIndex === idx && p.answers && p.answers.length > 0 && (
-                              <div className="p-4 border-t border-gray-100 bg-white">
-                                <div className="space-y-2 max-h-96 overflow-y-auto">
-                                  {p.answers.map((ans, ansIdx) => (
-                                    <div key={ansIdx} className={`p-3 rounded-lg border-l-4 ${
-                                      ans.is_correct 
-                                        ? 'bg-green-50 border-green-500' 
-                                        : 'bg-red-50 border-red-500'
-                                    }`}>
-                                      <div className="flex items-start gap-2">
-                                        <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold mt-0.5 ${
-                                          ans.is_correct ? 'bg-green-500' : 'bg-red-500'
-                                        }`}>
-                                          {ans.is_correct ? '✓' : '✗'}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="text-xs font-semibold text-gray-600 mb-1">
-                                            Question {ansIdx + 1}
-                                          </div>
-                                          <div className="text-sm text-gray-700 mb-2 break-words">
-                                            {ans.question_text || 'Question text not available'}
-                                          </div>
-                                          {ans.time_taken > 0 && (
-                                            <div className="text-xs text-gray-500">
-                                              Time: {ans.time_taken}s
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-6 sm:p-8 md:p-12 text-center">
-                  <p className="text-gray-400 text-sm">Game details not found</p>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Game Stats modal — shared with TeacherGameResults so clicking a
+            recent game shows exactly the same UI as the post-game View Stats. */}
+        {selectedGameCode && (
+          <GameStatsModal gameCode={selectedGameCode} onClose={() => setSelectedGameCode(null)} />
         )}
 
         {activeTab === 'classrooms' && (

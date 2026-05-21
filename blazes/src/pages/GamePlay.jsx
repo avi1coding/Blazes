@@ -247,18 +247,21 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     const currentQuestion = questions[questionQueue[queueIndex]];
     const isCorrect = optionIndex === currentQuestion.correctAnswer;
     if (isCorrect) {
-      const pts = game.settings?.pointsPerCorrectAnswer || 100;
-      const ns = scoreRef.current + pts; setScore(ns); scoreRef.current = ns;
       const nc = correctCountRef.current + 1; setCorrectCount(nc); correctCountRef.current = nc;
     }
     if (user && currentQuestion.id) {
       const timeTaken = parseFloat(((Date.now() - questionStartTimeRef.current) / 1000).toFixed(1));
       try {
         const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-        await fetch(`${base}/api/games/${gameCode}/answer`, {
+        const res = await fetch(`${base}/api/games/${gameCode}/answer`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id, questionId: currentQuestion.id, selectedAnswer: String(optionIndex), isCorrect, timeTaken })
         });
+        const data = await res.json().catch(() => ({}));
+        const pts = Number(data?.pointsEarned) || 0;
+        if (pts > 0) {
+          const ns = scoreRef.current + pts; setScore(ns); scoreRef.current = ns;
+        }
       } catch (_) { }
     }
     setTypedAnswer('');
@@ -314,8 +317,6 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     const newAnswered = questionsAnsweredRef.current + 1;
     setQuestionsAnswered(newAnswered); questionsAnsweredRef.current = newAnswered;
     if (isCorrect) {
-      const pts = game.settings?.pointsPerCorrectAnswer || 100;
-      const ns = scoreRef.current + pts; setScore(ns); scoreRef.current = ns;
       const nc = correctCountRef.current + 1; setCorrectCount(nc); correctCountRef.current = nc;
     }
     if (user && currentQ.id) {
@@ -324,7 +325,15 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
       fetch(`${base}/api/games/${gameCode}/answer`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, questionId: currentQ.id, selectedAnswer: typedAnswer.trim(), isCorrect, timeTaken })
-      }).catch(() => {});
+      })
+        .then(r => r.json().catch(() => ({})))
+        .then(data => {
+          const pts = Number(data?.pointsEarned) || 0;
+          if (pts > 0) {
+            const ns = scoreRef.current + pts; setScore(ns); scoreRef.current = ns;
+          }
+        })
+        .catch(() => {});
     }
     setTypedAnswer('');
     setTimeout(() => {

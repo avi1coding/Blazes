@@ -195,7 +195,8 @@ function KitDetail({ data }) {
         {perQuestion.length === 0 ? <Empty>No question data yet.</Empty> : (
           <ul className="space-y-2">
             {perQuestion.map(q => {
-              const acc = q.times_answered > 0 ? Math.round((q.correct / q.times_answered) * 100) : 0;
+              const has = q.times_answered > 0;
+              const acc = has ? Math.round((q.correct / q.times_answered) * 100) : null;
               return (
                 <li key={q.id} className="rounded-xl border border-gray-200 p-3 bg-white">
                   <div className="flex items-center justify-between gap-3 mb-1.5">
@@ -203,7 +204,7 @@ function KitDetail({ data }) {
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <span className="text-[11px] font-bold text-gray-500 tabular-nums">{q.correct}/{q.times_answered}</span>
                       {q.avg_time != null && <span className="text-[11px] font-bold text-gray-500 tabular-nums flex items-center gap-1"><Clock className="w-3 h-3" /> {Number(q.avg_time).toFixed(1)}s</span>}
-                      <span className="text-sm font-black tabular-nums" style={{ color: acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{acc}%</span>
+                      <span className="text-sm font-black tabular-nums" style={{ color: !has ? '#9ca3af' : acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{has ? `${acc}%` : 'NONE'}</span>
                     </div>
                   </div>
                   <Bar acc={acc} />
@@ -227,7 +228,7 @@ function KitDetail({ data }) {
             </thead>
             <tbody>
               {topPlayers.map(p => {
-                const acc = p.total > 0 ? Math.round((p.correct / p.total) * 100) : 0;
+                const has = p.total > 0; const acc = has ? Math.round((p.correct / p.total) * 100) : 0;
                 return (
                   <tr key={p.id} className="border-b border-gray-100 last:border-b-0">
                     <td className="py-2.5 pr-3 font-bold text-gray-900 truncate">{p.name}</td>
@@ -246,13 +247,13 @@ function KitDetail({ data }) {
         {games.length === 0 ? <Empty>No games played with this kit.</Empty> : (
           <ul className="space-y-1.5">
             {games.slice(0, 12).map(g => {
-              const acc = g.total > 0 ? Math.round((g.correct / g.total) * 100) : 0;
+              const has = g.total > 0; const acc = has ? Math.round((g.correct / g.total) * 100) : 0;
               return (
                 <li key={g.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white border border-gray-200">
                   <span className="font-mono text-xs font-black text-gray-700">{g.game_code}</span>
                   <span className="text-xs text-gray-500 flex-1 truncate">{g.game_mode}{g.created_at ? ` · ${new Date(g.created_at).toLocaleDateString()}` : ''}</span>
                   <span className="text-xs font-bold text-gray-600 tabular-nums">{g.players || 0} players</span>
-                  <span className="text-xs font-black tabular-nums" style={{ color: acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{acc}%</span>
+                  <span className="text-xs font-black tabular-nums" style={{ color: !has ? '#9ca3af' : acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{has ? `${acc}%` : 'NONE'}</span>
                 </li>
               );
             })}
@@ -267,7 +268,8 @@ function StudentDetail({ data }) {
   const { student, games = [], weakest = [], byType = [] } = data || {};
   const totalAns = byType.reduce((s, t) => s + (t.total || 0), 0);
   const totalCorrect = byType.reduce((s, t) => s + (t.correct || 0), 0);
-  const overallAcc = totalAns > 0 ? Math.round((totalCorrect / totalAns) * 100) : 0;
+  const hasAns = totalAns > 0;
+  const overallAcc = hasAns ? Math.round((totalCorrect / totalAns) * 100) : 0;
   return (
     <div className="p-5 space-y-5">
       <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4">
@@ -278,8 +280,8 @@ function StudentDetail({ data }) {
           <Pill label="Answered" value={totalAns} />
           <Pill
             label="Overall accuracy"
-            value={`${overallAcc}%`}
-            color={overallAcc >= 80 ? 'bg-emerald-50 text-emerald-700' : overallAcc >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}
+            value={hasAns ? `${overallAcc}%` : 'NONE'}
+            color={!hasAns ? 'bg-gray-100 text-gray-500' : overallAcc >= 80 ? 'bg-emerald-50 text-emerald-700' : overallAcc >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}
           />
         </div>
       </div>
@@ -288,7 +290,7 @@ function StudentDetail({ data }) {
         {byType.length === 0 ? <Empty>No data yet.</Empty> : (
           <ul className="space-y-1.5">
             {byType.map(t => {
-              const acc = t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0;
+              const has = t.total > 0; const acc = has ? Math.round((t.correct / t.total) * 100) : 0;
               return (
                 <li key={t.answer_type} className="rounded-lg border border-gray-200 p-2.5 bg-white">
                   <div className="flex items-center justify-between gap-3 mb-1">
@@ -296,7 +298,7 @@ function StudentDetail({ data }) {
                     <div className="flex items-center gap-3">
                       <span className="text-[11px] font-bold text-gray-500 tabular-nums">{t.correct}/{t.total}</span>
                       {t.avg_time != null && <span className="text-[11px] font-bold text-gray-500 tabular-nums">{Number(t.avg_time).toFixed(1)}s</span>}
-                      <span className="text-sm font-black tabular-nums" style={{ color: acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{acc}%</span>
+                      <span className="text-sm font-black tabular-nums" style={{ color: !has ? '#9ca3af' : acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{has ? `${acc}%` : 'NONE'}</span>
                     </div>
                   </div>
                   <Bar acc={acc} />
@@ -311,7 +313,7 @@ function StudentDetail({ data }) {
         {weakest.length === 0 ? <Empty>No weak spots yet — they're hitting everything.</Empty> : (
           <ul className="space-y-1.5">
             {weakest.map(q => {
-              const acc = q.times_answered > 0 ? Math.round((q.correct / q.times_answered) * 100) : 0;
+              const has = q.times_answered > 0; const acc = has ? Math.round((q.correct / q.times_answered) * 100) : 0;
               return (
                 <li key={q.id} className="rounded-lg border border-gray-200 p-2.5 bg-white">
                   <div className="text-xs font-bold text-gray-900 truncate">{q.question_text}</div>
@@ -319,7 +321,7 @@ function StudentDetail({ data }) {
                     <span className="text-gray-500 font-semibold truncate">{q.kit_title || ''}</span>
                     <span className="text-gray-500 tabular-nums">{q.correct}/{q.times_answered}</span>
                     {q.avg_time != null && <span className="text-gray-500 tabular-nums">· {Number(q.avg_time).toFixed(1)}s</span>}
-                    <span className="ml-auto font-black tabular-nums" style={{ color: acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{acc}%</span>
+                    <span className="ml-auto font-black tabular-nums" style={{ color: !has ? '#9ca3af' : acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{has ? `${acc}%` : 'NONE'}</span>
                   </div>
                 </li>
               );
@@ -332,13 +334,13 @@ function StudentDetail({ data }) {
         {games.length === 0 ? <Empty>No games yet.</Empty> : (
           <ul className="space-y-1.5">
             {games.slice(0, 15).map((g, i) => {
-              const acc = g.total > 0 ? Math.round((g.correct / g.total) * 100) : 0;
+              const has = g.total > 0; const acc = has ? Math.round((g.correct / g.total) * 100) : 0;
               return (
                 <li key={`${g.game_code}-${i}`} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white border border-gray-200">
                   <span className="font-mono text-xs font-black text-gray-700">{g.game_code}</span>
                   <span className="text-xs text-gray-500 flex-1 truncate">{g.kit_title || g.game_mode}</span>
                   <span className="text-xs font-bold text-gray-600 tabular-nums">{g.correct}/{g.total}</span>
-                  <span className="text-xs font-black tabular-nums" style={{ color: acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{acc}%</span>
+                  <span className="text-xs font-black tabular-nums" style={{ color: !has ? '#9ca3af' : acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{has ? `${acc}%` : 'NONE'}</span>
                 </li>
               );
             })}
@@ -353,7 +355,8 @@ function QuestionTypeDetail({ data }) {
   const { answer_type, rows = [] } = data || {};
   const total = rows.reduce((s, r) => s + (r.times_answered || 0), 0);
   const correct = rows.reduce((s, r) => s + (r.correct || 0), 0);
-  const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const has = total > 0;
+  const acc = has ? Math.round((correct / total) * 100) : 0;
   return (
     <div className="p-5 space-y-5">
       <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4 flex flex-wrap items-center gap-3">
@@ -363,8 +366,8 @@ function QuestionTypeDetail({ data }) {
           <Pill label="Attempts" value={total} />
           <Pill
             label="Accuracy"
-            value={`${acc}%`}
-            color={acc >= 80 ? 'bg-emerald-50 text-emerald-700' : acc >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}
+            value={has ? `${acc}%` : 'NONE'}
+            color={!has ? 'bg-gray-100 text-gray-500' : acc >= 80 ? 'bg-emerald-50 text-emerald-700' : acc >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}
           />
         </div>
       </div>
@@ -372,12 +375,12 @@ function QuestionTypeDetail({ data }) {
         {rows.length === 0 ? <Empty>No questions of this type yet.</Empty> : (
           <ul className="space-y-1.5">
             {rows.map(q => {
-              const a = q.times_answered > 0 ? Math.round((q.correct / q.times_answered) * 100) : 0;
+              const has = q.times_answered > 0; const a = has ? Math.round((q.correct / q.times_answered) * 100) : 0;
               return (
                 <li key={q.question_id} className="rounded-lg border border-gray-200 p-2.5 bg-white">
                   <div className="flex items-center justify-between gap-3 mb-1">
                     <div className="text-xs font-bold text-gray-900 truncate flex-1">{q.question_text}</div>
-                    <span className="text-sm font-black tabular-nums" style={{ color: a >= 80 ? '#059669' : a >= 50 ? '#d97706' : '#dc2626' }}>{a}%</span>
+                    <span className="text-sm font-black tabular-nums" style={{ color: !has ? '#9ca3af' : a >= 80 ? '#059669' : a >= 50 ? '#d97706' : '#dc2626' }}>{has ? `${a}%` : 'NONE'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-[11px] text-gray-500 font-semibold">
                     <span className="truncate">{q.kit_name || ''}</span>
@@ -412,13 +415,15 @@ function Empty({ children }) {
 function Bar({ acc }) {
   return (
     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-      <div
-        className="h-full transition-all"
-        style={{
-          width: `${acc}%`,
-          background: acc >= 80 ? '#10b981' : acc >= 50 ? '#f59e0b' : '#ef4444',
-        }}
-      />
+      {acc != null && (
+        <div
+          className="h-full transition-all"
+          style={{
+            width: `${acc}%`,
+            background: acc >= 80 ? '#10b981' : acc >= 50 ? '#f59e0b' : '#ef4444',
+          }}
+        />
+      )}
     </div>
   );
 }

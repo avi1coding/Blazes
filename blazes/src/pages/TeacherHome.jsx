@@ -707,7 +707,8 @@ export default function TeacherHome() {
                       <div className="space-y-2.5">
                         {analytics.questionTypePerf.map((t, i) => {
                           const labels = { multiple_choice: 'Multiple Choice', true_false: 'True/False', short_answer: 'Short Answer', multi_select: 'Multi-Select', matching: 'Matching', ordering: 'Ordering', image_label: 'Image Label', audio: 'Audio', fill_blank: 'Fill Blank', math_equation: 'Math' };
-                          const acc = t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0;
+                          const has = t.total > 0;
+                          const acc = has ? Math.round((t.correct / t.total) * 100) : 0;
                           return (
                             <button
                               type="button"
@@ -717,9 +718,9 @@ export default function TeacherHome() {
                             >
                               <div className="w-24 text-xs font-bold text-gray-700 truncate text-left">{labels[t.answer_type] || t.answer_type}</div>
                               <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${acc >= 80 ? 'bg-green-500' : acc >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${acc}%` }} />
+                                {has && <div className={`h-full rounded-full ${acc >= 80 ? 'bg-green-500' : acc >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${acc}%` }} />}
                               </div>
-                              <div className="w-10 text-xs font-black text-gray-700 text-right">{acc}%</div>
+                              <div className={`w-12 text-xs font-black text-right ${has ? 'text-gray-700' : 'text-gray-400'}`}>{has ? `${acc}%` : 'NONE'}</div>
                               <div className="w-14 text-[10px] text-gray-400 text-right">{t.correct}/{t.total}</div>
                             </button>
                           );
@@ -737,7 +738,8 @@ export default function TeacherHome() {
                       </div>
                       <div className="space-y-2.5 max-h-80 overflow-y-auto">
                         {analytics.kitPerf.map((k, i) => {
-                          const acc = k.q_total > 0 ? Math.round((k.q_correct / k.q_total) * 100) : 0;
+                          const has = k.q_total > 0;
+                          const acc = has ? Math.round((k.q_correct / k.q_total) * 100) : 0;
                           return (
                             <button
                               type="button"
@@ -749,7 +751,7 @@ export default function TeacherHome() {
                                 <div className="text-xs font-bold text-gray-800 truncate">{k.title}</div>
                                 <div className="text-[10px] text-gray-400">{k.unique_players} students · {k.times_played} plays</div>
                               </div>
-                              <div className={`text-xs font-black ${acc >= 80 ? 'text-green-600' : acc >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{acc}%</div>
+                              <div className={`text-xs font-black ${has ? (acc >= 80 ? 'text-green-600' : acc >= 50 ? 'text-yellow-600' : 'text-red-600') : 'text-gray-400'}`}>{has ? `${acc}%` : 'NONE'}</div>
                             </button>
                           );
                         })}
@@ -1033,7 +1035,8 @@ export default function TeacherHome() {
                         </thead>
                         <tbody>
                           {analytics.recentGames.map((g, i) => {
-                            const acc = g.total > 0 ? Math.round((g.correct / g.total) * 100) : 0;
+                            const has = g.total > 0;
+                            const acc = has ? Math.round((g.correct / g.total) * 100) : 0;
                             return (
                               <tr
                                 key={i}
@@ -1049,7 +1052,11 @@ export default function TeacherHome() {
                                 <td className="py-2 px-3 text-right font-bold text-gray-700">{g.players}</td>
                                 <td className="py-2 px-3 text-right font-bold text-gray-700">{g.avg_score ? Math.round(g.avg_score) : '--'}</td>
                                 <td className="py-2 px-3 text-right">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${acc >= 80 ? 'bg-green-100 text-green-700' : acc >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{acc}%</span>
+                                  {has ? (
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${acc >= 80 ? 'bg-green-100 text-green-700' : acc >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{acc}%</span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500">NONE</span>
+                                  )}
                                 </td>
                                 <td className="py-2 px-3 text-right text-gray-500 text-xs whitespace-nowrap">{g.created_at ? new Date(g.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--'}</td>
                               </tr>

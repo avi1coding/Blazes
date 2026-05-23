@@ -4759,6 +4759,9 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
         GROUP BY a.id ORDER BY a.due_date DESC LIMIT 20
       `, [teacherId, teacherId]),
 
+      // Recent games — only include games where at least one answer was
+      // submitted. A teacher who clicked Start but no students answered
+      // anything is noise, not a "recent game" worth showing.
       dbAll(`
         SELECT g.game_code, g.game_mode, g.created_at, k.title as kit,
           (SELECT COUNT(*) FROM game_participants gp WHERE gp.game_id=g.id) as players,
@@ -4766,7 +4769,9 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
           (SELECT COUNT(*) FROM game_answers ga WHERE ga.game_id=g.id AND ga.is_correct=1) as correct,
           (SELECT COUNT(*) FROM game_answers ga2 WHERE ga2.game_id=g.id) as total
         FROM games g LEFT JOIN question_kits k ON g.kit_id=k.id
-        WHERE g.host_id=? ORDER BY g.created_at DESC LIMIT 10
+        WHERE g.host_id=?
+          AND EXISTS (SELECT 1 FROM game_answers gax WHERE gax.game_id=g.id)
+        ORDER BY g.created_at DESC LIMIT 10
       `, [teacherId]),
 
       dbAll(`
@@ -5103,6 +5108,7 @@ app.get('/api/analytics/student/:studentId', async (req, res) => {
       LEFT JOIN game_answers ga ON ga.game_id = g.id AND ga.user_id = ?
       WHERE 1=1 ${gameScopeFilter}
       GROUP BY g.id
+      HAVING COUNT(ga.id) > 0
       ORDER BY g.created_at DESC
       LIMIT 15
     `, [studentId, studentId]);

@@ -153,8 +153,8 @@ export default function GameStatsModal({ gameCode, onClose, pro = false }) {
                               </td>
                               <td className="py-2.5 px-3 text-right font-black tabular-nums text-gray-900">{fmtScore(p.score, stats.game_mode)}</td>
                               <td className="py-2.5 px-3 text-right font-bold text-gray-700 tabular-nums">{p.correct_answers}/{p.total_answered}</td>
-                              <td className="py-2.5 pl-3 text-right font-black tabular-nums" style={{ color: p.accuracy >= 80 ? '#059669' : p.accuracy >= 50 ? '#d97706' : '#dc2626' }}>
-                                {p.accuracy}%
+                              <td className="py-2.5 pl-3 text-right font-black tabular-nums" style={{ color: p.total_answered === 0 ? '#9ca3af' : p.accuracy >= 80 ? '#059669' : p.accuracy >= 50 ? '#d97706' : '#dc2626' }}>
+                                {p.total_answered === 0 ? 'NONE' : `${p.accuracy}%`}
                               </td>
                             </tr>
                             {expanded && (
@@ -260,10 +260,10 @@ function PerQuestionAccuracy({ participants }) {
       text: v.question_text || '—',
       total: v.total,
       correct: v.correct,
-      acc: v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0,
+      acc: v.total > 0 ? Math.round((v.correct / v.total) * 100) : null,
       avgTime: v.time_n > 0 ? v.time_sum / v.time_n : null,
     }))
-    .sort((a, b) => a.acc - b.acc);
+    .sort((a, b) => (a.acc ?? 101) - (b.acc ?? 101));
 
   if (rows.length === 0) return null;
 
@@ -285,19 +285,21 @@ function PerQuestionAccuracy({ participants }) {
                     <Clock className="w-3 h-3" /> {r.avgTime.toFixed(1)}s
                   </span>
                 )}
-                <span className="text-sm font-black tabular-nums" style={{ color: r.acc >= 80 ? '#059669' : r.acc >= 50 ? '#d97706' : '#dc2626' }}>
-                  {r.acc}%
+                <span className="text-sm font-black tabular-nums" style={{ color: r.acc == null ? '#9ca3af' : r.acc >= 80 ? '#059669' : r.acc >= 50 ? '#d97706' : '#dc2626' }}>
+                  {r.acc == null ? 'NONE' : `${r.acc}%`}
                 </span>
               </div>
             </div>
             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full transition-all"
-                style={{
-                  width: `${r.acc}%`,
-                  background: r.acc >= 80 ? '#10b981' : r.acc >= 50 ? '#f59e0b' : '#ef4444',
-                }}
-              />
+              {r.acc != null && (
+                <div
+                  className="h-full transition-all"
+                  style={{
+                    width: `${r.acc}%`,
+                    background: r.acc >= 80 ? '#10b981' : r.acc >= 50 ? '#f59e0b' : '#ef4444',
+                  }}
+                />
+              )}
             </div>
           </li>
         ))}

@@ -1025,7 +1025,7 @@ export default function TeacherHome() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-gray-200">
-                            <th className="text-left py-2 px-3 text-xs font-bold text-gray-500 uppercase">Kit</th>
+                            <th className="text-left py-2 px-3 text-xs font-bold text-gray-500 uppercase">Game</th>
                             <th className="text-left py-2 px-3 text-xs font-bold text-gray-500 uppercase">Mode</th>
                             <th className="text-right py-2 px-3 text-xs font-bold text-gray-500 uppercase">Players</th>
                             <th className="text-right py-2 px-3 text-xs font-bold text-gray-500 uppercase">Avg Score</th>
@@ -1047,7 +1047,12 @@ export default function TeacherHome() {
                                     : 'hover:bg-gray-50'
                                 }`}
                               >
-                                <td className="py-2 px-3 font-semibold text-gray-800 truncate max-w-[150px]">{g.kit || 'Unknown'}</td>
+                                <td className="py-2 px-3 max-w-[220px]">
+                                  <div className="font-bold text-gray-900 truncate">{g.game_name || g.kit || 'Unnamed game'}</div>
+                                  {g.game_name && g.kit && (
+                                    <div className="text-[10px] text-gray-400 font-semibold truncate">{g.kit}</div>
+                                  )}
+                                </td>
                                 <td className="py-2 px-3 text-gray-600">{getGameModeName(g.game_mode)}</td>
                                 <td className="py-2 px-3 text-right font-bold text-gray-700">{g.players}</td>
                                 <td className="py-2 px-3 text-right font-bold text-gray-700">{g.avg_score ? Math.round(g.avg_score) : '--'}</td>

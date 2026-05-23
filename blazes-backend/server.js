@@ -3223,9 +3223,15 @@ app.get('/api/games/:gameCode/details', (req, res) => {
       const totalQuestions = gameStats.total_questions || 0;
       const correctAnswers = gameStats.correct_answers || 0;
 
+      let gameName = null;
+      try {
+        const s = typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {});
+        gameName = s?.gameName || null;
+      } catch (_) {}
       res.json({
         game_code: gameCode,
         game_mode: game.game_mode,
+        game_name: gameName,
         created_at: game.created_at,
         status: game.status,
         kit_title: kitInfo?.title || 'Unknown Kit',
@@ -4762,8 +4768,11 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
       // Recent games — only include games where at least one answer was
       // submitted. A teacher who clicked Start but no students answered
       // anything is noise, not a "recent game" worth showing.
+      // game_name is pulled out of the settings JSON (every setup page writes
+      // settings.gameName) so the teacher can tell two same-kit games apart.
       dbAll(`
         SELECT g.game_code, g.game_mode, g.created_at, k.title as kit,
+          json_extract(g.settings, '$.gameName') as game_name,
           (SELECT COUNT(*) FROM game_participants gp WHERE gp.game_id=g.id) as players,
           (SELECT AVG(gp2.score) FROM game_participants gp2 WHERE gp2.game_id=g.id) as avg_score,
           (SELECT COUNT(*) FROM game_answers ga WHERE ga.game_id=g.id AND ga.is_correct=1) as correct,

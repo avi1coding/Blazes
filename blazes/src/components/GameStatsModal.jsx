@@ -64,9 +64,12 @@ export default function GameStatsModal({ gameCode, onClose, pro = false }) {
               <BarChart3 className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <div className="text-lg font-black text-gray-900">Game Stats</div>
-              <div className="text-xs font-bold text-gray-500">
-                {gameCode}{stats?.kit_title ? ` · ${stats.kit_title}` : ''}
+              <div className="text-lg font-black text-gray-900 truncate max-w-md">
+                {stats?.game_name || 'Game Stats'}
+              </div>
+              <div className="text-xs font-bold text-gray-500 truncate max-w-md">
+                <span className="font-mono">{gameCode}</span>
+                {stats?.kit_title ? ` · ${stats.kit_title}` : ''}
               </div>
             </div>
           </div>

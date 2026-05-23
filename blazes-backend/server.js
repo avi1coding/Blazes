@@ -4727,7 +4727,7 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
       `, []),
 
       dbAll(`
-        SELECT q.question_text, q.answer_type, k.title as kit_name,
+        SELECT q.id as question_id, k.id as kit_id, q.question_text, q.answer_type, k.title as kit_name,
           COUNT(*) as times_answered, SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
           AVG(ga.time_taken) as avg_time
         FROM game_answers ga JOIN questions q ON ga.question_id=q.id JOIN games g ON ga.game_id=g.id
@@ -4738,7 +4738,7 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
       `, []),
 
       dbAll(`
-        SELECT k.title, k.subject, COUNT(DISTINCT gp.user_id) as unique_players,
+        SELECT k.id as kit_id, k.title, k.subject, COUNT(DISTINCT gp.user_id) as unique_players,
           COUNT(DISTINCT gp.game_id) as times_played, AVG(gp.score) as avg_score,
           (SELECT COUNT(*) FROM game_answers ga2 JOIN games g2 ON ga2.game_id=g2.id WHERE g2.kit_id=k.id AND ga2.user_id IN (${studentIdList})) as q_total,
           (SELECT SUM(CASE WHEN ga3.is_correct=1 THEN 1 ELSE 0 END) FROM game_answers ga3 JOIN games g3 ON ga3.game_id=g3.id WHERE g3.kit_id=k.id AND ga3.user_id IN (${studentIdList})) as q_correct
@@ -4781,7 +4781,7 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
       `, [teacherId, teacherId]),
 
       dbAll(`
-        SELECT q.question_text, q.answer_type, k.title as kit_name, k.subject,
+        SELECT q.id as question_id, k.id as kit_id, q.question_text, q.answer_type, k.title as kit_name, k.subject,
           COUNT(*) as times_answered,
           SUM(CASE WHEN ga.is_correct=1 THEN 1 ELSE 0 END) as correct,
           COUNT(DISTINCT ga.user_id) as unique_students,
@@ -4894,6 +4894,162 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
   } catch (err) {
     console.error('Teacher analytics error:', err);
     res.status(500).json({ error: 'Failed to fetch teacher analytics' });
+  }
+});
+
+// Pro-tier deep drill-down on any analytics card. Single endpoint, four shapes
+// based on `type`:
+//   question      → per-student attempts on one question (who got it, what
+//                   they answered, time taken)
+//   kit           → every game played with this kit + per-question accuracy
+//                   inside the kit
+//   student       → student profile: all games they played for this teacher
+//                   plus their weakest questions
+//   question_type → all questions of this answer_type, hardest first
+//
+// We always scope by the teacher's students so a teacher can't accidentally
+// peek at another teacher's data even with a guessed id.
+app.get('/api/analytics/teacher/:teacherId/detail', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { type, id } = req.query;
+    if (!type || !id) return res.status(400).json({ error: 'type and id required' });
+
+    // Resolve the set of students this teacher can see (their classroom roster +
+    // any students who've played in games they hosted). The drill-downs union-
+    // filter on this set so we never leak data across teachers.
+    const studentIds = await dbAll(`
+      SELECT DISTINCT student_id AS id FROM classroom_students cs
+        JOIN classrooms c ON c.id = cs.classroom_id
+        WHERE c.teacher_id = ? AND cs.status = 'accepted'
+      UNION
+      SELECT DISTINCT gp.user_id AS id FROM game_participants gp
+        JOIN games g ON g.id = gp.game_id
+        WHERE g.host_id = ?
+    `, [teacherId, teacherId]);
+    const idSet = (studentIds || []).map(r => r.id).filter(Number.isFinite);
+    if (idSet.length === 0) return res.json({ type, attempts: [], rows: [] });
+    const studentIdList = idSet.join(',') || '0';
+    const teacherScope = `(g.host_id = ${parseInt(teacherId, 10)} OR g.kit_id IN (SELECT id FROM question_kits WHERE teacher_id = ${parseInt(teacherId, 10)}))`;
+
+    if (type === 'question') {
+      const qid = parseInt(id, 10);
+      const question = await dbGet(`SELECT q.*, k.title as kit_title, k.subject FROM questions q LEFT JOIN question_kits k ON q.kit_id = k.id WHERE q.id = ?`, [qid]);
+      if (!question) return res.status(404).json({ error: 'Question not found' });
+      const attempts = await dbAll(`
+        SELECT ga.user_id, ga.answer, ga.is_correct, ga.time_taken, ga.points_earned, ga.answered_at,
+          u.name as student_name, g.game_code, g.game_mode, g.created_at as game_at
+        FROM game_answers ga
+        JOIN users u ON u.id = ga.user_id
+        JOIN games g ON g.id = ga.game_id
+        WHERE ga.question_id = ? AND ${teacherScope} AND ga.user_id IN (${studentIdList})
+        ORDER BY ga.answered_at DESC LIMIT 500
+      `, [qid]);
+      return res.json({ type, question, attempts });
+    }
+
+    if (type === 'kit') {
+      const kid = parseInt(id, 10);
+      const kit = await dbGet(`SELECT id, title, subject, grade_level FROM question_kits WHERE id = ?`, [kid]);
+      if (!kit) return res.status(404).json({ error: 'Kit not found' });
+      const games = await dbAll(`
+        SELECT g.id, g.game_code, g.game_mode, g.created_at, g.status,
+          (SELECT COUNT(*) FROM game_participants gp WHERE gp.game_id = g.id) as players,
+          (SELECT AVG(gp2.score) FROM game_participants gp2 WHERE gp2.game_id = g.id) as avg_score,
+          (SELECT COUNT(*) FROM game_answers ga WHERE ga.game_id = g.id AND ga.is_correct = 1) as correct,
+          (SELECT COUNT(*) FROM game_answers ga2 WHERE ga2.game_id = g.id) as total
+        FROM games g WHERE g.kit_id = ? AND g.host_id = ?
+        ORDER BY g.created_at DESC LIMIT 50
+      `, [kid, teacherId]);
+      const perQuestion = await dbAll(`
+        SELECT q.id, q.question_text, q.answer_type,
+          COUNT(*) as times_answered,
+          SUM(CASE WHEN ga.is_correct = 1 THEN 1 ELSE 0 END) as correct,
+          AVG(ga.time_taken) as avg_time
+        FROM game_answers ga
+        JOIN questions q ON q.id = ga.question_id
+        JOIN games g ON g.id = ga.game_id
+        WHERE q.kit_id = ? AND ${teacherScope} AND ga.user_id IN (${studentIdList})
+        GROUP BY ga.question_id
+        ORDER BY CAST(correct AS FLOAT)/times_answered ASC LIMIT 100
+      `, [kid]);
+      const topPlayers = await dbAll(`
+        SELECT u.id, u.name,
+          COUNT(*) as total, SUM(CASE WHEN ga.is_correct = 1 THEN 1 ELSE 0 END) as correct,
+          AVG(ga.time_taken) as avg_time
+        FROM game_answers ga
+        JOIN games g ON g.id = ga.game_id
+        JOIN users u ON u.id = ga.user_id
+        WHERE g.kit_id = ? AND ${teacherScope} AND ga.user_id IN (${studentIdList})
+        GROUP BY ga.user_id ORDER BY (CAST(correct AS FLOAT)/total) DESC LIMIT 25
+      `, [kid]);
+      return res.json({ type, kit, games, perQuestion, topPlayers });
+    }
+
+    if (type === 'student') {
+      const sid = parseInt(id, 10);
+      if (!idSet.includes(sid)) return res.status(403).json({ error: 'Student not in your roster' });
+      const student = await dbGet(`SELECT id, name, email, subscription_tier FROM users WHERE id = ?`, [sid]);
+      const games = await dbAll(`
+        SELECT g.game_code, g.game_mode, g.created_at, k.title as kit_title, gp.score,
+          (SELECT COUNT(*) FROM game_answers ga WHERE ga.game_id = g.id AND ga.user_id = ?) as total,
+          (SELECT COUNT(*) FROM game_answers ga2 WHERE ga2.game_id = g.id AND ga2.user_id = ? AND ga2.is_correct = 1) as correct,
+          (SELECT AVG(ga3.time_taken) FROM game_answers ga3 WHERE ga3.game_id = g.id AND ga3.user_id = ?) as avg_time
+        FROM game_participants gp
+        JOIN games g ON g.id = gp.game_id
+        LEFT JOIN question_kits k ON k.id = g.kit_id
+        WHERE gp.user_id = ? AND ${teacherScope}
+        ORDER BY g.created_at DESC LIMIT 50
+      `, [sid, sid, sid, sid]);
+      const weakest = await dbAll(`
+        SELECT q.id, q.question_text, k.title as kit_title,
+          COUNT(*) as times_answered,
+          SUM(CASE WHEN ga.is_correct = 1 THEN 1 ELSE 0 END) as correct,
+          AVG(ga.time_taken) as avg_time
+        FROM game_answers ga
+        JOIN questions q ON q.id = ga.question_id
+        LEFT JOIN question_kits k ON k.id = q.kit_id
+        JOIN games g ON g.id = ga.game_id
+        WHERE ga.user_id = ? AND ${teacherScope}
+        GROUP BY ga.question_id HAVING times_answered >= 2
+        ORDER BY CAST(correct AS FLOAT)/times_answered ASC LIMIT 20
+      `, [sid]);
+      const byType = await dbAll(`
+        SELECT q.answer_type,
+          COUNT(*) as total,
+          SUM(CASE WHEN ga.is_correct = 1 THEN 1 ELSE 0 END) as correct,
+          AVG(ga.time_taken) as avg_time
+        FROM game_answers ga
+        JOIN questions q ON q.id = ga.question_id
+        JOIN games g ON g.id = ga.game_id
+        WHERE ga.user_id = ? AND ${teacherScope}
+        GROUP BY q.answer_type ORDER BY total DESC
+      `, [sid]);
+      return res.json({ type, student, games, weakest, byType });
+    }
+
+    if (type === 'question_type') {
+      const at = String(id);
+      const rows = await dbAll(`
+        SELECT q.id as question_id, q.question_text, k.title as kit_name,
+          COUNT(*) as times_answered,
+          SUM(CASE WHEN ga.is_correct = 1 THEN 1 ELSE 0 END) as correct,
+          AVG(ga.time_taken) as avg_time
+        FROM game_answers ga
+        JOIN questions q ON q.id = ga.question_id
+        JOIN games g ON g.id = ga.game_id
+        LEFT JOIN question_kits k ON k.id = q.kit_id
+        WHERE q.answer_type = ? AND ${teacherScope} AND ga.user_id IN (${studentIdList})
+        GROUP BY ga.question_id HAVING times_answered >= 1
+        ORDER BY CAST(correct AS FLOAT)/times_answered ASC LIMIT 100
+      `, [at]);
+      return res.json({ type, answer_type: at, rows });
+    }
+
+    return res.status(400).json({ error: 'unknown type' });
+  } catch (err) {
+    console.error('[analytics/detail]', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

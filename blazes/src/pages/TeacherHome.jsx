@@ -33,9 +33,10 @@ import AddQuestionForm from '../components/AddQuestionForm';
 import NotificationDropdown from '../components/NotificationDropdown';
 import SubjectPicker, { GradePicker } from '../components/SubjectPicker';
 import { getGameModeName } from '../utils/gameModeName';
-import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown, Layers, Award, Star } from 'lucide-react';
+import { Flame, Plus, BarChart3, Shirt, BookOpen, Users, TrendingUp, Calendar, Clock, Trophy, Target, Zap, Play, Settings, Home, Trash2, GraduationCap, ChevronRight, ClipboardList, Check, X, Crown, Layers, Award, Star, Lock } from 'lucide-react';
 import Toast from '../components/Toast';
 import GameStatsModal from '../components/GameStatsModal';
+import AnalyticsDetailModal from '../components/AnalyticsDetailModal';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 
 export default function TeacherHome() {
@@ -132,6 +133,9 @@ export default function TeacherHome() {
   const [seasonProgress, setSeasonProgress] = useState(null);
   const [teacherTier, setTeacherTier] = useState('free');
   const [selectedGameCode, setSelectedGameCode] = useState(null);
+  // Analytics drill-down modal target — { type, id, label }. Cleared by close.
+  const [analyticsDetail, setAnalyticsDetail] = useState(null);
+  const isProTeacher = ['teacher_pro', 'school'].includes(teacherTier);
   const [gameDetails, setGameDetails] = useState(null);
   const [loadingGameDetails, setLoadingGameDetails] = useState(false);
   const [expandedPlayerIndex, setExpandedPlayerIndex] = useState(null);
@@ -696,20 +700,28 @@ export default function TeacherHome() {
                   {/* Question Type Performance */}
                   {analytics.questionTypePerf && analytics.questionTypePerf.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                      <h2 className="text-lg font-black text-gray-900 mb-4">Question Types</h2>
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-black text-gray-900">Question Types</h2>
+                        {!isProTeacher && <Lock className="w-3.5 h-3.5 text-purple-400" title="Click any row · Teacher Pro unlocks drill-downs" />}
+                      </div>
                       <div className="space-y-2.5">
                         {analytics.questionTypePerf.map((t, i) => {
                           const labels = { multiple_choice: 'Multiple Choice', true_false: 'True/False', short_answer: 'Short Answer', multi_select: 'Multi-Select', matching: 'Matching', ordering: 'Ordering', image_label: 'Image Label', audio: 'Audio', fill_blank: 'Fill Blank', math_equation: 'Math' };
                           const acc = t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0;
                           return (
-                            <div key={i} className="flex items-center gap-2">
-                              <div className="w-24 text-xs font-bold text-gray-700 truncate">{labels[t.answer_type] || t.answer_type}</div>
+                            <button
+                              type="button"
+                              key={i}
+                              onClick={() => setAnalyticsDetail({ type: 'question_type', id: t.answer_type, label: labels[t.answer_type] || t.answer_type })}
+                              className="w-full flex items-center gap-2 hover:bg-gray-50 rounded-lg p-1.5 transition-colors cursor-pointer"
+                            >
+                              <div className="w-24 text-xs font-bold text-gray-700 truncate text-left">{labels[t.answer_type] || t.answer_type}</div>
                               <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
                                 <div className={`h-full rounded-full ${acc >= 80 ? 'bg-green-500' : acc >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${acc}%` }} />
                               </div>
                               <div className="w-10 text-xs font-black text-gray-700 text-right">{acc}%</div>
                               <div className="w-14 text-[10px] text-gray-400 text-right">{t.correct}/{t.total}</div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -719,18 +731,26 @@ export default function TeacherHome() {
                   {/* Kit Performance */}
                   {analytics.kitPerf && analytics.kitPerf.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                      <h2 className="text-lg font-black text-gray-900 mb-4">Kit Performance</h2>
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-black text-gray-900">Kit Performance</h2>
+                        {!isProTeacher && <Lock className="w-3.5 h-3.5 text-purple-400" />}
+                      </div>
                       <div className="space-y-2.5 max-h-80 overflow-y-auto">
                         {analytics.kitPerf.map((k, i) => {
                           const acc = k.q_total > 0 ? Math.round((k.q_correct / k.q_total) * 100) : 0;
                           return (
-                            <div key={i} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
+                            <button
+                              type="button"
+                              key={i}
+                              onClick={() => setAnalyticsDetail({ type: 'kit', id: k.kit_id, label: k.title })}
+                              className="w-full flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer text-left"
+                            >
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-bold text-gray-800 truncate">{k.title}</div>
                                 <div className="text-[10px] text-gray-400">{k.unique_players} students · {k.times_played} plays</div>
                               </div>
                               <div className={`text-xs font-black ${acc >= 80 ? 'text-green-600' : acc >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{acc}%</div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -743,18 +763,26 @@ export default function TeacherHome() {
                   {/* Hardest Questions */}
                   {analytics.hardestQuestions && analytics.hardestQuestions.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                      <h2 className="text-sm font-black text-gray-900 mb-3">Hardest Questions</h2>
+                      <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-sm font-black text-gray-900">Hardest Questions</h2>
+                        {!isProTeacher && <Lock className="w-3.5 h-3.5 text-purple-400" />}
+                      </div>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {analytics.hardestQuestions.slice(0, 8).map((q, i) => {
                           const acc = q.times_answered > 0 ? Math.round((q.correct / q.times_answered) * 100) : 0;
                           return (
-                            <div key={i} className="flex items-center gap-2">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${acc < 40 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{acc}%</div>
+                            <button
+                              type="button"
+                              key={i}
+                              onClick={() => setAnalyticsDetail({ type: 'question', id: q.question_id, label: q.question_text })}
+                              className="w-full flex items-center gap-2 hover:bg-purple-50 rounded-lg p-1 transition-colors cursor-pointer text-left"
+                            >
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0 ${acc < 40 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{acc}%</div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-[11px] font-semibold text-gray-800 truncate">{q.question_text}</div>
                                 <div className="text-[9px] text-gray-400">{q.kit_name || ''} · {q.correct}/{q.times_answered}</div>
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -764,17 +792,25 @@ export default function TeacherHome() {
                   {/* Top Performers */}
                   {analytics.topPerformers && analytics.topPerformers.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                      <h2 className="text-sm font-black text-gray-900 mb-3">Top Performers</h2>
+                      <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-sm font-black text-gray-900">Top Performers</h2>
+                        {!isProTeacher && <Lock className="w-3.5 h-3.5 text-purple-400" />}
+                      </div>
                       <div className="space-y-2">
                         {analytics.topPerformers.map((s, i) => (
-                          <div key={i} className="flex items-center gap-2.5 p-2 bg-green-50 rounded-lg border border-green-100">
-                            <div className="w-6 h-6 rounded-full bg-green-200 flex items-center justify-center text-[10px] font-black text-green-800">#{i + 1}</div>
+                          <button
+                            type="button"
+                            key={i}
+                            onClick={() => setAnalyticsDetail({ type: 'student', id: s.id, label: s.name })}
+                            className="w-full flex items-center gap-2.5 p-2 bg-green-50 rounded-lg border border-green-100 hover:bg-green-100 transition-colors cursor-pointer text-left"
+                          >
+                            <div className="w-6 h-6 rounded-full bg-green-200 flex items-center justify-center text-[10px] font-black text-green-800 flex-shrink-0">#{i + 1}</div>
                             <div className="flex-1 min-w-0">
                               <div className="text-xs font-bold text-gray-800 truncate">{s.name}</div>
                               <div className="text-[9px] text-gray-400">{s.total_questions} questions</div>
                             </div>
                             <div className="text-xs font-black text-green-700">{Math.round(s.accuracy)}%</div>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -913,14 +949,22 @@ export default function TeacherHome() {
                   {/* Question Difficulty Map */}
                   {analytics.questionDifficultyMap && analytics.questionDifficultyMap.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                      <h2 className="text-lg font-black text-gray-900 mb-1">Question Difficulty Map</h2>
-                      <p className="text-xs text-gray-400 mb-4">Questions your students struggle with most — consider re-teaching these</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <h2 className="text-lg font-black text-gray-900">Question Difficulty Map</h2>
+                        {!isProTeacher && <Lock className="w-3.5 h-3.5 text-purple-400" />}
+                      </div>
+                      <p className="text-xs text-gray-400 mb-4">Questions your students struggle with most — click any to see who answered what</p>
                       <div className="space-y-2 max-h-96 overflow-y-auto">
                         {analytics.questionDifficultyMap.map((q, i) => {
                           const acc = q.times_answered > 0 ? Math.round((q.correct / q.times_answered) * 100) : 0;
                           const failRate = 100 - acc;
                           return (
-                            <div key={i} className="p-3 bg-gray-50 rounded-xl">
+                            <button
+                              type="button"
+                              key={i}
+                              onClick={() => setAnalyticsDetail({ type: 'question', id: q.question_id, label: q.question_text })}
+                              className="w-full p-3 bg-gray-50 rounded-xl hover:bg-purple-50 transition-colors cursor-pointer text-left"
+                            >
                               <div className="flex items-start gap-3">
                                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0 ${acc < 30 ? 'bg-red-100 text-red-700' : acc < 50 ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                   {failRate}%
@@ -937,7 +981,7 @@ export default function TeacherHome() {
                                   </div>
                                 </div>
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -1294,7 +1338,18 @@ export default function TeacherHome() {
           <GameStatsModal
             gameCode={selectedGameCode}
             onClose={() => setSelectedGameCode(null)}
-            pro={['teacher_pro', 'school'].includes(teacherTier)}
+            pro={isProTeacher}
+          />
+        )}
+
+        {analyticsDetail && user && (
+          <AnalyticsDetailModal
+            teacherId={user.id}
+            type={analyticsDetail.type}
+            id={analyticsDetail.id}
+            label={analyticsDetail.label}
+            pro={isProTeacher}
+            onClose={() => setAnalyticsDetail(null)}
           />
         )}
 

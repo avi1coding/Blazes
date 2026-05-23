@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { BarChart3, Users, Zap, Clock, Target, X as XIcon, Flame } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BarChart3, Users, Zap, Clock, Target, X as XIcon, Flame, Lock, ChevronDown, ChevronRight, Check, X as XMark, Crown } from 'lucide-react';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -16,10 +17,17 @@ function fmtScore(value, mode) {
 // ends) and TeacherHome's Recent Games table (click any row). Fetches
 // /api/games/:gameCode/details on first open and caches the result for the
 // lifetime of the modal instance.
-export default function GameStatsModal({ gameCode, onClose }) {
+//
+// `pro` (boolean) unlocks deeper analytics: per-question accuracy across the
+// class, per-player breakdown rows you can expand to see every individual
+// answer with its time and correctness. Free teachers see the basic summary +
+// per-player table and an upgrade nudge for the rest.
+export default function GameStatsModal({ gameCode, onClose, pro = false }) {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expandedPlayer, setExpandedPlayer] = useState(null); // user_id
 
   useEffect(() => {
     if (!gameCode) return;
@@ -106,7 +114,10 @@ export default function GameStatsModal({ gameCode, onClose }) {
               </div>
             )}
 
-            {/* Per-player breakdown */}
+            {/* Per-player breakdown — Pro tier makes each row expandable so the
+                teacher can drill into every individual answer (which one,
+                correct/wrong, time taken). Free tier sees just the summary
+                row and an upgrade nudge below the table. */}
             <div className="p-5">
               <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-2 flex items-center gap-2">
                 <Target className="w-3.5 h-3.5" /> Per-player breakdown
@@ -125,24 +136,172 @@ export default function GameStatsModal({ gameCode, onClose }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {stats.participants.map(p => (
-                        <tr key={p.user_id} className="border-b border-gray-100 last:border-b-0">
-                          <td className="py-2.5 pr-3 font-bold text-gray-900 truncate">{p.player_name || p.user_name || 'Player'}</td>
-                          <td className="py-2.5 px-3 text-right font-black tabular-nums text-gray-900">{fmtScore(p.score, stats.game_mode)}</td>
-                          <td className="py-2.5 px-3 text-right font-bold text-gray-700 tabular-nums">{p.correct_answers}/{p.total_answered}</td>
-                          <td className="py-2.5 pl-3 text-right font-black tabular-nums" style={{ color: p.accuracy >= 80 ? '#059669' : p.accuracy >= 50 ? '#d97706' : '#dc2626' }}>
-                            {p.accuracy}%
-                          </td>
-                        </tr>
-                      ))}
+                      {stats.participants.map(p => {
+                        const expanded = pro && expandedPlayer === p.user_id;
+                        return (
+                          <>
+                            <tr
+                              key={p.user_id}
+                              onClick={() => pro && setExpandedPlayer(expanded ? null : p.user_id)}
+                              className={`border-b border-gray-100 last:border-b-0 ${pro ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                            >
+                              <td className="py-2.5 pr-3 font-bold text-gray-900 truncate flex items-center gap-1.5">
+                                {pro && (expanded
+                                  ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                                  : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />)}
+                                {p.player_name || p.user_name || 'Player'}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-black tabular-nums text-gray-900">{fmtScore(p.score, stats.game_mode)}</td>
+                              <td className="py-2.5 px-3 text-right font-bold text-gray-700 tabular-nums">{p.correct_answers}/{p.total_answered}</td>
+                              <td className="py-2.5 pl-3 text-right font-black tabular-nums" style={{ color: p.accuracy >= 80 ? '#059669' : p.accuracy >= 50 ? '#d97706' : '#dc2626' }}>
+                                {p.accuracy}%
+                              </td>
+                            </tr>
+                            {expanded && (
+                              <tr key={`${p.user_id}-detail`} className="bg-gray-50/60">
+                                <td colSpan={4} className="px-4 py-3">
+                                  <PlayerAnswers answers={p.answers || []} />
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
+
+            {/* Pro-only: per-question accuracy across the class */}
+            {pro && <PerQuestionAccuracy participants={stats.participants || []} />}
+
+            {/* Free teachers get an upsell teaser */}
+            {!pro && (
+              <div className="mx-5 mb-5 rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <Crown className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black text-gray-900 text-sm mb-0.5 flex items-center gap-1.5">
+                      Deep stats with Teacher Pro
+                      <Lock className="w-3.5 h-3.5 text-purple-400" />
+                    </div>
+                    <p className="text-xs text-gray-600 mb-3">
+                      Click any player to see every answer with timing. Plus per-question accuracy across the class so you can spot exactly which questions tripped students up.
+                    </p>
+                    <button
+                      onClick={() => navigate('/upgrade')}
+                      className="text-xs font-black px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-colors"
+                    >
+                      Unlock with Teacher Pro
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Pro-only: each individual answer the player gave, with time taken and a
+// correct/incorrect mark.
+function PlayerAnswers({ answers }) {
+  if (!answers || answers.length === 0) {
+    return <div className="text-xs text-gray-500 font-semibold py-2">No answers recorded.</div>;
+  }
+  return (
+    <ol className="space-y-1.5">
+      {answers.map((a, i) => (
+        <li
+          key={`${a.question_id}-${i}`}
+          className="flex items-start gap-3 px-3 py-2 rounded-lg bg-white border border-gray-200"
+        >
+          <div className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-black"
+               style={{ background: a.is_correct ? '#10b981' : '#ef4444' }}>
+            {a.is_correct ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <XMark className="w-3.5 h-3.5" strokeWidth={3} />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold text-gray-900 truncate">Q{i + 1}. {a.question_text || '—'}</div>
+            <div className="text-[11px] text-gray-500 font-medium">
+              Answered <span className="font-bold text-gray-700">{a.answer ?? '—'}</span>
+              {a.time_taken != null && <> · <Clock className="inline w-3 h-3 -mt-0.5" /> {Number(a.time_taken).toFixed(1)}s</>}
+              {a.points_earned != null && <> · +{a.points_earned} pts</>}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+// Pro-only: roll up every participant's answers by question_id to show class
+// accuracy on each question, sorted by hardest-first so the teacher can see
+// what to reteach.
+function PerQuestionAccuracy({ participants }) {
+  const byQ = new Map();
+  for (const p of participants) {
+    for (const a of (p.answers || [])) {
+      if (!a.question_id) continue;
+      const cur = byQ.get(a.question_id) || { question_text: a.question_text, total: 0, correct: 0, time_sum: 0, time_n: 0 };
+      cur.total += 1;
+      if (a.is_correct) cur.correct += 1;
+      if (a.time_taken != null) { cur.time_sum += Number(a.time_taken); cur.time_n += 1; }
+      byQ.set(a.question_id, cur);
+    }
+  }
+  const rows = Array.from(byQ.entries())
+    .map(([qid, v]) => ({
+      qid,
+      text: v.question_text || '—',
+      total: v.total,
+      correct: v.correct,
+      acc: v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0,
+      avgTime: v.time_n > 0 ? v.time_sum / v.time_n : null,
+    }))
+    .sort((a, b) => a.acc - b.acc);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="px-5 pb-5">
+      <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-2 flex items-center gap-2">
+        <BarChart3 className="w-3.5 h-3.5" /> Per-question class accuracy
+        <span className="ml-auto text-[10px] font-bold text-gray-400 normal-case tracking-normal">Hardest first</span>
+      </div>
+      <ul className="space-y-2">
+        {rows.map(r => (
+          <li key={r.qid} className="rounded-xl border border-gray-200 p-3 bg-white">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="text-xs font-bold text-gray-900 truncate flex-1">{r.text}</div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-[11px] font-bold text-gray-500 tabular-nums">{r.correct}/{r.total}</span>
+                {r.avgTime != null && (
+                  <span className="text-[11px] font-bold text-gray-500 tabular-nums flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> {r.avgTime.toFixed(1)}s
+                  </span>
+                )}
+                <span className="text-sm font-black tabular-nums" style={{ color: r.acc >= 80 ? '#059669' : r.acc >= 50 ? '#d97706' : '#dc2626' }}>
+                  {r.acc}%
+                </span>
+              </div>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full transition-all"
+                style={{
+                  width: `${r.acc}%`,
+                  background: r.acc >= 80 ? '#10b981' : r.acc >= 50 ? '#f59e0b' : '#ef4444',
+                }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

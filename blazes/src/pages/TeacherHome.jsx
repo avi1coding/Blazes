@@ -1291,7 +1291,11 @@ export default function TeacherHome() {
         {/* Game Stats modal — shared with TeacherGameResults so clicking a
             recent game shows exactly the same UI as the post-game View Stats. */}
         {selectedGameCode && (
-          <GameStatsModal gameCode={selectedGameCode} onClose={() => setSelectedGameCode(null)} />
+          <GameStatsModal
+            gameCode={selectedGameCode}
+            onClose={() => setSelectedGameCode(null)}
+            pro={['teacher_pro', 'school'].includes(teacherTier)}
+          />
         )}
 
         {activeTab === 'classrooms' && (

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import {
   Flame, Trophy, Crown, Users, Clock, Zap, TrendingUp, TrendingDown,
   Swords, Mountain, Droplets, Wind, Heart, Ghost, Newspaper, DollarSign,
-  BarChart3, Maximize2, Activity, Star, ArrowUp, Sparkles, Medal,
+  BarChart3, Maximize2, Minimize2, Activity, Star, ArrowUp, Sparkles, Medal,
 } from 'lucide-react';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 
@@ -367,11 +367,30 @@ export default function TeacherPresentView() {
     if (additions.length) setRecentEvents(prev => [...additions.reverse(), ...prev].slice(0, 12));
   }, [modeData, game?.game_mode]);
 
-  // Try fullscreen on first user gesture — most projectors want F11 anyway,
-  // but a click on the button below will request it explicitly.
-  const requestFullscreen = () => {
+  // True fullscreen toggle. Tracks document.fullscreenElement so the button
+  // can flip between enter / exit states and so we can hint the user how to
+  // leave (Esc). Works on the standard requestFullscreen API plus the
+  // -webkit prefix for Safari/iPad projector setups.
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement));
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
+    };
+  }, []);
+  const toggleFullscreen = () => {
     const el = document.documentElement;
-    if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+    if (isFs) {
+      const exit = document.exitFullscreen?.bind(document) || document.webkitExitFullscreen?.bind(document);
+      exit?.();
+    } else {
+      const req = el.requestFullscreen?.bind(el) || el.webkitRequestFullscreen?.bind(el);
+      req?.().catch(() => {});
+    }
   };
 
   const theme = modeTheme(game?.game_mode);
@@ -431,11 +450,16 @@ export default function TeacherPresentView() {
           )}
           <Stat label="players" value={ranked.length} icon={Users} />
           <button
-            onClick={requestFullscreen}
-            className="ml-1 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/10 border border-white/10 transition-colors"
-            title="Go fullscreen"
+            onClick={toggleFullscreen}
+            className={`ml-1 px-3 py-2.5 rounded-xl border transition-colors flex items-center gap-2 font-black text-xs ${
+              isFullscreen
+                ? 'bg-white/15 border-white/30 text-white'
+                : 'bg-amber-500/20 border-amber-400/40 text-amber-200 hover:bg-amber-500/30'
+            }`}
+            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >
-            <Maximize2 className="w-4 h-4 text-white/70" />
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            <span className="hidden sm:inline uppercase tracking-widest">{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
           </button>
         </div>
       </header>

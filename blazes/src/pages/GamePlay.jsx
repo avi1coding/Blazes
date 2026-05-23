@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AvatarPreview, getNameColor, isBlazesPlusCached } from './SkinsPage';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Clock, Trophy, Check, X, Heart, Skull, Lock, Users, Flame } from 'lucide-react';
+import { Clock, Trophy, Check, X, Heart, Skull, Lock, Users, Flame, BarChart3, Crown, Medal, Maximize2 } from 'lucide-react';
 import ElementalClashGamePlay from './ElementalClashGamePlay';
 import ElementalWagerGamePlay from './ElementalWagerGamePlay';
 import ArenaGamePlay from './ArenaGamePlay';
@@ -48,6 +48,25 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     return () => window.removeEventListener('beforeunload', sendLeave);
   }, [gameCode, user]);
 
+  // Poll live leaderboard while the modal is open so the player can see
+  // their rank update in near-real time without leaving the game.
+  useEffect(() => {
+    if (!showLeaderboard) return;
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+    const fetchLb = async () => {
+      try {
+        const r = await fetch(`${base}/api/games/${gameCode}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        const sorted = [...(d.participants || [])].sort((a, b) => (b.score || 0) - (a.score || 0));
+        setLiveLeaderboard(sorted);
+      } catch (_) {}
+    };
+    fetchLb();
+    const id = setInterval(fetchLb, 2000);
+    return () => clearInterval(id);
+  }, [showLeaderboard, gameCode]);
+
   const [game, setGame] = useState(initialGame);
   const [questions, setQuestions] = useState(initialGame?.questions || []);
   const [questionQueue, setQuestionQueue] = useState([]);
@@ -60,6 +79,8 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   const [correctCount, setCorrectCount] = useState(0);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [bbPopup, setBbPopup] = useState({ show: false, amount: 0 });
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [liveLeaderboard, setLiveLeaderboard] = useState([]);
   const [assignmentMinQuestions, setAssignmentMinQuestions] = useState(null);
   const [typedAnswer, setTypedAnswer] = useState('');
   const [orderItems, setOrderItems] = useState([]);
@@ -349,6 +370,66 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
+      {/* Live leaderboard modal — opens from the header button so the player
+          can see their current rank without leaving the game. Polls every 2s
+          while open. */}
+      {showLeaderboard && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowLeaderboard(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <div className="text-lg font-black text-gray-900">Live Leaderboard</div>
+                  <div className="text-xs font-bold text-gray-500">Updates every 2 seconds</div>
+                </div>
+              </div>
+              <button onClick={() => setShowLeaderboard(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              {liveLeaderboard.length === 0 ? (
+                <div className="text-center py-12 text-gray-400 text-sm font-semibold">Waiting for scores…</div>
+              ) : (
+                <ul className="space-y-1.5">
+                  {liveLeaderboard.slice(0, 10).map((p, i) => {
+                    const isMe = p.user_id === user?.id;
+                    const place = i + 1;
+                    const medal = place === 1 ? '#fbbf24' : place === 2 ? '#cbd5e1' : place === 3 ? '#d97706' : null;
+                    return (
+                      <li
+                        key={p.user_id}
+                        className={`flex items-center gap-3 p-3 rounded-xl border-2 ${isMe ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-transparent'}`}
+                      >
+                        <div className="w-8 text-center">
+                          {place === 1 ? (
+                            <Crown className="w-6 h-6 mx-auto" style={{ color: medal }} strokeWidth={2.5} />
+                          ) : place <= 3 ? (
+                            <Medal className="w-5 h-5 mx-auto" style={{ color: medal }} strokeWidth={2.5} />
+                          ) : (
+                            <span className="font-black text-gray-400 text-sm">{place}</span>
+                          )}
+                        </div>
+                        <AvatarPreview skinId={p.avatar_skin || 'default'} initial={(p.player_name || '?')[0].toUpperCase()} size={36} userId={p.user_id} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-black text-sm truncate text-gray-900">
+                            {p.player_name || 'Player'}{isMe && <span className="ml-2 text-xs text-blue-600">YOU</span>}
+                          </div>
+                        </div>
+                        <div className="font-black tabular-nums text-gray-900">{p.score || 0}</div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {bbPopup.show && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-white text-gray-900 font-black px-4 sm:px-6 py-4 rounded-2xl shadow-2xl border-2 border-gray-200 animate-bounce">
           {(bbPopup.xp || 0) > 0 && (
@@ -419,6 +500,14 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
               Finish
             </button>
           )}
+          <button
+            onClick={() => setShowLeaderboard(true)}
+            title="View live leaderboard"
+            className="flex items-center gap-1.5 sm:gap-2 bg-white hover:bg-blue-50 hover:border-blue-300 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-sm border border-gray-200 transition-colors"
+          >
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+            <span className="hidden sm:inline font-bold text-xs sm:text-sm text-gray-700">Leaderboard</span>
+          </button>
           <div className="flex items-center gap-1 sm:gap-2 bg-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-sm border border-gray-200">
             <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
             <span className="font-black text-sm sm:text-base text-gray-900">{score}</span>

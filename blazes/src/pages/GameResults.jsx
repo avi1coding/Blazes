@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Flame, Trophy, Target, Home, Share2, X, Crown, Medal, Shield, Sparkles, Lock } from 'lucide-react';
+import { Flame, Trophy, Target, Home, Share2, X, Crown, Medal, Shield, Sparkles, Lock, Check } from 'lucide-react';
 import Toast from '../components/Toast';
 import { AvatarPreview, getNameColor, isBlazesPlusCached, cacheTier } from './SkinsPage';
 import { rankParticipants } from '../utils/ranking';
@@ -171,45 +171,65 @@ export default function GameResults() {
       </nav>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        {/* Trophy / Result */}
-        <div className="text-center mb-8">
+        {/* Hero — winner gets a celebratory gradient card with the trophy, a
+            soft halo, and a placement chip. Losers get a quieter neutral
+            treatment so the page doesn't feel like it's mocking them. */}
+        <div className="relative mb-8">
           {hasWon ? (
-            <div className="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-              <Trophy className="w-12 h-12 text-yellow-900" strokeWidth={2} />
+            <div
+              className="relative overflow-hidden rounded-3xl p-7 sm:p-10 text-center shadow-xl border-2 border-yellow-200"
+              style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 60%, #fbbf24 100%)' }}
+            >
+              <div className="absolute -top-12 -right-12 w-44 h-44 bg-white/30 rounded-full blur-3xl" />
+              <div className="absolute -bottom-16 -left-12 w-52 h-52 bg-orange-300/30 rounded-full blur-3xl" />
+              <div className="relative">
+                <div className="inline-flex w-20 h-20 sm:w-24 sm:h-24 bg-white rounded-full items-center justify-center mb-5 shadow-lg ring-4 ring-yellow-300">
+                  <Trophy className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-500" strokeWidth={2.5} />
+                </div>
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-amber-900 mb-2 tracking-tight">Victory!</h1>
+                <p className="text-base sm:text-lg font-bold text-amber-800/80">
+                  {gameMode === 'survival' ? 'Survival Mode' : gameMode === 'elemental_markets' ? 'Markets Mode' : 'Classic Mode'} &middot; <span className="font-mono">{gameCode}</span>
+                </p>
+              </div>
             </div>
           ) : (
-            <div className="w-24 h-24 bg-red-400 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-              <X className="w-12 h-12 text-red-900" strokeWidth={2} />
+            <div className="relative rounded-3xl p-7 sm:p-10 text-center shadow-sm bg-white border border-gray-200">
+              <div className="inline-flex w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-full items-center justify-center mb-5">
+                <Flame className="w-10 h-10 sm:w-12 sm:h-12 text-red-500" strokeWidth={2.5} />
+              </div>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-2 tracking-tight">Good game</h1>
+              <p className="text-base text-gray-500 font-semibold">
+                {gameMode === 'survival' ? 'Survival Mode' : gameMode === 'elemental_markets' ? 'Markets Mode' : 'Classic Mode'} &middot; <span className="font-mono">{gameCode}</span>
+              </p>
             </div>
           )}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-2">{hasWon ? 'You Won!' : 'Game Over!'}</h1>
-          <p className="text-lg text-gray-600">
-            {gameMode === 'survival' ? 'Survival Mode' : gameMode === 'elemental_markets' ? 'Markets Mode' : 'Classic Mode'} &middot; Code: {gameCode}
-          </p>
         </div>
 
-        {/* Your Stats */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-gray-200 mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
-            <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl">
-              <div className="text-3xl sm:text-4xl font-black text-red-600 mb-1">
-                {gameMode === 'elemental_markets'
-                  ? `$${Number(score || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : score}
-              </div>
-              <div className="text-xs sm:text-sm font-bold text-gray-600">Score</div>
-            </div>
-            <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl">
-              <div className="text-3xl sm:text-4xl font-black text-blue-600 mb-1">{accuracy}%</div>
-              <div className="text-xs sm:text-sm font-bold text-gray-600">Accuracy</div>
-            </div>
-            <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl">
-              <div className="text-3xl sm:text-4xl font-black text-green-600 mb-1">
-                {questionsAnswered}/{totalQuestions}
-              </div>
-              <div className="text-xs sm:text-sm font-bold text-gray-600">Correct</div>
-            </div>
-          </div>
+        {/* Stat trio — refined with icon chips and consistent typography */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <StatCard
+            icon={Trophy}
+            iconBg="bg-red-100"
+            iconColor="text-red-600"
+            value={gameMode === 'elemental_markets'
+              ? `$${Number(score || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+              : score}
+            label="Score"
+          />
+          <StatCard
+            icon={Target}
+            iconBg="bg-blue-100"
+            iconColor="text-blue-600"
+            value={`${accuracy}%`}
+            label="Accuracy"
+          />
+          <StatCard
+            icon={Check}
+            iconBg="bg-green-100"
+            iconColor="text-green-600"
+            value={`${questionsAnswered}/${totalQuestions}`}
+            label="Correct"
+          />
         </div>
 
         {/* Host-abandoned notice — replaces the leaderboard when the host left
@@ -456,6 +476,19 @@ export default function GameResults() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Compact icon-chip + big-number stat card used in the post-game hero row.
+function StatCard({ icon: Icon, iconBg, iconColor, value, label }) {
+  return (
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-sm flex flex-col items-center text-center">
+      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${iconBg} flex items-center justify-center mb-2`}>
+        <Icon className={`w-5 h-5 ${iconColor}`} strokeWidth={2.5} />
+      </div>
+      <div className="text-2xl sm:text-3xl font-black text-gray-900 leading-none tabular-nums">{value}</div>
+      <div className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-gray-400 mt-1.5">{label}</div>
     </div>
   );
 }

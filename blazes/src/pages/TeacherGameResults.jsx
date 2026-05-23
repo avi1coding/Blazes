@@ -13,6 +13,22 @@ export default function TeacherGameResults() {
     const [error, setError] = useState('');
     const [playerSkins, setPlayerSkins] = useState({});
     const [showStats, setShowStats] = useState(false);
+    const [tier, setTier] = useState('free');
+
+    // Fetch the current user's subscription tier so the stats modal can decide
+    // whether to expose Pro-tier deep analytics (per-question accuracy,
+    // expandable per-player answer breakdown, etc.).
+    useEffect(() => {
+        try {
+            const u = JSON.parse(localStorage.getItem('user') || 'null');
+            if (!u?.id) return;
+            fetch(`${base}/api/subscription/${u.id}`)
+                .then(r => r.json())
+                .then(d => setTier(d.tier || 'free'))
+                .catch(() => {});
+        } catch (_) {}
+    }, []);
+    const isPro = ['teacher_pro', 'school'].includes(tier);
 
     const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -280,7 +296,7 @@ export default function TeacherGameResults() {
             {/* Shared Game Stats modal — same component used from
                 TeacherHome's Recent Games table for consistency. */}
             {showStats && (
-                <GameStatsModal gameCode={gameCode} onClose={() => setShowStats(false)} />
+                <GameStatsModal gameCode={gameCode} onClose={() => setShowStats(false)} pro={isPro} />
             )}
         </div>
     );

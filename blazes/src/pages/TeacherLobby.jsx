@@ -139,15 +139,14 @@ export default function TeacherLobby() {
 
         setIsStarting(true);
 
-        // Pre-open the gameplay popup synchronously when the host is playing
-        // so the browser keeps it in the user-gesture chain. We redirect it
-        // once the start API call returns.
-        let playWin = null;
+        // Pre-open the Present-view popup synchronously so the browser keeps
+        // it inside the user-gesture chain. The Present screen is what goes
+        // on the projector — we want that opened automatically for every
+        // teacher-started game, not buried behind a button. Students don't
+        // get a popup at all.
+        let presentWin = null;
         if (currentUser.role === 'teacher') {
-            const willHostPlay = !!(game?.settings && (typeof game.settings === 'string' ? JSON.parse(game.settings).hostPlays : game.settings.hostPlays));
-            if (willHostPlay) {
-                playWin = window.open('about:blank', '_blank');
-            }
+            presentWin = window.open('about:blank', '_blank');
         }
 
         try {
@@ -164,11 +163,11 @@ export default function TeacherLobby() {
             if (response.ok) {
                 if (lobbyAudioRef.current) lobbyAudioRef.current.stop();
                 if (currentUser.role === 'student') {
-                    if (playWin) playWin.close();
+                    if (presentWin) presentWin.close();
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
                 } else if (hostPlays) {
-                    // Auto-join host as a participant, gameplay is the host's main
-                    // tab, monitoring opens in the pre-opened popup.
+                    // Host is playing: auto-join as a participant, main tab
+                    // becomes the gameplay screen, Present opens in the popup.
                     try {
                         await fetch(`${baseUrl}/api/games/${gameCode}/join`, {
                             method: 'POST',
@@ -176,18 +175,21 @@ export default function TeacherLobby() {
                             body: JSON.stringify({ userId: currentUser.id, playerName: currentUser.name }),
                         });
                     } catch (_) {}
-                    if (playWin) playWin.location.href = `/game/monitor/${gameCode}/all`;
+                    if (presentWin) presentWin.location.href = `/game/present/${gameCode}`;
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
                 } else {
-                    if (playWin) playWin.close();
+                    // Host is not playing: main tab becomes monitoring, Present
+                    // opens in the popup. No second tab for a playing screen
+                    // they aren't using.
+                    if (presentWin) presentWin.location.href = `/game/present/${gameCode}`;
                     navigate(`/game/monitor/${gameCode}/all`, { state: { game, user: currentUser } });
                 }
             } else {
-                if (playWin) playWin.close();
+                if (presentWin) presentWin.close();
                 setToast({ show: true, message: `Error starting game: ${data?.error || response.status}`, type: 'error' });
             }
         } catch (error) {
-            if (playWin) playWin.close();
+            if (presentWin) presentWin.close();
             console.error('Error starting game:', error);
             setToast({ show: true, message: `Failed to start game: ${error.message}`, type: 'error' });
         }

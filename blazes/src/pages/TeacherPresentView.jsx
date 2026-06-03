@@ -130,28 +130,44 @@ export default function TeacherPresentView() {
   // also poll that and merge a per-user score override into participants.
   useEffect(() => {
     let cancelled = false;
+    // Defensive JSON parse: if the response isn't actually JSON (the SPA
+    // fallback serves index.html for some misrouted requests), surface a
+    // clean error instead of crashing on `Unexpected token '<'`.
+    const parseJsonSafe = async (res) => {
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Server returned ${ct || 'no'} content-type${text.startsWith('<!DOCTYPE') ? ' (HTML page)' : ''}.`);
+      }
+      return res.json();
+    };
     const fetchAll = async () => {
       try {
         const gRes = await fetch(`${BASE}/api/games/${gameCode}`);
-        const gData = await gRes.json();
+        if (cancelled) return;
+        const gData = await parseJsonSafe(gRes);
         if (cancelled) return;
         if (!gRes.ok) { setError(gData.error || 'Failed to load game'); return; }
+        setError('');
         setGame(gData);
         setParticipants(gData.participants || []);
 
-        // Mode-specific fetch — used for live events panel + score overrides
+        // Mode-specific fetch — used for live events panel + score overrides.
+        // Same defensive JSON handling so a missing endpoint can't crash the
+        // page either.
         const mode = gData.game_mode;
         let extra = null;
         try {
+          let r = null;
           if (mode === 'elemental_markets' && gData.status === 'started') {
-            const r = await fetch(`${BASE}/api/games/${gameCode}/markets/state`);
-            if (r.ok) extra = await r.json();
+            r = await fetch(`${BASE}/api/games/${gameCode}/markets/state`);
           } else if (mode === 'elemental_clash' && gData.status === 'started') {
-            const r = await fetch(`${BASE}/api/games/${gameCode}/elemental-state`);
-            if (r.ok) extra = await r.json();
+            r = await fetch(`${BASE}/api/games/${gameCode}/elemental-state`);
           } else if (mode === 'inferno_tower' && gData.status === 'started') {
-            const r = await fetch(`${BASE}/api/games/${gameCode}/inferno-state`);
-            if (r.ok) extra = await r.json();
+            r = await fetch(`${BASE}/api/games/${gameCode}/inferno-state`);
+          }
+          if (r && r.ok) {
+            try { extra = await parseJsonSafe(r); } catch (_) { extra = null; }
           }
         } catch (_) { /* mode endpoints are best-effort */ }
         if (!cancelled) setModeData(extra);

@@ -364,8 +364,18 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     }, 1500);
   };
 
-  const currentQuestion = questions[questionQueue[queueIndex]];
-  if (!currentQuestion) return <div className="min-h-screen flex items-center justify-center">No questions available.</div>;
+  const rawQuestion = questions[questionQueue[queueIndex]];
+  if (!rawQuestion) return <div className="min-h-screen flex items-center justify-center">No questions available.</div>;
+  // True/False questions don't always carry an `options` array from the
+  // backend (kits made with answer_type='true_false' often store no option
+  // columns), so default it to ['True','False'] before render. Without this,
+  // options.map would throw and the page would bounce to home.
+  const currentQuestion = (() => {
+    if (rawQuestion.answerType === 'true_false' && (!Array.isArray(rawQuestion.options) || rawQuestion.options.length === 0)) {
+      return { ...rawQuestion, options: ['True', 'False'] };
+    }
+    return rawQuestion;
+  })();
   const imgUrl = getFullImageUrl(currentQuestion.imageUrl || currentQuestion.image_url);
 
   return (

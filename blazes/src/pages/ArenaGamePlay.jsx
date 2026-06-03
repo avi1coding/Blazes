@@ -263,7 +263,12 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
     navigate(`/game/results/${gameCode}`, { state: { game, user, score } });
   }, [gameCode, navigate, game, user, score]);
 
-  const q = questions[currentQ];
+  const rawArenaQ = questions[currentQ];
+  // Default options for T/F questions whose options array is empty so the
+  // render can't crash and bounce the host back to the home screen.
+  const q = (rawArenaQ && rawArenaQ.answerType === 'true_false' && (!Array.isArray(rawArenaQ.options) || rawArenaQ.options.length === 0))
+    ? { ...rawArenaQ, options: ['True', 'False'] }
+    : rawArenaQ;
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   const adjustCost = (c) => {

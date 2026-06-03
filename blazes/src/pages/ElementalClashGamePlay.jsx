@@ -184,8 +184,12 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
     return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white font-bold">Loading...</div>;
   }
 
-  const currentQ = questions[questionQueue[queueIndex]];
-  if (!currentQ) return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading question...</div>;
+  const rawQ = questions[questionQueue[queueIndex]];
+  if (!rawQ) return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading question...</div>;
+  // Default options for T/F questions whose options array is empty.
+  const currentQ = (rawQ.answerType === 'true_false' && (!Array.isArray(rawQ.options) || rawQ.options.length === 0))
+    ? { ...rawQ, options: ['True', 'False'] }
+    : rawQ;
   const imgUrl = getFullImageUrl(currentQ.imageUrl || currentQ.image_url);
 
   const myScore = myTeam === 1 ? team1Score : team2Score;

@@ -139,14 +139,22 @@ export default function TeacherLobby() {
 
         setIsStarting(true);
 
-        // Pre-open the Present-view popup synchronously so the browser keeps
-        // it inside the user-gesture chain. The Present screen is what goes
-        // on the projector — we want that opened automatically for every
-        // teacher-started game, not buried behind a button. Students don't
-        // get a popup at all.
+        // Pre-open the auxiliary popups synchronously inside the click so the
+        // browser keeps them in the user-gesture chain (most pop-up blockers
+        // require this). Present goes on the projector; Monitor is the
+        // teacher's per-student dashboard. They're both opened upfront and
+        // the MAIN tab is left for the most important thing the teacher
+        // actually needs to look at — the gameplay screen when they're
+        // playing, or monitoring when they aren't.
         let presentWin = null;
+        let monitorWin = null;
         if (currentUser.role === 'teacher') {
             presentWin = window.open('about:blank', '_blank');
+            if (hostPlays) {
+                // Only open the dedicated monitor popup when the host is also
+                // playing — otherwise monitoring already lives in the main tab.
+                monitorWin = window.open('about:blank', '_blank');
+            }
         }
 
         try {
@@ -164,10 +172,14 @@ export default function TeacherLobby() {
                 if (lobbyAudioRef.current) lobbyAudioRef.current.stop();
                 if (currentUser.role === 'student') {
                     if (presentWin) presentWin.close();
+                    if (monitorWin) monitorWin.close();
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
                 } else if (hostPlays) {
-                    // Host is playing: auto-join as a participant, main tab
-                    // becomes the gameplay screen, Present opens in the popup.
+                    // Host is playing: auto-join, redirect popups to Present +
+                    // Monitor, then send the MAIN tab to /play. We focus the
+                    // play tab last so the gameplay screen is what the teacher
+                    // sees front-and-center (the questions they have to
+                    // answer).
                     try {
                         await fetch(`${baseUrl}/api/games/${gameCode}/join`, {
                             method: 'POST',
@@ -176,20 +188,24 @@ export default function TeacherLobby() {
                         });
                     } catch (_) {}
                     if (presentWin) presentWin.location.href = `/game/present/${gameCode}`;
+                    if (monitorWin) monitorWin.location.href = `/game/monitor/${gameCode}/all`;
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
+                    try { window.focus(); } catch (_) {}
                 } else {
-                    // Host is not playing: main tab becomes monitoring, Present
-                    // opens in the popup. No second tab for a playing screen
-                    // they aren't using.
+                    // Host is not playing: main tab is monitoring, Present
+                    // popup opens for the projector. No second tab needed.
                     if (presentWin) presentWin.location.href = `/game/present/${gameCode}`;
+                    if (monitorWin) monitorWin.close();
                     navigate(`/game/monitor/${gameCode}/all`, { state: { game, user: currentUser } });
                 }
             } else {
                 if (presentWin) presentWin.close();
+                if (monitorWin) monitorWin.close();
                 setToast({ show: true, message: `Error starting game: ${data?.error || response.status}`, type: 'error' });
             }
         } catch (error) {
             if (presentWin) presentWin.close();
+            if (monitorWin) monitorWin.close();
             console.error('Error starting game:', error);
             setToast({ show: true, message: `Failed to start game: ${error.message}`, type: 'error' });
         }

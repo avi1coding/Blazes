@@ -140,21 +140,20 @@ export default function TeacherLobby() {
         setIsStarting(true);
 
         // Pre-open the auxiliary popups synchronously inside the click so the
-        // browser keeps them in the user-gesture chain (most pop-up blockers
-        // require this). Present goes on the projector; Monitor is the
-        // teacher's per-student dashboard. They're both opened upfront and
-        // the MAIN tab is left for the most important thing the teacher
-        // actually needs to look at — the gameplay screen when they're
-        // playing, or monitoring when they aren't.
+        // browser keeps them in the user-gesture chain. ORDER MATTERS:
+        // browsers typically allow the FIRST window.open from a click and
+        // are increasingly strict about subsequent ones. So when the host is
+        // playing we open Monitor first (the per-student dashboard is the
+        // primary thing they need next to the gameplay tab), then Present
+        // (the projector screen). When the host isn't playing, only Present
+        // needs a popup — monitoring lives in the main tab anyway.
         let presentWin = null;
         let monitorWin = null;
         if (currentUser.role === 'teacher') {
-            presentWin = window.open('about:blank', '_blank');
             if (hostPlays) {
-                // Only open the dedicated monitor popup when the host is also
-                // playing — otherwise monitoring already lives in the main tab.
                 monitorWin = window.open('about:blank', '_blank');
             }
+            presentWin = window.open('about:blank', '_blank');
         }
 
         try {
@@ -187,8 +186,15 @@ export default function TeacherLobby() {
                             body: JSON.stringify({ userId: currentUser.id, playerName: currentUser.name }),
                         });
                     } catch (_) {}
-                    if (presentWin) presentWin.location.href = `/game/present/${gameCode}`;
                     if (monitorWin) monitorWin.location.href = `/game/monitor/${gameCode}/all`;
+                    if (presentWin) presentWin.location.href = `/game/present/${gameCode}`;
+                    // If either popup was blocked, surface a one-line nudge so
+                    // the teacher knows what to allow next time. Both windows
+                    // can be reopened from the live-gameplay top bar anyway.
+                    if (!monitorWin || !presentWin) {
+                        const which = [!monitorWin && 'monitoring', !presentWin && 'present'].filter(Boolean).join(' and ');
+                        setToast({ show: true, message: `Browser blocked the ${which} popup. Allow pop-ups for this site to open it automatically.`, type: 'info' });
+                    }
                     navigate(`/game/play/${gameCode}`, { state: { game, user: currentUser } });
                     try { window.focus(); } catch (_) {}
                 } else {

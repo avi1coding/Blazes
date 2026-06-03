@@ -396,8 +396,42 @@ export default function TeacherPresentView() {
   const theme = modeTheme(game?.game_mode);
   const HeaderIcon = theme.icon;
 
-  // Time-left for modes that report it
-  const timeLeft = modeData?.timeLeft != null ? Math.max(0, Math.floor(modeData.timeLeft)) : null;
+  // Locally-ticking timer. The 2s poll only re-syncs the anchor; a 1s
+  // interval drives the displayed digits so it never lags behind by a
+  // second-and-a-half between polls. Works for both mode-state games
+  // (markets/clash/inferno surface timeLeft on modeData) and plain timed
+  // games (classic_timed: started_at + settings.timeLimit).
+  const anchorRef = useRef({ remaining: null, at: 0 });
+  useEffect(() => {
+    if (modeData?.timeLeft != null) {
+      anchorRef.current = { remaining: Math.max(0, Math.floor(modeData.timeLeft)), at: Date.now() };
+    } else if (game?.started_at && game?.settings) {
+      const settings = typeof game.settings === 'string' ? JSON.parse(game.settings) : game.settings;
+      const totalSec = Number(settings?.timeLimit);
+      if (totalSec > 0) {
+        const raw = game.started_at;
+        const iso = raw.includes('T') ? raw : raw.replace(' ', 'T') + (raw.endsWith('Z') ? '' : 'Z');
+        const startMs = new Date(iso).getTime();
+        if (!Number.isNaN(startMs)) {
+          const elapsed = Math.floor((Date.now() - startMs) / 1000);
+          anchorRef.current = { remaining: Math.max(0, totalSec - elapsed), at: Date.now() };
+        }
+      }
+    }
+  }, [modeData?.timeLeft, game?.started_at, game?.settings]);
+
+  const [tickNow, setTickNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setTickNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const timeLeft = (() => {
+    const a = anchorRef.current;
+    if (a.remaining == null) return null;
+    const elapsed = Math.floor((tickNow - a.at) / 1000);
+    return Math.max(0, a.remaining - elapsed);
+  })();
   const timeStr = timeLeft != null ? `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, '0')}` : null;
 
   if (error) {

@@ -408,7 +408,8 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
                   {liveLeaderboard.slice(0, 10).map((p, i) => {
                     const isMe = p.user_id === user?.id;
                     const place = i + 1;
-                    const medal = place === 1 ? '#fbbf24' : place === 2 ? '#cbd5e1' : place === 3 ? '#d97706' : null;
+                    // Blazes flame palette: red leader, orange 2nd, amber 3rd.
+                    const medal = place === 1 ? '#dc2626' : place === 2 ? '#f97316' : place === 3 ? '#fbbf24' : null;
                     return (
                       <li
                         key={p.user_id}

@@ -112,17 +112,19 @@ export default function GameResults() {
     placements.push(sameScore && sameElim ? placements[i - 1] : i + 1);
   });
 
+  // Blazes-themed placements: red crown for the leader, orange for 2nd, amber
+  // for 3rd. Matches the flame palette used on the present view's leaderboard.
   const placementIcon = (place) => {
-    if (place === 1) return <Crown className="w-7 h-7 text-yellow-500 drop-shadow" strokeWidth={2.5} />;
-    if (place === 2) return <span className="w-7 h-7 flex items-center justify-center text-lg font-black text-gray-400">#2</span>;
-    if (place === 3) return <span className="w-7 h-7 flex items-center justify-center text-lg font-black text-amber-600">#3</span>;
+    if (place === 1) return <Crown className="w-7 h-7 text-red-600 drop-shadow" strokeWidth={2.5} />;
+    if (place === 2) return <span className="w-7 h-7 flex items-center justify-center text-lg font-black text-orange-500">#2</span>;
+    if (place === 3) return <span className="w-7 h-7 flex items-center justify-center text-lg font-black text-amber-500">#3</span>;
     return <span className="w-7 h-7 flex items-center justify-center text-sm font-black text-gray-400">#{place}</span>;
   };
 
   const placementBg = (place) => {
-    if (place === 1) return 'bg-gradient-to-r from-yellow-100 via-amber-50 to-yellow-100 border-yellow-400';
-    if (place === 2) return 'bg-gradient-to-r from-gray-100 via-slate-50 to-gray-100 border-gray-400';
-    if (place === 3) return 'bg-gradient-to-r from-amber-100 via-orange-50 to-amber-100 border-amber-500';
+    if (place === 1) return 'bg-gradient-to-r from-red-100 via-orange-50 to-red-100 border-red-400';
+    if (place === 2) return 'bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 border-orange-400';
+    if (place === 3) return 'bg-gradient-to-r from-amber-100 via-yellow-50 to-amber-100 border-amber-500';
     return 'bg-white border-gray-200';
   };
 

@@ -27,9 +27,14 @@ const MODE_THEME = {
 
 // Shared design tokens — the only colors anyone should reach for. Anything
 // mode-specific (regime, team color, stock tint) stays inside its own pill.
-const GOLD   = '#fbbf24';
-const SILVER = '#cbd5e1';
-const BRONZE = '#d97706';
+// Blazes-themed medal palette: a flame trio instead of metallic gold/silver/
+// bronze. Reads as "fire" the second you walk into the room and matches the
+// red Flame logo + orange CTA buttons across the rest of the app. Constants
+// keep the old names so the rest of the file (and any future imports) doesn't
+// need to chase per-row tints.
+const GOLD   = '#dc2626'; // Blazes red — leader
+const SILVER = '#f97316'; // ember orange — 2nd
+const BRONZE = '#fbbf24'; // amber glow — 3rd
 
 function modeTheme(mode) {
   return MODE_THEME[mode] || MODE_THEME.classic_timed;

@@ -666,8 +666,11 @@ export default function TeacherMonitoringDashboard() {
           );
         })()}
 
-        {/* Students */}
-        {game?.game_mode !== 'elemental_clash' && (
+        {/* Students — rendered for every mode now, including elemental_clash.
+            The teacher needs to be able to click a student and see what
+            questions they answered, just like in classic mode. Team-mode
+            games still get their battlefield/dashboard view above; this is
+            the per-student drill-down. */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -735,6 +738,15 @@ export default function TeacherMonitoringDashboard() {
                       <AvatarPreview skinId={player.avatar_skin || playerSkins[player.user_id] || 'default'} initial={player.player_name?.[0]?.toUpperCase() || 'S'} size={56} />
                       {!isEliminated && <Eye className="w-5 h-5 text-blue-600" />}
                     </div>
+                    {/* Clash mode: show team affiliation chip so teachers can
+                        instantly tell who's on which side as they drill in. */}
+                    {game?.game_mode === 'elemental_clash' && player.team && (
+                      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-1.5 ${
+                        player.team === 1 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        Team {player.team}
+                      </div>
+                    )}
                     <h3 className="font-bold text-gray-900 text-lg mb-1">
                       {player.player_name || `Student ${index + 1}`}
                     </h3>
@@ -763,7 +775,6 @@ export default function TeacherMonitoringDashboard() {
             </div>
           )}
         </div>
-        )}
       </div>
     </div>
   );

@@ -541,10 +541,12 @@ export default function TeacherPresentView() {
             <div className="h-px" style={{ backgroundColor: GOLD, opacity: 0.65 }} />
           </div>
 
-          {/* Rows — 10 fixed slots. Real players fill from the top; empty
-              slots render as muted placeholders so a 1-player game still
-              looks like a leaderboard rather than one giant row. If there
-              are more than 10 players the list scrolls internally. */}
+          {/* Team-mode games (elemental_clash) get a side-by-side scoreboard
+              showing Team 1 vs Team 2 instead of a flat ranked list — a
+              single ranked list misses the whole point of a team game. */}
+          {game?.game_mode === 'elemental_clash' ? (
+            <TeamLeaderboard ranked={ranked} modeData={modeData} />
+          ) : (
           <ul className="flex-1 min-h-0 overflow-y-auto leaderboard-scroll">
             {Array.from({ length: Math.max(10, ranked.length) }).map((_, i) => {
               const p = ranked[i];
@@ -656,6 +658,7 @@ export default function TeacherPresentView() {
               );
             })}
           </ul>
+          )}
         </section>
 
         {/* Live log — right column, vertical event list */}
@@ -729,6 +732,97 @@ function Stat({ label, value, icon: Icon, accent, pulse }) {
 // Pill or row of mode-specific context shown right under the header. Keeps the
 // main leaderboard uncluttered while still surfacing the things that make each
 // mode feel different on the big screen.
+// Team-mode leaderboard for Elemental Clash. Two columns (Team 1 vs Team 2)
+// with a big team-total at the top of each, a Blazes-red vs Blazes-blue
+// theming, and individual players listed underneath their team banner sorted
+// by personal contribution. Distinct enough from the solo ranked list that
+// the room immediately understands "this is a team game".
+function TeamLeaderboard({ ranked, modeData }) {
+  const t1 = ranked.filter(p => p.team === 1).sort((a, b) => (b.score || 0) - (a.score || 0));
+  const t2 = ranked.filter(p => p.team === 2).sort((a, b) => (b.score || 0) - (a.score || 0));
+  const t1Total = Number(modeData?.team1Score ?? t1.reduce((s, p) => s + (p.score || 0), 0));
+  const t2Total = Number(modeData?.team2Score ?? t2.reduce((s, p) => s + (p.score || 0), 0));
+  const winning = t1Total === t2Total ? 0 : (t1Total > t2Total ? 1 : 2);
+  const total = Math.max(1, t1Total + t2Total);
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col p-4 sm:p-6 gap-4 overflow-hidden">
+      {/* Score bar — Team 1 left, Team 2 right, proportional split */}
+      <div className="flex-shrink-0">
+        <div className="flex items-center justify-between mb-2 text-xs font-black uppercase tracking-[0.22em]">
+          <span className="text-red-300">Team 1</span>
+          <span className="text-blue-300">Team 2</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className={`text-4xl sm:text-5xl font-black tabular-nums ${winning === 1 ? 'text-red-400' : 'text-white/85'}`}>
+            {t1Total}
+          </div>
+          <div className="flex-1 h-3 rounded-full overflow-hidden bg-white/5 flex">
+            <div className="h-full" style={{ width: `${(t1Total / total) * 100}%`, background: '#ef4444' }} />
+            <div className="h-full" style={{ width: `${(t2Total / total) * 100}%`, background: '#3b82f6' }} />
+          </div>
+          <div className={`text-4xl sm:text-5xl font-black tabular-nums ${winning === 2 ? 'text-blue-400' : 'text-white/85'}`}>
+            {t2Total}
+          </div>
+        </div>
+      </div>
+
+      {/* Two team columns */}
+      <div className="flex-1 min-h-0 grid grid-cols-2 gap-3">
+        <TeamColumn teamNum={1} players={t1} accent="#ef4444" winning={winning === 1} />
+        <TeamColumn teamNum={2} players={t2} accent="#3b82f6" winning={winning === 2} />
+      </div>
+    </div>
+  );
+}
+
+function TeamColumn({ teamNum, players, accent, winning }) {
+  return (
+    <div
+      className="rounded-xl flex flex-col min-h-0 overflow-hidden border"
+      style={{
+        borderColor: `${accent}55`,
+        background: winning ? `linear-gradient(180deg, ${accent}22, transparent 70%)` : 'rgba(255,255,255,0.02)',
+      }}
+    >
+      <div
+        className="px-4 py-2.5 flex items-center justify-between flex-shrink-0"
+        style={{ background: `${accent}1a`, borderBottom: `1px solid ${accent}33` }}
+      >
+        <span className="text-sm font-black uppercase tracking-widest" style={{ color: accent }}>Team {teamNum}</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">{players.length} player{players.length === 1 ? '' : 's'}</span>
+      </div>
+      <ul className="flex-1 min-h-0 overflow-y-auto leaderboard-scroll p-2 space-y-1.5">
+        {players.length === 0 ? (
+          <li className="text-center text-white/30 text-xs font-semibold py-8">No players</li>
+        ) : (
+          players.map((p, i) => (
+            <li
+              key={p.user_id}
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/[0.04]"
+            >
+              <span className="w-5 text-center font-black tabular-nums text-white/45 text-xs">{i + 1}</span>
+              <AvatarPreview
+                skinId={p.avatar}
+                initial={(p.player_name || '?')[0].toUpperCase()}
+                size={32}
+                userId={p.user_id}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="font-black truncate text-sm text-white">{p.player_name}</div>
+                {p.energy_points != null && (
+                  <div className="text-[10px] font-bold text-amber-300/80">⚡ {p.energy_points} energy</div>
+                )}
+              </div>
+              <div className="font-black tabular-nums text-base text-white">{p.score || 0}</div>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  );
+}
+
 function ModeBanner({ game, modeData }) {
   const mode = game?.game_mode;
   if (!modeData) return null;

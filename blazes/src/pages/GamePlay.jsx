@@ -266,7 +266,14 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     const newAnswered = questionsAnsweredRef.current + 1;
     setQuestionsAnswered(newAnswered); questionsAnsweredRef.current = newAnswered;
     const currentQuestion = questions[questionQueue[queueIndex]];
-    const isCorrect = optionIndex === currentQuestion.correctAnswer;
+    // True/False kits sometimes store correctAnswer as the string "True"/"False"
+    // and sometimes as a numeric 0/1. Normalize both before comparing so the
+    // wrong-answer path doesn't fire just because the shape differed.
+    const ca = currentQuestion.correctAnswer;
+    const tf = (currentQuestion.answerType || currentQuestion.answer_type) === 'true_false';
+    const isCorrect = tf
+      ? (Number(ca) === optionIndex || String(ca).toLowerCase() === (optionIndex === 0 ? 'true' : 'false'))
+      : (optionIndex === ca);
     if (isCorrect) {
       const nc = correctCountRef.current + 1; setCorrectCount(nc); correctCountRef.current = nc;
     }
@@ -801,9 +808,37 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
               </div>
             )}
           </div>
+        ) : (currentQuestion.answerType === 'true_false' || currentQuestion.answer_type === 'true_false') ? (
+          // Dedicated True/False branch — renders the two buttons literally,
+          // never depending on currentQuestion.options. Kits that store T/F
+          // questions without filling option_a/b (the common case) used to fall
+          // into the default MC branch and crash on options.map.
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {[{ label: 'True', idx: 0 }, { label: 'False', idx: 1 }].map(({ label, idx }) => {
+              const correct = Number(currentQuestion.correctAnswer) === idx
+                || String(currentQuestion.correctAnswer).toLowerCase() === label.toLowerCase();
+              const wasSelected = selectedOption === idx;
+              return (
+                <button
+                  key={label}
+                  onClick={() => handleAnswer(idx)}
+                  disabled={isAnswered}
+                  className={`p-5 sm:p-7 rounded-xl sm:rounded-2xl text-center font-black text-2xl transition-all ${isAnswered
+                    ? correct ? 'bg-green-100 border-2 border-green-500 text-green-800'
+                      : wasSelected ? 'bg-red-100 border-2 border-red-500 text-red-800'
+                      : 'bg-gray-50 border-2 border-gray-100 opacity-40'
+                    : 'bg-white border-2 border-gray-200 hover:border-red-500 hover:bg-red-50'}`}
+                >
+                  {label}
+                  {isAnswered && correct && <Check className="inline-block w-5 h-5 ml-2 text-green-600" />}
+                  {isAnswered && wasSelected && !correct && <X className="inline-block w-5 h-5 ml-2 text-red-600" />}
+                </button>
+              );
+            })}
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {currentQuestion.options.map((option, index) => (
+            {(currentQuestion.options || []).map((option, index) => (
               <button key={index} onClick={() => handleAnswer(index)} disabled={isAnswered}
                 className={`p-4 sm:p-6 rounded-xl sm:rounded-2xl text-left transition-all ${isAnswered
                   ? index === currentQuestion.correctAnswer ? 'bg-green-100 border-2 border-green-500 text-green-800'

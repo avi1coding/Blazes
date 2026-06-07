@@ -123,7 +123,12 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
     setSelectedOption(optionIndex);
     const currentQ = questions[questionQueue[queueIndex]];
     if (!currentQ) return;
-    const isCorrect = optionIndex === currentQ.correctAnswer;
+    // T/F-safe comparison: correctAnswer can be number 0/1 or string.
+    const ca = currentQ.correctAnswer;
+    const tf = (currentQ.answerType || currentQ.answer_type) === 'true_false';
+    const isCorrect = tf
+      ? (Number(ca) === optionIndex || String(ca).toLowerCase() === (optionIndex === 0 ? 'true' : 'false'))
+      : (optionIndex === ca);
     const tier = TIERS[currentTier][selectedBet];
     const points = isCorrect ? tier.right : tier.wrong;
 
@@ -265,21 +270,29 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
               {imgUrl && <img src={imgUrl} alt="" className="mt-4 max-h-48 mx-auto rounded-xl object-contain" />}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-              {currentQ.options.map((option, index) => {
+            <div className={(currentQ.answerType === 'true_false' || currentQ.answer_type === 'true_false') ? 'grid grid-cols-2 gap-4 sm:gap-5' : 'grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5'}>
+              {((currentQ.answerType === 'true_false' || currentQ.answer_type === 'true_false')
+                  ? [{ option: 'True', index: 0 }, { option: 'False', index: 1 }]
+                  : (currentQ.options || []).map((option, index) => ({ option, index }))
+              ).map(({ option, index }) => {
+                const ca = currentQ.correctAnswer;
+                const tf = currentQ.answerType === 'true_false' || currentQ.answer_type === 'true_false';
+                const correct = tf
+                  ? (Number(ca) === index || String(ca).toLowerCase() === String(option).toLowerCase())
+                  : (index === ca);
                 let cls = 'bg-gray-800/80 border-gray-600 text-gray-200 hover:border-orange-400 hover:bg-gray-700 hover:shadow-lg';
                 if (selectedOption !== null) {
-                  if (index === currentQ.correctAnswer) cls = 'bg-green-900 border-green-500 text-green-200';
+                  if (correct) cls = 'bg-green-900 border-green-500 text-green-200';
                   else if (index === selectedOption) cls = 'bg-red-900 border-red-500 text-red-200';
                   else cls = 'bg-gray-800 border-gray-700 text-gray-500 opacity-40';
                 }
                 return (
-                  <button key={index} onClick={() => handleAnswer(index)} disabled={selectedOption !== null}
-                    className={`p-4 sm:p-6 rounded-2xl border-2 text-left transition-all ${cls} ${selectedOption !== null ? 'cursor-default' : 'cursor-pointer'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-lg">{option}</span>
-                      {selectedOption !== null && index === currentQ.correctAnswer && <Check className="w-6 h-6 text-green-400" />}
-                      {selectedOption !== null && index === selectedOption && index !== currentQ.correctAnswer && <X className="w-6 h-6 text-red-400" />}
+                  <button key={`${option}-${index}`} onClick={() => handleAnswer(index)} disabled={selectedOption !== null}
+                    className={`p-4 sm:p-6 rounded-2xl border-2 ${tf ? 'text-center font-black text-2xl' : 'text-left'} transition-all ${cls} ${selectedOption !== null ? 'cursor-default' : 'cursor-pointer'}`}>
+                    <div className={tf ? 'flex items-center justify-center gap-2' : 'flex items-center justify-between'}>
+                      <span className={tf ? '' : 'font-bold text-lg'}>{option}</span>
+                      {selectedOption !== null && correct && <Check className="w-6 h-6 text-green-400" />}
+                      {selectedOption !== null && index === selectedOption && !correct && <X className="w-6 h-6 text-red-400" />}
                     </div>
                   </button>
                 );

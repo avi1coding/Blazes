@@ -126,7 +126,13 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
     setIsAnswered(true);
     const currentQ = questions[questionQueue[queueIndex]];
     if (!currentQ) return;
-    const isCorrect = optionIndex === currentQ.correctAnswer;
+    // T/F-safe comparison: correctAnswer can come back as number 0/1 or
+    // string "True"/"False" depending on how the kit was authored.
+    const ca = currentQ.correctAnswer;
+    const tf = (currentQ.answerType || currentQ.answer_type) === 'true_false';
+    const isCorrect = tf
+      ? (Number(ca) === optionIndex || String(ca).toLowerCase() === (optionIndex === 0 ? 'true' : 'false'))
+      : (optionIndex === ca);
     setLastCorrect(isCorrect);
 
     // Record answer
@@ -296,10 +302,34 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
               <div className="text-sm text-green-500 mt-1">For your team</div>
             </button>
           </div>
+        ) : (currentQ.answerType === 'true_false' || currentQ.answer_type === 'true_false') ? (
+          /* Dedicated True/False branch — renders the two buttons literally
+             so kits without stored option_a/b still work. */
+          <div className="grid grid-cols-2 gap-3">
+            {[{ label: 'True', idx: 0 }, { label: 'False', idx: 1 }].map(({ label, idx }) => {
+              const ca = currentQ.correctAnswer;
+              const correct = Number(ca) === idx || String(ca).toLowerCase() === label.toLowerCase();
+              const wasSelected = selectedOption === idx;
+              let cls = 'bg-gray-800 border-gray-600 text-gray-200 hover:border-red-400 hover:bg-gray-700';
+              if (isAnswered) {
+                if (correct) cls = 'bg-green-900 border-green-500 text-green-200';
+                else if (wasSelected) cls = 'bg-red-900 border-red-500 text-red-200';
+                else cls = 'bg-gray-800 border-gray-700 text-gray-500 opacity-40';
+              }
+              return (
+                <button key={label} onClick={() => handleAnswer(idx)} disabled={isAnswered}
+                  className={`p-5 sm:p-7 rounded-2xl border-2 text-center font-black text-2xl transition-all ${cls} ${isAnswered ? 'cursor-default' : 'cursor-pointer'}`}>
+                  {label}
+                  {isAnswered && correct && <Check className="inline-block w-5 h-5 ml-2 text-green-400" />}
+                  {isAnswered && wasSelected && !correct && <X className="inline-block w-5 h-5 ml-2 text-red-400" />}
+                </button>
+              );
+            })}
+          </div>
         ) : (
           /* Answer Options */
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {currentQ.options.map((option, index) => {
+            {(currentQ.options || []).map((option, index) => {
               let cls = 'bg-gray-800 border-gray-600 text-gray-200 hover:border-blue-400 hover:bg-gray-700';
               if (isAnswered) {
                 if (index === currentQ.correctAnswer) cls = 'bg-green-900 border-green-500 text-green-200';

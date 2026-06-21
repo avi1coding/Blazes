@@ -117,8 +117,8 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       const name = profile.displayName;
       const newScopes = (params && params.scope) || '';
       const newHasClassroom = newScopes.includes('classroom.');
-      db.get('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
-        if (err) { console.error('[Auth] DB lookup error:', err); return done(err); }
+      dbGetRetry('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
+        if (err) { console.error('[Auth] DB lookup error (after retries):', err); return done(err); }
         if (user) {
           const existingScopes = user.google_scopes || '';
           const existingHasClassroom = existingScopes.includes('classroom.');
@@ -875,9 +875,55 @@ db.all = function (sql, params, cb) {
   if (Array.isArray(params)) return _origAll(sql, _safeParams(params), cb);
   return _origAll(sql, params, cb);
 };
-const dbGet = (sql, params = []) => new Promise((res, rej) => db.get(sql, params, (e, r) => e ? rej(e) : res(r)));
-const dbAll = (sql, params = []) => new Promise((res, rej) => db.all(sql, params, (e, r) => e ? rej(e) : res(r)));
-const dbRun = (sql, params = []) => new Promise((res, rej) => db.run(sql, params, function(e) { e ? rej(e) : res(this.changes); }));
+// Treat libsql/Turso network blips (premature close, reset, timeout) as
+// retryable — the libsql client routes every query through HTTP, and we've
+// been seeing intermittent ERR_STREAM_PREMATURE_CLOSE from cross-fetch.
+function isTransientDbError(err) {
+  const s = String(err?.code || err?.errno || err?.message || '');
+  return /premature[_ ]?close|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(s);
+}
+
+// Callback-style db.get with up to 3 retries on transient errors. Backoff is
+// 150ms × attempt so the third attempt is at 450ms — far enough that a flaky
+// connection has a chance to recover, short enough that the user doesn't
+// notice the retry.
+function dbGetRetry(sql, params, cb, maxRetries = 3) {
+  let attempt = 0;
+  const tryOnce = () => {
+    db.get(sql, params, (err, row) => {
+      if (err && attempt < maxRetries && isTransientDbError(err)) {
+        attempt += 1;
+        console.warn(`[DB] retry ${attempt}/${maxRetries} on transient error: ${err.code || err.message}`);
+        return setTimeout(tryOnce, 150 * attempt);
+      }
+      cb(err, row);
+    });
+  };
+  tryOnce();
+}
+
+// Promise helpers now retry transient libsql errors (premature close, reset,
+// timeout) up to 3× with 150/300/450ms backoff. Anything else rejects as
+// before, so application logic errors still surface.
+async function withRetry(fn, label, maxRetries = 3) {
+  let attempt = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try { return await fn(); }
+    catch (err) {
+      if (attempt < maxRetries && isTransientDbError(err)) {
+        attempt += 1;
+        console.warn(`[DB ${label}] retry ${attempt}/${maxRetries}: ${err.code || err.message}`);
+        await new Promise(r => setTimeout(r, 150 * attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+const dbGet = (sql, params = []) => withRetry(() => new Promise((res, rej) => db.get(sql, params, (e, r) => e ? rej(e) : res(r))), 'get');
+const dbAll = (sql, params = []) => withRetry(() => new Promise((res, rej) => db.all(sql, params, (e, r) => e ? rej(e) : res(r))), 'all');
+const dbRun = (sql, params = []) => withRetry(() => new Promise((res, rej) => db.run(sql, params, function(e) { e ? rej(e) : res(this.changes); })), 'run');
 const parseDbDate = (s) => s ? new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z') : null;
 
 // ─── AI DAILY USAGE LIMITS ───

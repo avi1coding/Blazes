@@ -2107,6 +2107,7 @@ app.get('/api/games/:gameCode', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
 
         const questions = (rawQuestions || []).map((q) => {
+          try {
           let opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
           const correctRaw = (q.correct_answer || '').trim();
           const correctUpper = correctRaw.toUpperCase();
@@ -2202,7 +2203,14 @@ app.get('/api/games/:gameCode', (req, res) => {
             correctAnswer: correctIndex >= 0 ? correctIndex : 0,
             image_url: q.image_url
           };
-        });
+          } catch (qe) {
+            // A single malformed question would otherwise crash the whole
+            // game-fetch with a 500. Swallow it, log, and let the others
+            // through. Filtered out below.
+            console.error('[questions] normalization failed for id=', q?.id, qe);
+            return null;
+          }
+        }).filter(Boolean);
 
         res.json({ ...game, participants: participants || [], questions });
       });

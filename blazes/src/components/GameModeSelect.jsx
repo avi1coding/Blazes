@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Flame, Trophy, Lock, Swords, ChevronRight, Users, Clock, Zap, Crown, Dice5, X, BookOpen, Check, TrendingUp } from 'lucide-react';
+import { Flame, Trophy, Lock, ChevronRight, Users, Clock, X, BookOpen, Check, Hammer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GameplayMockup from './GameplayMockup';
 
@@ -48,106 +48,33 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
       available: true
     },
     {
-      id: 'elemental_clash',
-      name: 'Elemental Clash',
-      tagline: 'Team vs team. Pick a side.',
-      icon: Swords,
-      gradient: 'from-purple-600 to-indigo-700',
-      solid: 'bg-purple-600',
-      glow: 'shadow-purple-500/30',
-      accent: 'purple',
-      screenshot: '/screenshots/elemental-clash.png',
-      tags: ['multi'],
-      description: 'Team vs team battle. The class splits into two teams. Correct answers earn energy (personal) or points (team). Spend energy to buy elemental attacks that destroy the other team\'s score.',
+      id: 'forge',
+      name: 'The Forge',
+      tagline: '3D blacksmith battle. Forge your weapon.',
+      icon: Hammer,
+      gradient: 'from-red-600 to-orange-600',
+      solid: 'bg-red-600',
+      glow: 'shadow-red-500/40',
+      accent: 'red',
+      screenshot: '/screenshots/forge.png',
+      tags: ['solo', 'multi'],
+      description: 'Step up to a real 3D anvil. Pick a weapon to forge — sword, hammer, or staff — then strike it with every correct answer. Faster answers land harder strikes, levelling the weapon up through tiers. When time\'s up, every student\'s forged weapon enters a bracket and auto-battles. Highest tier + sharpest stats wins.',
       difficulty: 'Medium',
-      players: '4-50',
-      duration: '3-15 min',
+      players: '1-50',
+      duration: '5-15 min',
       features: [
-        'Auto-splits class into 2 teams',
-        'Choose: +1 energy or +10 team points per correct answer',
-        'Buy attacks: Earthquake, Tsunami, Hurricane, Wildfire',
-        'Team with most points when time runs out wins'
+        '3D forge scene with glowing anvil + animated hammer strikes',
+        'Choose your weapon class before each round',
+        'Answer speed = strike quality (better tier ups)',
+        'Final auto-battle bracket between every student\'s forged weapon'
       ],
       available: true
     },
-    {
-      id: 'elemental_wager',
-      name: 'Risk & Reward',
-      tagline: 'Bet big or play safe.',
-      icon: Dice5,
-      gradient: 'from-orange-500 to-red-600',
-      solid: 'bg-orange-500',
-      glow: 'shadow-orange-500/30',
-      accent: 'orange',
-      screenshot: '/screenshots/risk-reward.png',
-      tags: ['solo', 'multi'],
-      description: 'Bet on your knowledge! Choose Rock (safe), Raindrop (balanced), or Torch (risky) before each question. Build answer streaks to upgrade your bets to higher tiers with bigger rewards and bigger risks.',
-      difficulty: 'Medium',
-      players: '1-50',
-      duration: '1-10 min',
-      features: [
-        'Choose risk level before each question',
-        'Build answer streaks to upgrade tiers',
-        'Wrong answer resets your streak back to Tier 1',
-        'Score can never go below zero'
-      ],
-      available: true
-    },
-    ...(user?.role === 'teacher' ? [{
-      id: 'arena',
-      name: 'Arena',
-      tagline: 'Strategic battle quiz. No mercy.',
-      icon: Crown,
-      gradient: 'from-fuchsia-600 to-purple-800',
-      solid: 'bg-fuchsia-700',
-      glow: 'shadow-fuchsia-500/30',
-      accent: 'fuchsia',
-      screenshot: '/screenshots/arena.png',
-      tags: ['solo', 'multi', 'teacher'],
-      description: 'Strategic battle quiz. Earn coins, buy attacks/shields, build combos, and survive random world events. Teacher exclusive.',
-      difficulty: 'Hard',
-      players: '1-50',
-      duration: '5-20 min',
-      features: [
-        'Shop with attacks, shields, and power-ups',
-        'Combo system — streaks unlock huge bonuses',
-        '7 random world events keep things chaotic',
-        'No deaths — everyone plays the whole game'
-      ],
-      available: true,
-      teacherOnly: true,
-    }] : []),
-    {
-      id: 'elemental_markets',
-      name: 'Elemental Markets',
-      tagline: 'Trade six elements. Highest portfolio wins.',
-      icon: TrendingUp,
-      gradient: 'from-emerald-500 to-green-600',
-      solid: 'bg-emerald-600',
-      glow: 'shadow-emerald-500/30',
-      accent: 'emerald',
-      screenshot: '/screenshots/markets.png',
-      tags: ['solo', 'multi'],
-      description: 'A real-feeling stock market with six elemental tickers — Fire, Water, Earth, Air, Lightning, Ice. Earn cash by answering questions, then buy and sell shares as prices fluctuate. Bull runs, bear markets, news events, and rare crashes shape the market everyone trades against.',
-      difficulty: 'Medium',
-      players: '1-50',
-      duration: '10-20 min',
-      features: [
-        'Six elemental stocks with real-time charts',
-        'Random news events and rare market crashes',
-        'Earn cash from quiz answers, invest with strategy',
-        'Highest portfolio value at time-out wins'
-      ],
-      available: true
-    }
   ];
 
   const handleContinue = () => {
     if (selectedMode === 'classic_timed') navigate('/game/classic-timed-setup', { state: { kit, user } });
-    else if (selectedMode === 'elemental_clash') navigate('/game/elemental-clash-setup', { state: { kit, user } });
-    else if (selectedMode === 'elemental_wager') navigate('/game/elemental-wager-setup', { state: { kit, user } });
-    else if (selectedMode === 'arena') navigate('/game/arena-setup', { state: { kit, user } });
-    else if (selectedMode === 'elemental_markets') navigate('/game/elemental-markets-setup', { state: { kit, user } });
+    else if (selectedMode === 'forge') navigate('/game/forge-setup', { state: { kit, user } });
   };
 
   const selected = gameModes.find(m => m.id === selectedMode);

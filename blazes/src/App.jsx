@@ -52,6 +52,7 @@ const GamePlay = lazy(() => import("./pages/GamePlay"));
 const GameStats = lazy(() => import("./pages/GameStats"));
 const GameResults = lazy(() => import("./pages/GameResults"));
 const ClassicTimedSetupPage = lazy(() => import("./pages/ClassicTimedSetupPage"));
+const ForgeSetupPage = lazy(() => import("./pages/ForgeSetupPage"));
 const RegularSetupPage = lazy(() => import("./pages/RegularSetupPage"));
 const TeacherMonitoringDashboard = lazy(() => import("./pages/TeacherMonitoringDashboard"));
 const TeacherPresentView = lazy(() => import("./pages/TeacherPresentView"));
@@ -139,6 +140,7 @@ function App() {
           <Route path="/game/teacher-results/:gameCode" element={<TeacherGameResults />} />
           <Route path="/game/mode-select" element={<GameModePage />} />
           <Route path="/game/classic-timed-setup" element={<ClassicTimedSetupPage />} />
+          <Route path="/game/forge-setup" element={<ForgeSetupPage />} />
           <Route path="/game/regular-setup" element={<RegularSetupPage />} />
           <Route path="/game/elemental-clash-setup" element={<ElementalClashSetupPage />} />
           <Route path="/game/elemental-wager-setup" element={<ElementalWagerSetupPage />} />

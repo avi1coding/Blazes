@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AchievementsMap from './AchievementsMap';
 import SkinsPage, { AvatarPreview, cacheEquippedSkin, initialEquippedSkin } from './SkinsPage';
 import CreateKit from '../components/CreateKit';
@@ -31,6 +31,39 @@ export default function StudentHome() {
   const [myAssignments, setMyAssignments] = useState([]);
   const [gamesThisWeek, setGamesThisWeek] = useState(0);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+  const [startingId, setStartingId] = useState(null);
+  // Ref, not the state above: setState is async, so several clicks dispatched
+  // before React re-renders would all still read startingId === null and each
+  // fire its own request. The ref updates synchronously and actually blocks them.
+  const startingRef = useRef(false);
+
+  // Shared by both assignment lists (dashboard + classrooms tab). A second click
+  // while the first is in flight gets aborted by the navigation, which rejects as
+  // a bare TypeError and read as "Failed to start: Failed to fetch".
+  const startAssignment = async (a) => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStartingId(a.id);
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+    try {
+      const res = await fetch(`${base}/api/assignments/${a.id}/play`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: user.id })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Server returned ${res.status}`);
+      if (!data.gameCode) throw new Error('No game code returned');
+      localStorage.setItem('activeAssignment', JSON.stringify({ assignmentId: a.id, gameCode: data.gameCode }));
+      navigate(`/game/play/${data.gameCode}`);
+    } catch (err) {
+      const msg = err instanceof TypeError
+        ? 'Could not reach the server. Check your connection and try again.'
+        : err.message;
+      setToast({ show: true, message: 'Failed to start: ' + msg, type: 'error' });
+      startingRef.current = false;
+      setStartingId(null);
+    }
+  };
   const [studentAnalytics, setStudentAnalytics] = useState(null);
   const [trendPeriod, setTrendPeriod] = useState('28d');
   const [myKits, setMyKits] = useState([]);
@@ -447,22 +480,11 @@ export default function StudentHome() {
                         </div>
                         {!isDone && (
                           <button
-                            onClick={async () => {
-                              const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-                              try {
-                                const res = await fetch(`${base}/api/assignments/${a.id}/play`, {
-                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ studentId: user.id })
-                                });
-                                const data = await res.json();
-                                if (!res.ok) throw new Error(data.error);
-                                localStorage.setItem('activeAssignment', JSON.stringify({ assignmentId: a.id, gameCode: data.gameCode }));
-                                navigate(`/game/play/${data.gameCode}`);
-                              } catch (err) { setToast({ show: true, message: 'Failed to start: ' + err.message, type: 'error' }); }
-                            }}
-                            className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-all flex-shrink-0"
+                            disabled={startingId !== null}
+                            onClick={() => startAssignment(a)}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 disabled:opacity-60 transition-all flex-shrink-0"
                           >
-                            {a.status === 'in_progress' ? 'Continue' : 'Start'}
+                            {startingId === a.id ? 'Starting...' : (a.status === 'in_progress' ? 'Continue' : 'Start')}
                           </button>
                         )}
                       </div>
@@ -1492,21 +1514,9 @@ export default function StudentHome() {
                               </div>
                             )}
                           </div>
-                          <button onClick={async () => {
-                            const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-                            try {
-                              const res = await fetch(`${base}/api/assignments/${a.id}/play`, {
-                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ studentId: user.id })
-                              });
-                              const data = await res.json();
-                              if (!res.ok) throw new Error(data.error);
-                              localStorage.setItem('activeAssignment', JSON.stringify({ assignmentId: a.id, gameCode: data.gameCode }));
-                              navigate(`/game/play/${data.gameCode}`);
-                            } catch (err) { setToast({ show: true, message: 'Failed to start: ' + err.message, type: 'error' }); }
-                          }}
-                            className="bg-red-600 text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-red-700 flex items-center gap-1.5 flex-shrink-0">
-                            <Play className="w-4 h-4" /> Start
+                          <button disabled={startingId !== null} onClick={() => startAssignment(a)}
+                            className="bg-red-600 text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-red-700 disabled:opacity-60 flex items-center gap-1.5 flex-shrink-0">
+                            <Play className="w-4 h-4" /> {startingId === a.id ? 'Starting...' : 'Start'}
                           </button>
                         </div>
                       </div>

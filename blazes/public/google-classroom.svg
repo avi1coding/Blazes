@@ -1,17 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-  <!-- Stylised chalkboard mark — green field, three figures. -->
-  <rect x="2" y="2" width="44" height="44" rx="8" ry="8" fill="#0F9D58"/>
-  <!-- Soft top highlight -->
-  <path d="M4 10 a6 6 0 0 1 6-6 h28 a6 6 0 0 1 6 6 v8 H4 z" fill="#57BB8A"/>
-  <!-- Center figure (largest, foreground) -->
-  <circle cx="24" cy="20" r="4.2" fill="#ffffff"/>
-  <path d="M16 34 c0-4.4 3.58-7 8-7 s8 2.6 8 7 v3 H16 z" fill="#ffffff"/>
-  <!-- Left figure (background) -->
-  <circle cx="14" cy="22" r="3" fill="#ffffff" fill-opacity="0.9"/>
-  <path d="M9 33 c0-3 2.24-5 5-5 s5 2 5 5 v2 H9 z" fill="#ffffff" fill-opacity="0.9"/>
-  <!-- Right figure (background) -->
-  <circle cx="34" cy="22" r="3" fill="#ffffff" fill-opacity="0.9"/>
-  <path d="M29 33 c0-3 2.24-5 5-5 s5 2 5 5 v2 H29 z" fill="#ffffff" fill-opacity="0.9"/>
-  <!-- Chalkboard ledge along the bottom -->
-  <rect x="6" y="37" width="36" height="3" rx="1" fill="#0a7943"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Google Classroom">
+  <defs>
+    <!-- Everything is clipped to the board so the folded corner cannot -->
+    <!-- overhang the rounded edge. -->
+    <clipPath id="gc-board">
+      <rect x="32" y="62" width="448" height="388" rx="40" ry="40"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#gc-board)">
+    <!-- Yellow frame -->
+    <rect x="32" y="62" width="448" height="388" rx="40" ry="40" fill="#FFC112"/>
+
+    <!-- Green writing surface -->
+    <rect x="72" y="102" width="368" height="306" fill="#0F9D58"/>
+
+    <!-- Left figure (behind, lighter) -->
+    <circle cx="170" cy="247" r="28" fill="#57BB8A"/>
+    <path d="M112 332v-14c0-27 26-44 58-44s58 17 58 44v14z" fill="#57BB8A"/>
+
+    <!-- Right figure (behind, lighter) -->
+    <circle cx="342" cy="247" r="28" fill="#57BB8A"/>
+    <path d="M284 332v-14c0-27 26-44 58-44s58 17 58 44v14z" fill="#57BB8A"/>
+
+    <!-- Centre figure (front, white) -->
+    <circle cx="256" cy="219" r="43" fill="#FFFFFF"/>
+    <path d="M180 332v-19c0-37 34-60 76-60s76 23 76 60v19z" fill="#FFFFFF"/>
+
+    <!-- Chalk ledge -->
+    <rect x="296" y="382" width="98" height="26" fill="#FFFFFF"/>
+
+    <!-- Folded bottom-right corner -->
+    <path d="M394 408h86v82z" fill="#F1B211"/>
+  </g>
 </svg>

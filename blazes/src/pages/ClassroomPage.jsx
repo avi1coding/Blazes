@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Flame, Users, Plus, Trash2, ArrowLeft, BookOpen, Clock, Check, X, ClipboardList, Play } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
@@ -34,6 +34,9 @@ export default function ClassroomPage() {
   const [deleteAssignmentConfirm, setDeleteAssignmentConfirm] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [startingId, setStartingId] = useState(null);
+  // Ref, not the state above: setState is async, so clicks dispatched before the
+  // re-render would all read startingId === null and each fire a request.
+  const startingRef = useRef(false);
   const [creatingAssignment, setCreatingAssignment] = useState(false);
   const [showInlineKit, setShowInlineKit] = useState(false);
   const [inlineKit, setInlineKit] = useState({ title: '', subject: '' });
@@ -450,7 +453,8 @@ export default function ClassroomPage() {
                             // Guard against a second click: the first click navigates away,
                             // which aborts any in-flight request and surfaces as the bare
                             // "Failed to fetch" TypeError rather than a real server error.
-                            if (startingId !== null) return;
+                            if (startingRef.current) return;
+                            startingRef.current = true;
                             setStartingId(a.id);
                             try {
                               const res = await fetch(`${base}/api/assignments/${a.id}/play`, {
@@ -467,6 +471,7 @@ export default function ClassroomPage() {
                                 ? 'Could not reach the server. Check your connection and try again.'
                                 : err.message;
                               setToast({ show: true, message: 'Failed to start: ' + msg, type: 'error' });
+                              startingRef.current = false;
                               setStartingId(null);
                             }
                           }}

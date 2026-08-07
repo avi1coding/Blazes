@@ -132,7 +132,9 @@ export default function ClassroomPage() {
         const oneYearOut = new Date();
         oneYearOut.setFullYear(oneYearOut.getFullYear() + 1);
         if (due.getTime() < Date.now()) {
-          errors[form.dueTime ? 'dueTime' : 'dueDate'] = 'Due date is in the past.';
+          // Always report under Due Date — that's the field people look at, even
+          // when it's the time-of-day that pushed the deadline into the past.
+          errors.dueDate = 'Due date is in the past.';
         } else if (due > oneYearOut) {
           errors.dueDate = 'Due date cannot be more than a year away.';
         }

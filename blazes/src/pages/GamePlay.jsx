@@ -49,25 +49,6 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     return () => window.removeEventListener('beforeunload', sendLeave);
   }, [gameCode, user]);
 
-  // Poll live leaderboard while the modal is open so the player can see
-  // their rank update in near-real time without leaving the game.
-  useEffect(() => {
-    if (!showLeaderboard) return;
-    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-    const fetchLb = async () => {
-      try {
-        const r = await fetch(`${base}/api/games/${gameCode}`);
-        if (!r.ok) return;
-        const d = await r.json();
-        const sorted = [...(d.participants || [])].sort((a, b) => (b.score || 0) - (a.score || 0));
-        setLiveLeaderboard(sorted);
-      } catch (_) {}
-    };
-    fetchLb();
-    const id = setInterval(fetchLb, 2000);
-    return () => clearInterval(id);
-  }, [showLeaderboard, gameCode]);
-
   const [game, setGame] = useState(initialGame);
   const [questions, setQuestions] = useState(initialGame?.questions || []);
   const [questionQueue, setQuestionQueue] = useState([]);
@@ -92,6 +73,28 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   const [dragOverLeft, setDragOverLeft] = useState(null);
   const [assignmentMinAccuracy, setAssignmentMinAccuracy] = useState(null);
   const [assignmentCompleted, setAssignmentCompleted] = useState(false);
+
+  // Poll live leaderboard while the modal is open so the player can see
+  // their rank update in near-real time without leaving the game.
+  // Must stay below the useState calls above: the dependency array is evaluated
+  // during render, so declaring it earlier read showLeaderboard in its TDZ and
+  // threw "Cannot access 'showLeaderboard' before initialization" every render.
+  useEffect(() => {
+    if (!showLeaderboard) return;
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+    const fetchLb = async () => {
+      try {
+        const r = await fetch(`${base}/api/games/${gameCode}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        const sorted = [...(d.participants || [])].sort((a, b) => (b.score || 0) - (a.score || 0));
+        setLiveLeaderboard(sorted);
+      } catch (_) {}
+    };
+    fetchLb();
+    const id = setInterval(fetchLb, 2000);
+    return () => clearInterval(id);
+  }, [showLeaderboard, gameCode]);
 
   const scoreRef = useRef(0);
   const correctCountRef = useRef(0);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Flame, Users, Plus, Trash2, ArrowLeft, BookOpen, Clock, Check, X, ClipboardList, Play } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
@@ -9,7 +9,9 @@ export default function ClassroomPage() {
   const { classroomId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  // Parsed once — a fresh object each render would give every effect below a new
+  // dependency identity, re-firing them forever and hammering the API.
+  const user = useMemo(() => JSON.parse(localStorage.getItem('user') || 'null'), []);
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
   const [classroom, setClassroom] = useState(null);
@@ -30,6 +32,20 @@ export default function ClassroomPage() {
   const [editForm, setEditForm] = useState({ name: '', subject: '', gradeLevel: '', imageUrl: '' });
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
   const [deleteAssignmentConfirm, setDeleteAssignmentConfirm] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
+  const [creatingAssignment, setCreatingAssignment] = useState(false);
+  const [showInlineKit, setShowInlineKit] = useState(false);
+  const [inlineKit, setInlineKit] = useState({ title: '', subject: '' });
+  const [savingKit, setSavingKit] = useState(false);
+
+  // Due date bounds: today through one year out (matches the validation in
+  // validateAssignment, and lets the native picker grey out the rest).
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const maxDateStr = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().slice(0, 10);
+  }, []);
 
   const fetchClassroom = () => fetch(`${base}/api/classrooms/${classroomId}`).then(r => r.json()).then(data => {
     setClassroom(data);
@@ -87,21 +103,111 @@ export default function ClassroomPage() {
     fetchClassroom();
   };
 
+  // Returns a { field: message } map — empty means valid. Each field is checked
+  // on its own so the error names only what's actually missing.
+  const validateAssignment = (form) => {
+    const errors = {};
+
+    if (!form.title.trim()) errors.title = 'Give the assignment a title.';
+    if (!form.kitId) errors.kitId = 'Pick a question kit, or create one below.';
+
+    const min = Number(form.minQuestions);
+    if (form.minQuestions === '' ) errors.minQuestions = 'Set how many questions to answer.';
+    else if (!Number.isInteger(min) || min < 1) errors.minQuestions = 'Must be a whole number of 1 or more.';
+
+    if (form.minAccuracy !== '') {
+      const acc = Number(form.minAccuracy);
+      if (!Number.isInteger(acc) || acc < 1 || acc > 100) errors.minAccuracy = 'Must be between 1 and 100.';
+    }
+
+    // Time without a date has nothing to anchor to.
+    if (form.dueTime && !form.dueDate) errors.dueDate = 'Pick a date to go with the time.';
+
+    if (form.dueDate) {
+      // No time given means "any time that day", so the deadline is end of day.
+      const due = new Date(`${form.dueDate}T${form.dueTime || '23:59'}`);
+      if (Number.isNaN(due.getTime())) {
+        errors.dueDate = 'That date is not valid.';
+      } else {
+        const oneYearOut = new Date();
+        oneYearOut.setFullYear(oneYearOut.getFullYear() + 1);
+        if (due.getTime() < Date.now()) {
+          errors[form.dueTime ? 'dueTime' : 'dueDate'] = 'Due date is in the past.';
+        } else if (due > oneYearOut) {
+          errors.dueDate = 'Due date cannot be more than a year away.';
+        }
+      }
+    }
+
+    return errors;
+  };
+
   const handleCreateAssignment = async () => {
-    if (!assignmentForm.kitId || !assignmentForm.title || !assignmentForm.minQuestions) {
-      setToast({ show: true, message: 'Title, Kit, and Min Questions are required', type: 'error' });
+    const errors = validateAssignment(assignmentForm);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      const labels = { title: 'Title', kitId: 'Question Kit', minQuestions: 'Min Questions', minAccuracy: 'Min Accuracy', dueDate: 'Due Date', dueTime: 'Due Time' };
+      const named = Object.keys(errors).map(k => labels[k]).join(', ');
+      setToast({ show: true, message: `Check these fields: ${named}`, type: 'error' });
       return;
     }
-    const requirements = {};
-    requirements.min_questions = parseInt(assignmentForm.minQuestions);
-    if (assignmentForm.minAccuracy) requirements.min_accuracy = parseInt(assignmentForm.minAccuracy);
-    await fetch(`${base}/api/classrooms/${classroomId}/assignments`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kitId: parseInt(assignmentForm.kitId), title: assignmentForm.title, instructions: assignmentForm.instructions, dueDate: assignmentForm.dueDate || null, dueTime: assignmentForm.dueTime || null, requirements })
-    });
-    setShowCreateAssignment(false);
-    setAssignmentForm({ kitId: '', title: '', instructions: '', dueDate: '', dueTime: '', minQuestions: '', minAccuracy: '' });
-    fetchAssignments();
+
+    const requirements = { min_questions: parseInt(assignmentForm.minQuestions, 10) };
+    if (assignmentForm.minAccuracy) requirements.min_accuracy = parseInt(assignmentForm.minAccuracy, 10);
+
+    setCreatingAssignment(true);
+    try {
+      const res = await fetch(`${base}/api/classrooms/${classroomId}/assignments`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kitId: parseInt(assignmentForm.kitId, 10), title: assignmentForm.title.trim(), instructions: assignmentForm.instructions, dueDate: assignmentForm.dueDate || null, dueTime: assignmentForm.dueTime || null, requirements })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Previously the response was ignored, so a rejected create looked identical to a successful one.
+        setToast({ show: true, message: data.message || data.error || 'Could not create the assignment.', type: 'error' });
+        return;
+      }
+      setShowCreateAssignment(false);
+      setFormErrors({});
+      setAssignmentForm({ kitId: '', title: '', instructions: '', dueDate: '', dueTime: '', minQuestions: '', minAccuracy: '' });
+      setToast({ show: true, message: 'Assignment created', type: 'success' });
+      fetchAssignments();
+    } catch {
+      setToast({ show: true, message: 'Network error — assignment not created.', type: 'error' });
+    } finally {
+      setCreatingAssignment(false);
+    }
+  };
+
+  // Create a kit without leaving the assignment form, then select it.
+  const handleCreateInlineKit = async () => {
+    if (!inlineKit.title.trim()) {
+      setToast({ show: true, message: 'Give the kit a title', type: 'error' });
+      return;
+    }
+    setSavingKit(true);
+    try {
+      const res = await fetch(`${base}/api/kits/create`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacherId: user.id, title: inlineKit.title.trim(), subject: inlineKit.subject.trim() || classroom?.subject || '', gradeLevel: classroom?.grade_level || '', description: '' })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setToast({ show: true, message: data.message || data.error || 'Could not create the kit.', type: 'error' });
+        return;
+      }
+      const fresh = await fetch(`${base}/api/kits/teacher/${user.id}`).then(r => r.json()).catch(() => null);
+      if (fresh) setKits(fresh);
+      setAssignmentForm(f => ({ ...f, kitId: String(data.kitId) }));
+      setFormErrors(e => ({ ...e, kitId: undefined }));
+      setInlineKit({ title: '', subject: '' });
+      setShowInlineKit(false);
+      setToast({ show: true, message: 'Kit created and selected — add questions to it from Kits', type: 'success' });
+    } catch {
+      setToast({ show: true, message: 'Network error — kit not created.', type: 'error' });
+    } finally {
+      setSavingKit(false);
+    }
   };
 
   const handleDeleteAssignment = async (id) => {
@@ -417,22 +523,52 @@ export default function ClassroomPage() {
       {/* Create Assignment Modal */}
       {showCreateAssignment && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCreateAssignment(false)}>
-          <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg w-full shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h2 className="text-2xl font-black text-gray-900 mb-6">New Assignment</h2>
-            <div className="space-y-4">
+          {/* Column layout with a scrolling body: the form is taller than a short
+              viewport, and without this the fields and buttons were clipped. */}
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="px-4 sm:px-6 md:px-8 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <h2 className="text-2xl font-black text-gray-900">New Assignment</h2>
+              <button onClick={() => setShowCreateAssignment(false)} aria-label="Close"
+                className="p-2 -mr-2 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4 overflow-y-auto px-4 sm:px-6 md:px-8 py-5">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Title *</label>
                 <input type="text" value={assignmentForm.title} onChange={e => setAssignmentForm({ ...assignmentForm, title: e.target.value })}
-                  placeholder="e.g., Chapter 5 Review" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-red-500 focus:outline-none" />
+                  placeholder="e.g., Chapter 5 Review"
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:outline-none ${formErrors.title ? 'border-red-500' : 'border-gray-200 focus:border-red-500'}`} />
+                {formErrors.title && <p className="text-xs text-red-600 font-semibold mt-1">{formErrors.title}</p>}
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Question Kit *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-bold text-gray-700">Question Kit *</label>
+                  <button type="button" onClick={() => setShowInlineKit(v => !v)}
+                    className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1">
+                    <Plus className="w-3.5 h-3.5" />{showInlineKit ? 'Cancel' : 'New kit'}
+                  </button>
+                </div>
                 <StyledSelect
                   value={assignmentForm.kitId}
-                  onChange={v => setAssignmentForm({ ...assignmentForm, kitId: v })}
-                  placeholder="Select a kit..."
+                  onChange={v => { setAssignmentForm({ ...assignmentForm, kitId: v }); setFormErrors(e => ({ ...e, kitId: undefined })); }}
+                  placeholder={kits.length ? 'Select a kit...' : 'No kits yet — create one'}
                   options={kits.map(k => ({ value: String(k.id), label: `${k.title} (${k.question_count} q)` }))}
                 />
+                {formErrors.kitId && <p className="text-xs text-red-600 font-semibold mt-1">{formErrors.kitId}</p>}
+                {showInlineKit && (
+                  <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+                    <input type="text" value={inlineKit.title} onChange={e => setInlineKit({ ...inlineKit, title: e.target.value })}
+                      placeholder="Kit title" className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-red-500 focus:outline-none" />
+                    <input type="text" value={inlineKit.subject} onChange={e => setInlineKit({ ...inlineKit, subject: e.target.value })}
+                      placeholder={`Subject (default: ${classroom?.subject || 'none'})`} className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-red-500 focus:outline-none" />
+                    <button type="button" onClick={handleCreateInlineKit} disabled={savingKit}
+                      className="w-full py-2 bg-red-600 text-white font-bold rounded-lg text-sm hover:bg-red-700 disabled:opacity-60">
+                      {savingKit ? 'Creating...' : 'Create kit'}
+                    </button>
+                    <p className="text-xs text-gray-500">Creates an empty kit and selects it. Add questions from the Kits page.</p>
+                  </div>
+                )}
               </div>
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
                 <p className="text-sm font-bold text-gray-700">Game Mode: <span className="text-red-600">Classic Quiz</span></p>
@@ -447,31 +583,44 @@ export default function ClassroomPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Due Date</label>
-                  <input type="date" value={assignmentForm.dueDate} onChange={e => setAssignmentForm({ ...assignmentForm, dueDate: e.target.value })}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-red-500 focus:outline-none" />
+                  <input type="date" value={assignmentForm.dueDate} min={todayStr} max={maxDateStr}
+                    onChange={e => { setAssignmentForm({ ...assignmentForm, dueDate: e.target.value }); setFormErrors(er => ({ ...er, dueDate: undefined, dueTime: undefined })); }}
+                    className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:outline-none ${formErrors.dueDate ? 'border-red-500' : 'border-gray-200 focus:border-red-500'}`} />
+                  {formErrors.dueDate && <p className="text-xs text-red-600 font-semibold mt-1">{formErrors.dueDate}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Due Time</label>
-                  <input type="time" value={assignmentForm.dueTime} onChange={e => setAssignmentForm({ ...assignmentForm, dueTime: e.target.value })}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-red-500 focus:outline-none" />
+                  <input type="time" value={assignmentForm.dueTime}
+                    onChange={e => { setAssignmentForm({ ...assignmentForm, dueTime: e.target.value }); setFormErrors(er => ({ ...er, dueDate: undefined, dueTime: undefined })); }}
+                    className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:outline-none ${formErrors.dueTime ? 'border-red-500' : 'border-gray-200 focus:border-red-500'}`} />
+                  {formErrors.dueTime && <p className="text-xs text-red-600 font-semibold mt-1">{formErrors.dueTime}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Min Questions to Answer *</label>
-                  <input type="number" value={assignmentForm.minQuestions} onChange={e => setAssignmentForm({ ...assignmentForm, minQuestions: e.target.value })}
-                    placeholder="e.g., 30" min="1" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-red-500 focus:outline-none" />
+                  <input type="number" value={assignmentForm.minQuestions}
+                    onChange={e => { setAssignmentForm({ ...assignmentForm, minQuestions: e.target.value }); setFormErrors(er => ({ ...er, minQuestions: undefined })); }}
+                    placeholder="e.g., 30" min="1" step="1"
+                    className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:outline-none ${formErrors.minQuestions ? 'border-red-500' : 'border-gray-200 focus:border-red-500'}`} />
+                  {formErrors.minQuestions && <p className="text-xs text-red-600 font-semibold mt-1">{formErrors.minQuestions}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Min Accuracy %</label>
-                  <input type="number" value={assignmentForm.minAccuracy} onChange={e => setAssignmentForm({ ...assignmentForm, minAccuracy: e.target.value })}
-                    placeholder="e.g., 80" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-red-500 focus:outline-none" />
+                  <input type="number" value={assignmentForm.minAccuracy}
+                    onChange={e => { setAssignmentForm({ ...assignmentForm, minAccuracy: e.target.value }); setFormErrors(er => ({ ...er, minAccuracy: undefined })); }}
+                    placeholder="e.g., 80" min="1" max="100" step="1"
+                    className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:outline-none ${formErrors.minAccuracy ? 'border-red-500' : 'border-gray-200 focus:border-red-500'}`} />
+                  {formErrors.minAccuracy && <p className="text-xs text-red-600 font-semibold mt-1">{formErrors.minAccuracy}</p>}
                 </div>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 px-4 sm:px-6 md:px-8 py-4 border-t border-gray-100 shrink-0">
               <button onClick={() => setShowCreateAssignment(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200">Cancel</button>
-              <button onClick={handleCreateAssignment} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700">Create</button>
+              <button onClick={handleCreateAssignment} disabled={creatingAssignment}
+                className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 disabled:opacity-60">
+                {creatingAssignment ? 'Creating...' : 'Create'}
+              </button>
             </div>
           </div>
         </div>

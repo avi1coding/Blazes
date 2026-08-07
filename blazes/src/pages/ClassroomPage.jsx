@@ -33,6 +33,7 @@ export default function ClassroomPage() {
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
   const [deleteAssignmentConfirm, setDeleteAssignmentConfirm] = useState(null);
   const [formErrors, setFormErrors] = useState({});
+  const [startingId, setStartingId] = useState(null);
   const [creatingAssignment, setCreatingAssignment] = useState(false);
   const [showInlineKit, setShowInlineKit] = useState(false);
   const [inlineKit, setInlineKit] = useState({ title: '', subject: '' });
@@ -445,20 +446,32 @@ export default function ClassroomPage() {
                           {isDone && <p className="text-xs text-green-600 font-semibold mt-2">{a.questions_answered}q answered &middot; {a.correct_answers > 0 && a.questions_answered > 0 ? Math.round((a.correct_answers / a.questions_answered) * 100) : 0}% accuracy &middot; {a.score}pts</p>}
                         </div>
                         {!isDone && (
-                          <button onClick={async () => {
+                          <button disabled={startingId !== null} onClick={async () => {
+                            // Guard against a second click: the first click navigates away,
+                            // which aborts any in-flight request and surfaces as the bare
+                            // "Failed to fetch" TypeError rather than a real server error.
+                            if (startingId !== null) return;
+                            setStartingId(a.id);
                             try {
                               const res = await fetch(`${base}/api/assignments/${a.id}/play`, {
                                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ studentId: user.id })
                               });
-                              const data = await res.json();
-                              if (!res.ok) throw new Error(data.error);
+                              const data = await res.json().catch(() => ({}));
+                              if (!res.ok) throw new Error(data.error || `Server returned ${res.status}`);
+                              if (!data.gameCode) throw new Error('No game code returned');
                               localStorage.setItem('activeAssignment', JSON.stringify({ assignmentId: a.id, gameCode: data.gameCode }));
                               navigate(`/game/play/${data.gameCode}`);
-                            } catch (err) { setToast({ show: true, message: 'Failed to start: ' + err.message, type: 'error' }); }
+                            } catch (err) {
+                              const msg = err instanceof TypeError
+                                ? 'Could not reach the server. Check your connection and try again.'
+                                : err.message;
+                              setToast({ show: true, message: 'Failed to start: ' + msg, type: 'error' });
+                              setStartingId(null);
+                            }
                           }}
-                            className="bg-red-600 text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-red-700 flex items-center gap-1.5 flex-shrink-0">
-                            <Play className="w-4 h-4" /> {a.status === 'in_progress' ? 'Continue' : 'Start'}
+                            className="bg-red-600 text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-red-700 disabled:opacity-60 flex items-center gap-1.5 flex-shrink-0">
+                            <Play className="w-4 h-4" /> {startingId === a.id ? 'Starting...' : (a.status === 'in_progress' ? 'Continue' : 'Start')}
                           </button>
                         )}
                       </div>
@@ -475,7 +488,10 @@ export default function ClassroomPage() {
               </div>
             )}
 
-            {isTeacher && assignments.length === 0 ? (
+            {/* Parenthesised deliberately: `isTeacher && x === 0 ? a : b` parses as
+                `(isTeacher && x === 0) ? a : b`, so a student fell into the else
+                branch and saw the teacher's list on top of their own. */}
+            {isTeacher && (assignments.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 text-center border border-gray-200">
                 <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 font-semibold">No assignments yet</p>
@@ -517,7 +533,7 @@ export default function ClassroomPage() {
                   );
                 })}
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>

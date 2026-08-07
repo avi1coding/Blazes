@@ -4,7 +4,7 @@ import SkinsPage, { AvatarPreview, cacheEquippedSkin, initialEquippedSkin } from
 import CreateKit from '../components/CreateKit';
 import NotificationDropdown from '../components/NotificationDropdown';
 import Toast from '../components/Toast';
-import { Flame, Trophy, TrendingUp, Zap, Target, Award, Clock, Users, Play, ChevronRight, BarChart3, Shirt, X, Home, GraduationCap, ClipboardList, Check, BookOpen, Plus, Trash2, Settings, Crown, Lock, Sparkles } from 'lucide-react';
+import { Flame, Trophy, TrendingUp, Zap, Target, Award, Clock, Users, Play, ChevronRight, BarChart3, Shirt, X, Home, GraduationCap, ClipboardList, Check, BookOpen, Plus, Trash2, Settings, Crown, Lock, Sparkles, Star } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { getGameModeName } from '../utils/gameModeName';
 
@@ -395,6 +395,18 @@ export default function StudentHome() {
                 </button>
               )}
               <NotificationDropdown userId={user?.id} />
+
+              {/* Level button — students previously had no route to /hub at all,
+                  so there was nowhere to see what level they were on. */}
+              <button onClick={() => navigate('/hub')} title="View your level"
+                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all shadow-sm">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 100%)', boxShadow: '0 1px 4px rgba(249,115,22,0.4)' }}>
+                  <Star className="w-3.5 h-3.5 fill-white text-white" strokeWidth={2.5} />
+                </div>
+                <span className="text-sm font-black text-gray-900 tabular-nums">Lv {seasonProgress?.level || 1}</span>
+              </button>
+
               <div className="hidden sm:flex items-center gap-1 bg-yellow-50 border border-yellow-200 px-2.5 py-1 rounded-full">
                 <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
                 <span className="font-black text-yellow-700 text-xs">{blazesBucks.toLocaleString()}</span>
@@ -413,6 +425,10 @@ export default function StudentHome() {
                         <div className="font-bold text-gray-900 text-sm">{userName}</div>
                         <div className="text-xs text-gray-500">Lv {seasonProgress?.level || 1} • Season {seasonProgress?.season_number || 1}</div>
                       </div>
+                      <button onClick={() => { setShowProfileMenu(false); navigate('/hub'); }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                        <Star className="w-4 h-4 text-amber-500" /> My Level
+                      </button>
                       <button onClick={() => { setShowProfileMenu(false); navigate('/settings'); }}
                         className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                         <Settings className="w-4 h-4" /> Settings

@@ -74,6 +74,11 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   const [assignmentMinAccuracy, setAssignmentMinAccuracy] = useState(null);
   const [assignmentCompleted, setAssignmentCompleted] = useState(false);
 
+  // Assignments are coursework, not a competition: no trophy score and no
+  // Finish button (the run ends when the question requirement is met).
+  // Regular game modes keep both.
+  const isAssignment = !!initialGame?.assignment_id;
+
   // Poll live leaderboard while the modal is open so the player can see
   // their rank update in near-real time without leaving the game.
   // Must stay below the useState calls above: the dependency array is evaluated
@@ -510,7 +515,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
           <span className="font-black text-lg sm:text-xl" style={{ color: getNameColor(equippedSkinId) }}>{user?.name || 'Player'}</span>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          {game?.host_id === user?.id && (
+          {!isAssignment && game?.host_id === user?.id && (
             <button onClick={async () => {
               try {
                 const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -530,10 +535,12 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
             <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
             <span className="hidden sm:inline font-bold text-xs sm:text-sm text-gray-700">Leaderboard</span>
           </button>
-          <div className="flex items-center gap-1 sm:gap-2 bg-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-sm border border-gray-200">
-            <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
-            <span className="font-black text-sm sm:text-base text-gray-900">{score}</span>
-          </div>
+          {!isAssignment && (
+            <div className="flex items-center gap-1 sm:gap-2 bg-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-sm border border-gray-200">
+              <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
+              <span className="font-black text-sm sm:text-base text-gray-900">{score}</span>
+            </div>
+          )}
           {!game?.settings?.endless && timeLeft !== null && (
             <div className={`flex items-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-sm border text-sm sm:text-base ${timerWarnings && timeLeft < 30 ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-700'}`}>
               <Clock className="w-4 h-4 sm:w-5 sm:h-5" />

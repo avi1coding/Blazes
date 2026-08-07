@@ -88,6 +88,11 @@ const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
+// Render (and most PaaS) terminate TLS at a proxy and forward plain HTTP.
+// Without this, req.protocol is 'http' and express-session refuses to send
+// the `secure` cookie below, so sessions never persist in production.
+app.set('trust proxy', 1);
+
 app.use(session({
   secret: process.env.SESSION_SECRET || require('crypto').randomBytes(32).toString('hex'),
   resave: false,
@@ -166,7 +171,26 @@ app.get('/auth/google', (req, res, next) => {
 });
 
 app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: `${FRONTEND_URL}/login?error=google_failed` }),
+  // Custom callback: failureRedirect only covers auth *failures*, not *errors*.
+  // A thrown token-exchange error or done(err) would otherwise fall through to
+  // the global handler and render raw {"error":"Internal server error"} JSON.
+  (req, res, next) => {
+    passport.authenticate('google', (err, user) => {
+      if (err) {
+        console.error('[Auth] Google callback error:', err);
+        const reason = encodeURIComponent(err.message || 'unknown');
+        return res.redirect(`${FRONTEND_URL}/login?error=google_failed&reason=${reason}`);
+      }
+      if (!user) return res.redirect(`${FRONTEND_URL}/login?error=google_failed`);
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error('[Auth] Google session login error:', loginErr);
+          return res.redirect(`${FRONTEND_URL}/login?error=google_failed&reason=session`);
+        }
+        next();
+      });
+    })(req, res, next);
+  },
   async (req, res) => {
     try {
     const user = req.user;

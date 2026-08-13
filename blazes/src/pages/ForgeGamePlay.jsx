@@ -436,8 +436,18 @@ function Weapon({ tier, tierData, strikeFx }) {
     grpRef.current.position.y = 0.22 + Math.sin(t * 1.5) * 0.04;
     grpRef.current.rotation.y = t * 0.5;
     glowRef.current = Math.max(1, glowRef.current - dt * 1.6);
+    // Push the glow onto the materials here rather than reading glowRef during render:
+    // the ref is written after commit and useFrame schedules no re-render, so the JSX
+    // prop below never saw the strike value — the flash simply never appeared.
+    const intensity = tierData.emIntensity * glowRef.current;
+    grpRef.current.traverse((o) => {
+      if (o.isMesh && o.material && 'emissiveIntensity' in o.material) {
+        o.material.emissiveIntensity = intensity;
+      }
+    });
   });
-  const emissiveIntensity = tierData.emIntensity * glowRef.current;
+  // Base value for the first frame; useFrame owns it from then on.
+  const emissiveIntensity = tierData.emIntensity;
 
   // Tier-specific mesh: lump → bar → rough blade → sword → legendary
   const Body = () => {

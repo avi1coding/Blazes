@@ -7,6 +7,7 @@ import Toast from '../components/Toast';
 import { Flame, Trophy, TrendingUp, Zap, Target, Award, Clock, Users, Play, ChevronRight, BarChart3, Shirt, X, Home, GraduationCap, ClipboardList, Check, BookOpen, Plus, Trash2, Settings, Crown, Lock, Sparkles, Star } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { getGameModeName } from '../utils/gameModeName';
+import { isOverdue } from '../utils/dueDate';
 
 export default function StudentHome() {
   const navigate = useNavigate();
@@ -474,7 +475,7 @@ export default function StudentHome() {
               ) : (
                 <div className="space-y-3">
                   {allAssignments.map(a => {
-                    const overdue = a.due_date && new Date(a.due_date) < new Date() && a.status !== 'completed';
+                    const overdue = isOverdue(a) && a.status !== 'completed';
                     const isDone = a.status === 'completed';
                     const reqs = a.requirements || {};
                     return (
@@ -1502,7 +1503,7 @@ export default function StudentHome() {
                 <div className="space-y-3">
                   {myAssignments.filter(a => a.status !== 'completed').map(a => {
                     const reqs = a.requirements || {};
-                    const overdue = a.due_date && new Date(a.due_date) < new Date();
+                    const overdue = isOverdue(a);
                     return (
                       <div key={a.id} className={`bg-white rounded-2xl p-5 border-2 ${overdue ? 'border-red-200' : 'border-gray-200'}`}>
                         <div className="flex items-start justify-between">

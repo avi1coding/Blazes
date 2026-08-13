@@ -28,6 +28,9 @@ export default function ImagePicker({
   value = '',
   onChange,
   searchQuery = '',
+  // Optional: () => string, evaluated at click time. Use instead of searchQuery
+  // when the source field is uncontrolled and the parent won't re-render on input.
+  getSearchQuery,
   uploadEndpoint = `${BASE}/api/upload-image`,
   accept = 'image/*',
   onError,
@@ -133,7 +136,11 @@ export default function ImagePicker({
   };
 
   const openGoogleImages = () => {
-    const q = encodeURIComponent((searchQuery || '').trim() || 'free stock image');
+    // getSearchQuery is read at click time. AddQuestionForm's question field is an
+    // uncontrolled input, so a plain searchQuery prop was a snapshot from the parent's
+    // last render — usually '' — and every search ran on "free stock image".
+    const live = typeof getSearchQuery === 'function' ? getSearchQuery() : searchQuery;
+    const q = encodeURIComponent((live || '').trim() || 'free stock image');
     window.open(`https://www.google.com/search?tbm=isch&q=${q}`, '_blank', 'noopener,noreferrer');
   };
 

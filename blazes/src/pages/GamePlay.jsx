@@ -65,6 +65,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   const [liveLeaderboard, setLiveLeaderboard] = useState([]);
   const [assignmentMinQuestions, setAssignmentMinQuestions] = useState(null);
   const [typedAnswer, setTypedAnswer] = useState('');
+  const [lastCorrect, setLastCorrect] = useState(null);
   const [orderItems, setOrderItems] = useState([]);
   const [matchSelections, setMatchSelections] = useState({});
   const [dragIdx, setDragIdx] = useState(null);
@@ -74,10 +75,10 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   const [assignmentMinAccuracy, setAssignmentMinAccuracy] = useState(null);
   const [assignmentCompleted, setAssignmentCompleted] = useState(false);
 
-  // Assignments are coursework, not a competition: no trophy score and no
-  // Finish button (the run ends when the question requirement is met).
-  // Regular game modes keep both.
+  // Assignments are coursework, not a competition: no trophy score and no host
+  // Finish button. Regular game modes keep both.
   const isAssignment = !!initialGame?.assignment_id;
+  const liveAccuracy = questionsAnswered > 0 ? Math.round((correctCount / questionsAnswered) * 100) : 0;
 
   // Poll live leaderboard while the modal is open so the player can see
   // their rank update in near-real time without leaving the game.
@@ -108,6 +109,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   const gameRef = useRef(initialGame);
   const gameOverCalledRef = useRef(false);
   const questionStartTimeRef = useRef(Date.now());
+  const assignmentSubmittedRef = useRef(false);
 
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { correctCountRef.current = correctCount; }, [correctCount]);
@@ -251,14 +253,21 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
       const currentAccuracy = questionsAnsweredRef.current > 0 ? Math.round((correctCountRef.current / questionsAnsweredRef.current) * 100) : 0;
       const accuracyMet = !assignmentMinAccuracy || currentAccuracy >= assignmentMinAccuracy;
       const questionsMet = questionsAnsweredRef.current >= assignmentMinQuestions;
-      
+
       if (questionsMet && accuracyMet) {
+        // Persist as soon as the requirements are met, not when the modal button is
+        // pressed — closing the tab on the completion screen used to discard the whole
+        // run (no completion, no notification, no season XP).
+        if (!assignmentSubmittedRef.current) {
+          assignmentSubmittedRef.current = true;
+          submitScore();
+        }
         setAssignmentCompleted(true);
         return;
       }
     }
-    
-    setSelectedOption(null); setIsAnswered(false);
+
+    setSelectedOption(null); setIsAnswered(false); setLastCorrect(null);
     setQuestionNumber(p => p + 1);
     questionStartTimeRef.current = Date.now();
     setQueueIndex(prev => {
@@ -267,7 +276,18 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
       setQuestionQueue([...Array(questionsRef.current.length).keys()].sort(() => Math.random() - 0.5));
       return 0;
     });
-  }, [questionQueue.length, initialGame?.assignment_id, assignmentMinQuestions, assignmentMinAccuracy]);
+  }, [questionQueue.length, initialGame?.assignment_id, assignmentMinQuestions, assignmentMinAccuracy, submitScore]);
+
+  // Assignment runs have no timer and no host Finish button, so without this the
+  // only way out is meeting every requirement — a student who can't reach the
+  // accuracy gate would otherwise be stuck in the quiz with no exit.
+  const handleAssignmentExit = useCallback(async () => {
+    if (!assignmentSubmittedRef.current) {
+      assignmentSubmittedRef.current = true;
+      await submitScore();
+    }
+    navigate('/home/student?tab=classrooms');
+  }, [submitScore, navigate]);
 
   const handleAnswer = async (optionIndex) => {
     if (isAnswered) return;
@@ -305,22 +325,26 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     setTimeout(handleNextQuestion, 1500);
   };
 
-  const handleShortAnswer = async () => {
+  // answerOverride: the image_label buttons call this straight after setTypedAnswer(),
+  // and setState is async — reading typedAnswer here got the PREVIOUS click's value,
+  // so the first tap did nothing and the second graded the label tapped before it.
+  const handleShortAnswer = async (answerOverride) => {
     if (isAnswered) return;
+    const answer = answerOverride ?? typedAnswer;
     const currentQCheck = questions[questionQueue[queueIndex]];
-    if (currentQCheck.answerType !== 'ordering' && currentQCheck.answerType !== 'matching' && !typedAnswer.trim()) return;
+    if (currentQCheck.answerType !== 'ordering' && currentQCheck.answerType !== 'matching' && !answer.trim()) return;
     const currentQ = questions[questionQueue[queueIndex]];
     let isCorrect;
     if (currentQ.answerType === 'math_equation') {
-      const userVal = parseFloat(typedAnswer.trim());
+      const userVal = parseFloat(answer.trim());
       const correctVal = parseFloat(currentQ.correctAnswer);
       isCorrect = !isNaN(userVal) && !isNaN(correctVal) && Math.abs(userVal - correctVal) <= Math.abs(correctVal * 0.01) + 0.001;
     } else if (currentQ.answerType === 'multi_select') {
-      const userLetters = typedAnswer.split('').sort().join('');
+      const userLetters = answer.split('').sort().join('');
       const correctLetters = String(currentQ.correctAnswer).split('').sort().join('');
       isCorrect = userLetters === correctLetters;
     } else if (currentQ.answerType === 'image_label' && Array.isArray(currentQ.correctAnswer)) {
-      isCorrect = currentQ.correctAnswer.some(p => p.label.toLowerCase() === typedAnswer.trim().toLowerCase());
+      isCorrect = currentQ.correctAnswer.some(p => p.label.toLowerCase() === answer.trim().toLowerCase());
     } else if (currentQ.answerType === 'ordering' && Array.isArray(currentQ.correctAnswer)) {
       isCorrect = orderItems.length === currentQ.correctAnswer.length && orderItems.every((item, idx) => item === currentQ.correctAnswer[idx]);
     } else if (currentQ.answerType === 'matching') {
@@ -332,7 +356,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
       }
     } else {
       // Short answer / fill blank — check exact first, then AI
-      const exactMatch = typedAnswer.trim().toLowerCase() === String(currentQ.correctAnswer).toLowerCase();
+      const exactMatch = answer.trim().toLowerCase() === String(currentQ.correctAnswer).toLowerCase();
       if (exactMatch) {
         isCorrect = true;
       } else {
@@ -340,7 +364,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
           const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
           const resp = await fetch(`${base}/api/check-answer`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userAnswer: typedAnswer.trim(), correctAnswer: String(currentQ.correctAnswer), questionText: currentQ.text })
+            body: JSON.stringify({ userAnswer: answer.trim(), correctAnswer: String(currentQ.correctAnswer), questionText: currentQ.text })
           });
           const data = await resp.json();
           isCorrect = data.isCorrect;
@@ -349,7 +373,11 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
         }
       }
     }
-    setSelectedOption(typedAnswer.trim());
+    setSelectedOption(answer.trim());
+    // Keep the verdict we just computed. The banner used to re-derive it with an
+    // exact string compare, which disagreed with the real grading — math_equation
+    // uses a 1% tolerance, so "3.0" for "3" scored points but rendered "Wrong!".
+    setLastCorrect(isCorrect);
     setIsAnswered(true);
     const newAnswered = questionsAnsweredRef.current + 1;
     setQuestionsAnswered(newAnswered); questionsAnsweredRef.current = newAnswered;
@@ -361,7 +389,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       fetch(`${base}/api/games/${gameCode}/answer`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, questionId: currentQ.id, selectedAnswer: typedAnswer.trim(), isCorrect, timeTaken })
+        body: JSON.stringify({ userId: user.id, questionId: currentQ.id, selectedAnswer: answer.trim(), isCorrect, timeTaken })
       })
         .then(r => r.json().catch(() => ({})))
         .then(data => {
@@ -493,14 +521,10 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
               <p className="text-sm text-gray-600">Accuracy: <span className="font-bold text-gray-900">{questionsAnswered > 0 ? Math.round((correctCount / questionsAnswered) * 100) : 0}%</span></p>
               {assignmentMinAccuracy && <p className="text-sm text-gray-600">Required: <span className="font-bold text-gray-900">{assignmentMinAccuracy}%</span></p>}
             </div>
+            {/* The score was already submitted the moment the requirements were met,
+                so this is navigation only. */}
             <button
-              onClick={async () => {
-                console.log('Submitting assignment completion...');
-                await submitScore();
-                // Add a small delay to ensure DB update completes
-                await new Promise(r => setTimeout(r, 500));
-                navigate('/home/student?tab=classrooms');
-              }}
+              onClick={() => navigate('/home/student?tab=classrooms')}
               className="w-full py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors"
             >
               Return Home
@@ -525,6 +549,13 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
             }}
               className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-xl text-xs sm:text-sm font-bold border border-gray-200 hover:border-red-200 transition-colors">
               Finish
+            </button>
+          )}
+          {isAssignment && !assignmentCompleted && (
+            <button onClick={handleAssignmentExit}
+              title="Save your progress and go back"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-bold border border-gray-200 transition-colors">
+              Save &amp; Exit
             </button>
           )}
           <button
@@ -559,6 +590,17 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
             <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
               <div className="bg-red-600 h-2.5 rounded-full transition-all" style={{ width: `${Math.min(100, (questionsAnswered / assignmentMinQuestions) * 100)}%` }}></div>
             </div>
+            {/* Without this the accuracy gate is invisible: a student who has answered
+                enough questions but is below the required accuracy sees no reason why
+                the assignment hasn't completed. */}
+            {assignmentMinAccuracy && (
+              <div className="flex items-center justify-between mt-2 text-xs font-bold">
+                <span className="text-gray-500">Accuracy needed: {assignmentMinAccuracy}%</span>
+                <span className={liveAccuracy >= assignmentMinAccuracy ? 'text-green-600' : 'text-orange-600'}>
+                  You: {liveAccuracy}%
+                </span>
+              </div>
+            )}
           </div>
         )}
         <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg border-2 border-gray-100 mb-4 sm:mb-6 text-center">
@@ -591,21 +633,17 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
               </form>
             ) : (
               <div className={`p-6 rounded-2xl border-2 text-center ${
-                selectedOption?.toLowerCase() === String(currentQuestion.correctAnswer).toLowerCase()
-                  ? 'bg-green-100 border-green-500'
-                  : 'bg-red-100 border-red-500'
+                lastCorrect ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'
               }`}>
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  {selectedOption?.toLowerCase() === String(currentQuestion.correctAnswer).toLowerCase()
+                  {lastCorrect
                     ? <Check className="w-6 h-6 text-green-600" />
                     : <X className="w-6 h-6 text-red-600" />
                   }
-                  <span className="font-black text-lg">
-                    {selectedOption?.toLowerCase() === String(currentQuestion.correctAnswer).toLowerCase() ? 'Correct!' : 'Wrong!'}
-                  </span>
+                  <span className="font-black text-lg">{lastCorrect ? 'Correct!' : 'Wrong!'}</span>
                 </div>
                 <p className="text-sm text-gray-600">Your answer: <span className="font-bold">{selectedOption}</span></p>
-                {selectedOption?.toLowerCase() !== String(currentQuestion.correctAnswer).toLowerCase() && (
+                {!lastCorrect && (
                   <p className="text-sm text-green-700 mt-1">Correct answer: <span className="font-bold">{currentQuestion.correctAnswer}</span></p>
                 )}
               </div>
@@ -678,9 +716,8 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
                   <button key={i} onClick={() => {
                     if (isAnswered) return;
                     setTypedAnswer(label);
-                    // Auto-submit for image label
-                    const isCorrect = currentQuestion.correctAnswer[0]?.label === label;
-                    handleShortAnswer();
+                    // Pass the label explicitly — the state update above has not landed yet.
+                    handleShortAnswer(label);
                   }} disabled={isAnswered}
                     className={`p-4 rounded-xl text-left transition-all ${isAnswered
                       ? isCorrectLabel ? 'bg-green-100 border-2 border-green-500' : 'bg-gray-50 border-2 border-gray-100 opacity-40'

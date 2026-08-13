@@ -1566,12 +1566,10 @@ app.post('/api/auth/reset-password', async (req, res) => {
   }
 });
 
-app.get('/api/users', (req, res) => {
-  db.all('SELECT id, email, name, role FROM users', (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows || []);
-  });
-});
+// GET /api/users was removed: it returned every account's id, email, name and role
+// to anyone who asked, with no authentication. Nothing in blazes/src called it, and
+// it handed out students' email addresses plus the id/role map that makes the
+// userId-in-body account routes straightforward to target.
 
 // ============ STATS ROUTES ============
 
@@ -2035,6 +2033,19 @@ app.put('/api/kits/:kitId', (req, res) => {
 app.delete('/api/kits/:kitId', async (req, res) => {
   const { kitId } = req.params;
   try {
+    // Refuse if assignments still point here. Nulling assignments.kit_id below left
+    // them listed (every listing endpoint LEFT JOINs) but permanently unstartable,
+    // because /assignments/:id/play INNER JOINs question_kits — students got
+    // "Assignment not found" forever, including ones already mid-run.
+    const inUse = await dbAll('SELECT id, title FROM assignments WHERE kit_id = ?', [kitId]);
+    if (inUse && inUse.length) {
+      return res.status(409).json({
+        error: 'kit_in_use',
+        message: `This kit is used by ${inUse.length} assignment${inUse.length === 1 ? '' : 's'}. Delete ${inUse.length === 1 ? 'it' : 'them'} first.`,
+        assignments: inUse.map(a => ({ id: a.id, title: a.title })),
+      });
+    }
+
     // Phase 1 — clear dependents/references in parallel
     await Promise.all([
       dbRun(
@@ -3655,10 +3666,29 @@ app.get('/api/skins/:userId', async (req, res) => {
   res.json({ owned, equipped, tier: userTier?.subscription_tier || 'free' });
 });
 
+// Authoritative skin prices. Must mirror AVATAR_SKINS in blazes/src/pages/SkinsPage.jsx.
+// The client sends a cost with its purchase request, but it is never trusted: a negative
+// cost used to pass both the `!cost` and `balance < cost` guards and mint BlazesBucks.
+const SKIN_PRICES = {
+  air: 190, fire: 210, earth: 220, water: 230, light: 240, ice: 250, lightning: 260, shadow: 270,
+  wood: 280, sound: 290, metal: 300, poison: 310, crystal: 320, plasma: 330, gravity: 340,
+  mist: 340, time: 350, storm: 360, sand: 370, lava: 380, spirit: 390, tech: 400, cosmic: 410,
+  nature: 410, void: 420, order: 430, astral: 440, chaos: 450, neon: 460, mythic: 480,
+  ember: 520, wave: 540, gale: 560, stone: 580, vine: 600, thunder: 620, frost: 640, quake: 660,
+  tempest: 680, rift: 900, nova: 1000, singularity: 1150, chrono: 1450, celestial: 1600,
+  star: 1750, apex: 1900, omega: 2000, blaze: 3000,
+};
+
 // Purchase a skin (deduct BB)
 app.post('/api/skins/purchase', async (req, res) => {
-  const { userId, skinId, skinType = 'avatar', cost } = req.body;
-  if (!userId || !skinId || !cost) return res.status(400).json({ error: 'Missing fields' });
+  const { userId, skinId, skinType = 'avatar' } = req.body;
+  if (!userId || !skinId) return res.status(400).json({ error: 'Missing fields' });
+
+  // Price comes from the server, never from req.body.
+  const cost = SKIN_PRICES[skinId];
+  if (!Number.isInteger(cost) || cost <= 0) {
+    return res.status(400).json({ error: 'That skin is not for sale' });
+  }
 
   // Check balance
   const bbRow = await new Promise(resolve =>
@@ -4556,11 +4586,17 @@ app.delete('/api/classrooms/:classroomId', async (req, res) => {
 
 // Teacher reset student password
 app.post('/api/classrooms/:classroomId/students/:studentId/reset-password', async (req, res) => {
-  const { newPassword } = req.body;
+  const { newPassword, teacherId } = req.body;
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
   try {
     const classroom = await dbGet('SELECT teacher_id FROM classrooms WHERE id = ?', [req.params.classroomId]);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+    // The owner check was missing entirely: classroom.teacher_id was selected and then
+    // never compared, so this route would overwrite any student's password for anyone
+    // who called it. Co-teachers are included via teacherHasClassroom.
+    if (!teacherId || !(await teacherHasClassroom(teacherId, req.params.classroomId))) {
+      return res.status(403).json({ error: 'Not your classroom' });
+    }
     const enrolled = await dbGet('SELECT id FROM classroom_students WHERE classroom_id = ? AND student_id = ?', [req.params.classroomId, req.params.studentId]);
     if (!enrolled) return res.status(403).json({ error: 'Student not in this classroom' });
     const hashed = await bcrypt.hash(newPassword, 10);
@@ -4628,7 +4664,10 @@ app.get('/api/assignments/student/:studentId', async (req, res) => {
     const assignments = await dbAll(
       `SELECT a.*, s.status, s.questions_answered, s.correct_answers, s.score, s.completed_at,
               qk.title as kit_title, qk.subject as kit_subject, c.name as classroom_name, c.id as classroom_id,
-              COALESCE((SELECT COUNT(DISTINCT question_id) FROM game_answers WHERE game_id IN (SELECT id FROM games WHERE assignment_id = a.id AND host_id = s.student_id AND status = 'started')), s.questions_answered) as live_questions_answered
+              -- COUNT(*), not COUNT(DISTINCT question_id): the queue reshuffles and repeats
+              -- once the kit is exhausted, so a 30-question assignment over an 8-question kit
+              -- used to stall at "8/30" forever and could even count backwards.
+              COALESCE((SELECT COUNT(*) FROM game_answers WHERE user_id = s.student_id AND game_id IN (SELECT id FROM games WHERE assignment_id = a.id AND host_id = s.student_id AND status = 'started')), s.questions_answered) as live_questions_answered
        FROM assignment_submissions s
        JOIN assignments a ON s.assignment_id = a.id
        LEFT JOIN question_kits qk ON a.kit_id = qk.id
@@ -8091,7 +8130,7 @@ app.post('/api/games/:gameCode/markets/answer', async (req, res) => {
 
     // Log the answer for stats consistency with other modes
     await dbRun(
-      'INSERT INTO game_answers (game_id, user_id, question_id, selected_answer, is_correct, time_taken) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO game_answers (game_id, user_id, question_id, answer, is_correct, time_taken) VALUES (?, ?, ?, ?, ?, ?)',
       [game.id, userId, questionId, selectedAnswer || '', isCorrect ? 1 : 0, timeTaken || 0]
     );
 

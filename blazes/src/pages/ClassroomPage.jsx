@@ -4,6 +4,7 @@ import { Flame, Users, Plus, Trash2, ArrowLeft, BookOpen, Clock, Check, X, Clipb
 import { AvatarPreview, cacheTier } from './SkinsPage';
 import StyledSelect from '../components/StyledSelect';
 import Toast from '../components/Toast';
+import { isOverdue, localDateInputValue } from '../utils/dueDate';
 
 export default function ClassroomPage() {
   const { classroomId } = useParams();
@@ -44,11 +45,14 @@ export default function ClassroomPage() {
 
   // Due date bounds: today through one year out (matches the validation in
   // validateAssignment, and lets the native picker grey out the rest).
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Local time, not toISOString(): <input type="date"> is local, and a UTC date
+  // greyed out today for anyone west of UTC after their evening rolled past midnight
+  // UTC — a NY teacher at 8pm could not pick a deadline of tonight.
+  const todayStr = localDateInputValue();
   const maxDateStr = useMemo(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() + 1);
-    return d.toISOString().slice(0, 10);
+    return localDateInputValue(d);
   }, []);
 
   const fetchClassroom = () => fetch(`${base}/api/classrooms/${classroomId}`).then(r => r.json()).then(data => {
@@ -113,7 +117,16 @@ export default function ClassroomPage() {
     const errors = {};
 
     if (!form.title.trim()) errors.title = 'Give the assignment a title.';
-    if (!form.kitId) errors.kitId = 'Pick a question kit, or create one below.';
+    if (!form.kitId) {
+      errors.kitId = 'Pick a question kit, or create one below.';
+    } else {
+      // An assignment on an empty kit hands every student "No questions available."
+      // with no way forward, and their submission can never reach completed.
+      const kit = kits.find(k => String(k.id) === String(form.kitId));
+      if (kit && Number(kit.question_count) === 0) {
+        errors.kitId = `"${kit.title}" has no questions yet. Add some from the Kits page first.`;
+      }
+    }
 
     const min = Number(form.minQuestions);
     if (form.minQuestions === '' ) errors.minQuestions = 'Set how many questions to answer.';
@@ -417,7 +430,7 @@ export default function ClassroomPage() {
               <div className="space-y-3 mb-6">
                 {myAssignments.map(a => {
                   const reqs = a.requirements || {};
-                  const overdue = a.due_date && new Date(a.due_date) < new Date();
+                  const overdue = isOverdue(a);
                   const isDone = a.status === 'completed';
                   return (
                     <div key={a.id} className={`bg-white rounded-2xl p-5 border-2 ${isDone ? 'border-green-200' : overdue ? 'border-red-200' : 'border-gray-200'}`}>
@@ -505,7 +518,7 @@ export default function ClassroomPage() {
               <div className="space-y-3">
                 {assignments.map(a => {
                   const reqs = typeof a.requirements === 'string' ? JSON.parse(a.requirements) : (a.requirements || {});
-                  const overdue = a.due_date && new Date(a.due_date) < new Date();
+                  const overdue = isOverdue(a);
                   return (
                     <div key={a.id} className="bg-white rounded-2xl p-5 border border-gray-200 hover:shadow-sm transition-all">
                       <div className="flex items-start justify-between">

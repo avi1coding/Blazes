@@ -235,7 +235,7 @@ export default function AddQuestionForm({
             <ImagePicker
               value={newImageUrl}
               onChange={(url) => { setNewImageUrl(url); setNewImagePreview(url); }}
-              searchQuery={questionTextRef.current?.value || ''}
+              getSearchQuery={() => questionTextRef.current?.value || ''}
               onError={(msg) => setError(msg)}
             />
           </div>

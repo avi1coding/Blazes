@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Flame, Trophy, Lock, ChevronRight, Users, Clock, X, BookOpen, Check, Hammer } from 'lucide-react';
+import { Flame, Trophy, Lock, ChevronRight, Users, Clock, X, BookOpen, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GameplayMockup from './GameplayMockup';
 
@@ -47,34 +47,10 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
       ],
       available: true
     },
-    {
-      id: 'forge',
-      name: 'The Forge',
-      tagline: '3D blacksmith battle. Forge your weapon.',
-      icon: Hammer,
-      gradient: 'from-red-600 to-orange-600',
-      solid: 'bg-red-600',
-      glow: 'shadow-red-500/40',
-      accent: 'red',
-      screenshot: '/screenshots/forge.png',
-      tags: ['solo', 'multi'],
-      description: 'Step up to a real 3D anvil. Pick a weapon to forge — sword, hammer, or staff — then strike it with every correct answer. Faster answers land harder strikes, levelling the weapon up through tiers. When time\'s up, every student\'s forged weapon enters a bracket and auto-battles. Highest tier + sharpest stats wins.',
-      difficulty: 'Medium',
-      players: '1-50',
-      duration: '5-15 min',
-      features: [
-        '3D forge scene with glowing anvil + animated hammer strikes',
-        'Choose your weapon class before each round',
-        'Answer speed = strike quality (better tier ups)',
-        'Final auto-battle bracket between every student\'s forged weapon'
-      ],
-      available: true
-    },
   ];
 
   const handleContinue = () => {
     if (selectedMode === 'classic_timed') navigate('/game/classic-timed-setup', { state: { kit, user } });
-    else if (selectedMode === 'forge') navigate('/game/forge-setup', { state: { kit, user } });
   };
 
   const selected = gameModes.find(m => m.id === selectedMode);

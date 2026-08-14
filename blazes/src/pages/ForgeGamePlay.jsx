@@ -544,30 +544,41 @@ function Weapon({ tier, tierData, strikeFx }) {
   );
 }
 
+// Impact angle puts the head on the anvil face; rest angle holds it raised and
+// ready. Derived from the pivot at x=0.7 and a 0.75 handle, so the head lands
+// near x=0 (over the weapon) rather than off to the side.
+const HAMMER_IMPACT = -1.20;
+const HAMMER_RAISED = -2.30;
+
 function Hammer3D({ strikeFx }) {
   const grpRef = useRef();
-  const swingRef = useRef(0); // 0 = idle, 1 = mid-swing
+  const swingRef = useRef(0); // 1 = just struck, decays to 0 = raised and ready
   useEffect(() => {
     if (strikeFx > 0) swingRef.current = 1;
   }, [strikeFx]);
   useFrame((_, dt) => {
     if (!grpRef.current) return;
-    swingRef.current = Math.max(0, swingRef.current - dt * 2.6);
-    // Angle eases from -PI/3 (raised) down to 0 (struck) then back.
-    const a = (1 - Math.pow(1 - swingRef.current, 2)) * (-Math.PI / 2.2);
-    grpRef.current.rotation.z = a;
+    swingRef.current = Math.max(0, swingRef.current - dt * 2.2);
+    // Two things were wrong here. The old curve put the hammer at its HIGHEST
+    // point at the moment of the strike and lowered it over the next ~0.4s, so
+    // the sparks burst while the hammer was still in the air and it touched down
+    // long after. And the head sat at the pivot, so swinging barely moved it.
+    // Now: impact is at t=0 (in sync with the sparks) and it recoils back up.
+    const p = 1 - swingRef.current;                 // 0 at strike -> 1 at rest
+    const ease = 1 - Math.pow(1 - p, 3);            // fast off the anvil, settling slow
+    grpRef.current.rotation.z = HAMMER_IMPACT + (HAMMER_RAISED - HAMMER_IMPACT) * ease;
   });
   return (
-    <group position={[0.7, 0.65, 0]}>
+    <group position={[0.7, 0.55, 0]}>
       <group ref={grpRef}>
-        {/* Handle */}
-        <mesh castShadow position={[0, -0.35, 0]}>
-          <cylinderGeometry args={[0.04, 0.045, 0.7, 16]} />
+        {/* Handle — hangs from the pivot (the smith's grip) */}
+        <mesh castShadow position={[0, -0.375, 0]}>
+          <cylinderGeometry args={[0.04, 0.045, 0.75, 16]} />
           <meshStandardMaterial color="#5a2a14" roughness={0.7} />
         </mesh>
-        {/* Head — chunky steel block */}
-        <mesh castShadow position={[0, 0, 0]}>
-          <boxGeometry args={[0.34, 0.18, 0.18]} />
+        {/* Head — at the far END of the handle, so it traces a real arc */}
+        <mesh castShadow position={[0, -0.75, 0]}>
+          <boxGeometry args={[0.18, 0.18, 0.34]} />
           <meshStandardMaterial color="#2a2a2e" roughness={0.3} metalness={0.85} />
         </mesh>
       </group>

@@ -278,6 +278,52 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     });
   }, [questionQueue.length, initialGame?.assignment_id, assignmentMinQuestions, assignmentMinAccuracy, submitScore]);
 
+  // Number keys pick an answer, Enter advances. Skipped while a text field has
+  // focus so typing "2" into a short-answer box doesn't fire option 2.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+
+      const q = questionsRef.current[questionQueue[queueIndex]];
+      if (!q) return;
+
+      if (e.key === 'Enter' && isAnswered) { e.preventDefault(); handleNextQuestion(); return; }
+      if (isAnswered) return;
+
+      const n = parseInt(e.key, 10);
+      if (!Number.isInteger(n) || n < 1) return;
+      const idx = n - 1;
+
+      const type = q.answerType;
+      if (type === 'true_false' || (!q.options?.length && (type === 'true_false' || !type))) {
+        if (idx < 2) { e.preventDefault(); handleAnswer(idx); }
+        return;
+      }
+      if (type === 'multi_select') {
+        const letter = ['A', 'B', 'C', 'D'][idx];
+        if (!letter || idx >= (q.options?.length || 0)) return;
+        e.preventDefault();
+        setTypedAnswer((cur) => (cur || '').includes(letter) ? (cur || '').replace(letter, '') : (cur || '') + letter);
+        return;
+      }
+      if (type === 'image_label') {
+        const label = q.options?.[idx];
+        if (label === undefined) return;
+        e.preventDefault();
+        setTypedAnswer(label);
+        handleShortAnswer(label);
+        return;
+      }
+      if (!type || type === 'multiple_choice' || type === 'fill_blank') {
+        if (idx < (q.options?.length || 0)) { e.preventDefault(); handleAnswer(idx); }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   // Assignment runs have no timer and no host Finish button, so without this the
   // only way out is meeting every requirement — a student who can't reach the
   // accuracy gate would otherwise be stuck in the quiz with no exit.
@@ -669,8 +715,11 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
                       : 'bg-gray-50 border-2 border-gray-100 opacity-40'
                     : isSelected ? 'bg-blue-100 border-2 border-blue-500'
                     : 'bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50'}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-lg">{option}</span>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-3 min-w-0">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-md bg-gray-100 border border-gray-300 text-gray-500 text-xs font-black flex items-center justify-center">{index + 1}</span>
+                      <span className="font-bold text-lg">{option}</span>
+                    </span>
                     {isSelected && !isAnswered && <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
                     {isAnswered && isCorrectOption && <Check className="w-6 h-6 text-green-600" />}
                     {isAnswered && isSelected && !isCorrectOption && <X className="w-6 h-6 text-red-600" />}
@@ -877,7 +926,10 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
                       : 'bg-gray-50 border-2 border-gray-100 opacity-40'
                     : 'bg-white border-2 border-gray-200 hover:border-red-500 hover:bg-red-50'}`}
                 >
-                  {label}
+                  <span className="inline-flex items-center gap-2.5">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-md bg-gray-100 border border-gray-300 text-gray-500 text-xs font-black flex items-center justify-center">{idx + 1}</span>
+                    {label}
+                  </span>
                   {isAnswered && correct && <Check className="inline-block w-5 h-5 ml-2 text-green-600" />}
                   {isAnswered && wasSelected && !correct && <X className="inline-block w-5 h-5 ml-2 text-red-600" />}
                 </button>
@@ -893,8 +945,11 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
                     : index === selectedOption ? 'bg-red-100 border-2 border-red-500 text-red-800'
                     : 'bg-gray-50 border-2 border-gray-100 opacity-40'
                   : 'bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-lg">{option}</span>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-3 min-w-0">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-md bg-gray-100 border border-gray-300 text-gray-500 text-xs font-black flex items-center justify-center">{index + 1}</span>
+                    <span className="font-bold text-lg">{option}</span>
+                  </span>
                   {isAnswered && index === currentQuestion.correctAnswer && <Check className="w-6 h-6 text-green-600" />}
                   {isAnswered && index === selectedOption && index !== currentQuestion.correctAnswer && <X className="w-6 h-6 text-red-600" />}
                 </div>

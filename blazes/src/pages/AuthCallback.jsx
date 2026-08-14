@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Flame, GraduationCap, BookOpen, ArrowLeft } from 'lucide-react';
+import { authHeaders, handleUnauthorized } from '../utils/auth';
 
 export default function AuthCallback() {
   const [params] = useSearchParams();
@@ -44,13 +45,15 @@ export default function AuthCallback() {
     setError('');
     try {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-      const body = { userId: user.id, role };
+      // The token stored above proves who this is; the server ignores any userId.
+      const body = { role };
       if (bday) body.birthday = bday;
       const res = await fetch(`${base}/api/auth/set-role`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(body),
       });
+      if (handleUnauthorized(res)) return;
       const data = await res.json();
       if (res.ok) {
         const updatedUser = { ...user, role: data.role };

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, Bell, Gamepad2, Eye, Shield, Trash2, ChevronRight, Lock, BookOpen, BarChart3, Users, ClipboardList, Flame } from 'lucide-react';
 import Toast from '../components/Toast';
+import { authHeaders, handleUnauthorized } from '../utils/auth';
 
 function getPasswordStrength(pw) {
   if (!pw) return { label: '', color: '', width: '0%' };
@@ -160,9 +161,10 @@ export default function SettingsPage() {
     try {
       const res = await fetch(`${base}/api/auth/change-name`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, name: nameValue.trim() }),
+        headers: authHeaders(),
+        body: JSON.stringify({ name: nameValue.trim() }),
       });
+      if (handleUnauthorized(res)) return;
       const data = await res.json();
       if (res.ok) {
         const updatedUser = { ...user, name: nameValue.trim() };
@@ -186,9 +188,10 @@ export default function SettingsPage() {
       if (userInfo?.hasPassword !== false && emailPassword) body.password = emailPassword;
       const res = await fetch(`${base}/api/auth/change-email`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(body),
       });
+      if (handleUnauthorized(res)) return;
       const data = await res.json();
       if (res.ok) {
         const updatedUser = { ...user, email: emailValue.trim() };
@@ -220,9 +223,10 @@ export default function SettingsPage() {
       if (userInfo?.hasPassword !== false) body.currentPassword = currentPassword;
       const res = await fetch(`${base}/api/auth/change-password`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(body),
       });
+      if (handleUnauthorized(res)) return;
       const data = await res.json();
       if (res.ok) {
         // Trigger password manager save
@@ -264,9 +268,10 @@ export default function SettingsPage() {
     try {
       const res = await fetch(`${base}/api/auth/delete-account/${user.id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ password: deletePassword }),
       });
+      if (handleUnauthorized(res)) return;
       if (res.ok) {
         localStorage.clear();
         navigate('/');
@@ -1137,9 +1142,10 @@ export default function SettingsPage() {
                   try {
                     const res = await fetch(`${base}/api/auth/change-password`, {
                       method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ userId: user.id, newPassword: setupPassword }),
+                      headers: authHeaders(),
+                      body: JSON.stringify({ newPassword: setupPassword }),
                     });
+                    if (handleUnauthorized(res)) return;
                     const data = await res.json();
                     if (res.ok) {
                       setUserInfo(prev => prev ? { ...prev, hasPassword: true } : prev);

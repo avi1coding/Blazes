@@ -69,6 +69,7 @@ const Groq = require('groq-sdk');
 const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 console.log('[AI]', groq ? 'Groq initialized' : 'NOT configured (no GROQ_API_KEY)');
 
+const { signToken, readAuth, requireAuth, actingUserId } = require('./middleware/auth');
 const cookieParser = require('cookie-parser');
 const XLSX = require('xlsx');
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL || null;
@@ -83,6 +84,9 @@ app.use((req, res, next) => {
   express.json({ limit: '10mb' })(req, res, next);
 });
 app.use(cookieParser());
+// Attaches req.auth when the caller sent a valid token. Does not reject on its
+// own — only routes using requireAuth demand one.
+app.use(readAuth);
 // Serve uploaded question images
 const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -216,10 +220,11 @@ app.get('/auth/google/callback',
     db.run('INSERT INTO login_activity (user_id, ip_address, user_agent) VALUES (?, ?, ?)',
       [user.id, req.ip, req.headers['user-agent'] || 'Unknown']);
     const userData = encodeURIComponent(JSON.stringify({ id: user.id, email: user.email, name: user.name, role: user.role }));
+    const authToken = signToken(user);
     if (user.role === 'pending') {
-      res.redirect(`${FRONTEND_URL}/auth/callback?token=jwt-token-here&user=${userData}&new=true`);
+      res.redirect(`${FRONTEND_URL}/auth/callback?token=${authToken}&user=${userData}&new=true`);
     } else {
-      res.redirect(`${FRONTEND_URL}/auth/callback?token=jwt-token-here&user=${userData}`);
+      res.redirect(`${FRONTEND_URL}/auth/callback?token=${authToken}&user=${userData}`);
     }
     } catch (err) {
       console.error('[Auth] Google callback error:', err);
@@ -1275,7 +1280,7 @@ app.post('/api/auth/register', async (req, res) => {
         }).catch(err => console.error('[Auth] Verification email error:', err));
 
         res.json({
-          token: 'jwt-token-here',
+          token: signToken({ id: userId, role }),
           user: { id: userId, email, name, role },
           needsVerification: true
         });
@@ -1335,7 +1340,7 @@ app.post('/api/auth/login', (req, res) => {
         db.run('INSERT INTO login_activity (user_id, ip_address, user_agent) VALUES (?, ?, ?)',
           [user.id, req.ip, req.headers['user-agent'] || 'Unknown']);
         res.json({
-          token: 'jwt-token-here',
+          token: signToken(user),
           user: { id: user.id, email: user.email, name: user.name, role: user.role }
         });
       } else {
@@ -6887,10 +6892,13 @@ app.put('/api/settings/:userId', async (req, res) => {
 });
 
 // Set role based on birthday (for new Google sign-ups)
-app.post('/api/auth/set-role', async (req, res) => {
+app.post('/api/auth/set-role', requireAuth, async (req, res) => {
   try {
-    const { userId, role, birthday } = req.body;
-    if (!userId || !role) return res.status(400).json({ error: 'Missing userId or role' });
+    // userId comes from the token, not the body: this route had no credential
+    // check at all, so anyone could flip any pending account to teacher.
+    const userId = actingUserId(req);
+    const { role, birthday } = req.body;
+    if (!role) return res.status(400).json({ error: 'Missing role' });
     if (role !== 'teacher' && role !== 'student') return res.status(400).json({ error: 'Invalid role' });
     const user = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -6910,9 +6918,10 @@ app.post('/api/auth/set-role', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/auth/change-name', async (req, res) => {
+app.put('/api/auth/change-name', requireAuth, async (req, res) => {
   try {
-    const { userId, name } = req.body;
+    const userId = actingUserId(req);
+    const { name } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
     await dbRun('UPDATE users SET name = ? WHERE id = ?', [name.trim(), userId]);
     const user = await dbGet('SELECT id, email, name, role FROM users WHERE id = ?', [userId]);
@@ -6920,9 +6929,10 @@ app.put('/api/auth/change-name', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/auth/change-email', async (req, res) => {
+app.put('/api/auth/change-email', requireAuth, async (req, res) => {
   try {
-    const { userId, newEmail, password } = req.body;
+    const userId = actingUserId(req);
+    const { newEmail, password } = req.body;
     if (!newEmail?.trim()) return res.status(400).json({ error: 'Email is required' });
     const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -6939,9 +6949,10 @@ app.put('/api/auth/change-email', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/auth/change-password', async (req, res) => {
+app.put('/api/auth/change-password', requireAuth, async (req, res) => {
   try {
-    const { userId, currentPassword, newPassword } = req.body;
+    const userId = actingUserId(req);
+    const { currentPassword, newPassword } = req.body;
     if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
     const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -6957,9 +6968,10 @@ app.put('/api/auth/change-password', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/auth/delete-account/:userId', async (req, res) => {
+app.delete('/api/auth/delete-account/:userId', requireAuth, async (req, res) => {
   try {
-    const { userId } = req.params;
+    // Ignore the :userId in the path — you may only delete your own account.
+    const userId = actingUserId(req);
     const { password } = req.body;
     const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });

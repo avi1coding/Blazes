@@ -6,6 +6,8 @@ import ElementalClashGamePlay from './ElementalClashGamePlay';
 import ElementalWagerGamePlay from './ElementalWagerGamePlay';
 import ArenaGamePlay from './ArenaGamePlay';
 import ElementalMarketsGamePlay from './ElementalMarketsGamePlay';
+import LiveModeGamePlay from './LiveModeGamePlay';
+import { LIVE_MODE_META } from '../utils/liveModes';
 
 function getFullImageUrl(url) {
   if (!url) return null;
@@ -1339,6 +1341,10 @@ export default function GamePlay() {
   }
   if (game.game_mode === 'elemental_markets') {
     return <ElementalMarketsGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} />;
+  }
+  // The four endless live modes all run on one shell.
+  if (LIVE_MODE_META[game.game_mode]) {
+    return <LiveModeGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
   }
   return <ClassicGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
 }

@@ -61,6 +61,7 @@ const ElementalClashSetupPage = lazy(() => import("./pages/ElementalClashSetupPa
 const ElementalWagerSetupPage = lazy(() => import("./pages/ElementalWagerSetupPage"));
 const ArenaSetupPage = lazy(() => import("./pages/ArenaSetupPage"));
 const ElementalMarketsSetupPage = lazy(() => import("./pages/ElementalMarketsSetupPage"));
+const LiveModeSetupPage = lazy(() => import("./pages/LiveModeSetupPage"));
 const HubPage = lazy(() => import("./pages/HubPage"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -144,6 +145,8 @@ function App() {
           <Route path="/game/elemental-wager-setup" element={<ElementalWagerSetupPage />} />
           <Route path="/game/arena-setup" element={<ArenaSetupPage />} />
           <Route path="/game/elemental-markets-setup" element={<ElementalMarketsSetupPage />} />
+          {/* One setup route for all four endless live modes */}
+          <Route path="/game/live-setup/:mode" element={<LiveModeSetupPage />} />
           <Route path="/hub" element={<HubPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

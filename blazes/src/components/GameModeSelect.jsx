@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Flame, Trophy, Lock, ChevronRight, Users, Clock, X, BookOpen, Check } from 'lucide-react';
+import { Flame, Trophy, Lock, ChevronRight, Users, Clock, X, BookOpen, Check, Vault, Waves, Zap, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GameplayMockup from './GameplayMockup';
 
@@ -47,10 +47,101 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
       ],
       available: true
     },
+    {
+      id: 'vault',
+      name: 'The Vault',
+      tagline: 'A shared pot. Crack it before anyone else.',
+      icon: Vault,
+      gradient: 'from-amber-500 to-orange-600',
+      solid: 'bg-amber-500',
+      glow: 'shadow-amber-500/40',
+      accent: 'amber',
+      tags: ['multi', 'endless'],
+      description: 'A pot fills for the whole class every second. The next correct answer cracks it and takes a share set by that player\'s streak, then it refills. Everyone plays at once, and it never ends.',
+      difficulty: 'Easy',
+      players: '2-50',
+      duration: 'Endless',
+      features: [
+        'Shared pot everyone is racing for',
+        'Longer streaks claim a bigger share',
+        'Standings fade if you stop answering',
+        'Works with every question type'
+      ],
+      available: true
+    },
+    {
+      id: 'undertow',
+      name: 'Undertow',
+      tagline: 'One current. Ride it or fight it.',
+      icon: Waves,
+      gradient: 'from-cyan-500 to-blue-600',
+      solid: 'bg-cyan-500',
+      glow: 'shadow-cyan-500/40',
+      accent: 'cyan',
+      tags: ['multi', 'endless'],
+      description: 'A single current flows toward whoever has been fastest lately. Answering with it multiplies your points; answering against it divides them. Heavy skins resist the pull, light skins swing hardest in both directions.',
+      difficulty: 'Medium',
+      players: '2-50',
+      duration: 'Endless',
+      features: [
+        'Shared current that chases the fastest player',
+        'Your skin element changes how much it moves you',
+        'Constant lead changes',
+        'Works with every question type'
+      ],
+      available: true
+    },
+    {
+      id: 'fracture',
+      name: 'Fracture',
+      tagline: 'One pane of glass. Everyone\'s mistakes show.',
+      icon: Zap,
+      gradient: 'from-violet-500 to-purple-700',
+      solid: 'bg-violet-600',
+      glow: 'shadow-violet-500/40',
+      accent: 'violet',
+      tags: ['multi', 'endless'],
+      description: 'The class shares one pane of glass. Every wrong answer cracks it beside whoever is nearest in the standings, and cracks near you dim your scoring until you repair them with correct answers. Leaders crowd together and absorb each other\'s damage.',
+      difficulty: 'Medium',
+      players: '2-50',
+      duration: 'Endless',
+      features: [
+        'Shared glass that everyone damages',
+        'Skin tier sets how fast you repair',
+        'Naturally keeps the field close',
+        'Works with every question type'
+      ],
+      available: true
+    },
+    {
+      id: 'eclipse',
+      name: 'Eclipse',
+      tagline: 'Light the dark. Hold it if you can.',
+      icon: Sun,
+      gradient: 'from-orange-500 to-red-600',
+      solid: 'bg-orange-500',
+      glow: 'shadow-orange-500/40',
+      accent: 'orange',
+      tags: ['multi', 'endless'],
+      description: 'A dark shared arena where your skin\'s glow lights territory around you. Correct answers expand your light, and it fades constantly — ground is held only by continuing to answer. Where two players overlap, the more recent answer owns it.',
+      difficulty: 'Medium',
+      players: '2-50',
+      duration: 'Endless',
+      features: [
+        'Your skin colour is your territory',
+        'Light fades, so nobody can coast',
+        'Overlapping territory is contested live',
+        'Works with every question type'
+      ],
+      available: true
+    },
   ];
+
 
   const handleContinue = () => {
     if (selectedMode === 'classic_timed') navigate('/game/classic-timed-setup', { state: { kit, user } });
+    else if (['vault', 'undertow', 'fracture', 'eclipse'].includes(selectedMode))
+      navigate(`/game/live-setup/${selectedMode}`, { state: { kit, user } });
   };
 
   const selected = gameModes.find(m => m.id === selectedMode);

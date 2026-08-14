@@ -766,6 +766,12 @@ db.run(`ALTER TABLE game_participants ADD COLUMN mkt_cost_basis TEXT DEFAULT '{}
 db.run(`ALTER TABLE questions ADD COLUMN image_url TEXT`, () => { });
 // Inferno Tower columns
 db.run(`ALTER TABLE game_participants ADD COLUMN tower_floor INTEGER DEFAULT 0`, () => { });
+db.run(`ALTER TABLE game_participants ADD COLUMN live_score REAL DEFAULT 0`, () => { });
+db.run(`ALTER TABLE game_participants ADD COLUMN live_streak INTEGER DEFAULT 0`, () => { });
+db.run(`ALTER TABLE game_participants ADD COLUMN live_state TEXT DEFAULT '{}'`, () => { });
+db.run(`ALTER TABLE game_participants ADD COLUMN live_answered_at DATETIME`, () => { });
+db.run(`ALTER TABLE game_participants ADD COLUMN live_total_ms INTEGER DEFAULT 0`, () => { });
+db.run(`ALTER TABLE game_participants ADD COLUMN live_answers INTEGER DEFAULT 0`, () => { });
 db.run(`ALTER TABLE game_participants ADD COLUMN is_ghost INTEGER DEFAULT 0`, () => { });
 db.run(`ALTER TABLE game_participants ADD COLUMN frozen_until DATETIME`, () => { });
 db.run(`CREATE TABLE IF NOT EXISTS inferno_fireballs (
@@ -8153,6 +8159,310 @@ app.post('/api/games/:gameCode/markets/answer', async (req, res) => {
   }
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LIVE MODES — Vault, Undertow, Fracture, Eclipse
+//
+// Four endless, simultaneous modes sharing one engine. Design rules they all
+// obey, which is why they can share it:
+//
+//  * A mode only ever sees (correct, milliseconds). It never learns HOW the
+//    answer was given, so every question type works — multiple choice through
+//    matching and audio alike.
+//  * No mode ends. Standings therefore cannot be lifetime totals or the first
+//    player to join would lead forever. Every score DECAYS toward zero on a
+//    half-life, so a standing is really "how well are you doing lately" and
+//    stopping means sliding down.
+//  * Decay makes every standing a float that moves continuously, so exact ties
+//    are vanishingly rare. Cumulative answer time breaks any that survive.
+//  * The equipped skin feeds in: its colour is the player's identity on screen,
+//    and its tier grants a modest edge (never more than +25%).
+//
+// All scoring is server-side. The client reports correct/ms and gets told what
+// happened; it cannot award itself anything.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const LIVE_MODES = new Set(['vault', 'undertow', 'fracture', 'eclipse']);
+
+// Score half-life in seconds. Slower modes decay slower.
+const LIVE_DECAY_HALFLIFE = { vault: 150, undertow: 110, fracture: 130, eclipse: 90 };
+
+// Skin tier -> small advantage. Cosmetics should flavour play, not decide it.
+const SKIN_TIER_BONUS = { Basic: 1.0, Common: 1.03, Uncommon: 1.06, Rare: 1.10, Epic: 1.14, Legendary: 1.19, Mythic: 1.25 };
+
+// Elements that shrug off the Undertow current, and those it drags hardest.
+const HEAVY_ELEMENTS = new Set(['earth', 'stone', 'metal', 'quake', 'gravity', 'crystal', 'sand', 'vine', 'wood']);
+const LIGHT_ELEMENTS = new Set(['air', 'mist', 'gale', 'sound', 'light', 'spirit', 'storm', 'tempest', 'wave']);
+
+function skinTierOf(skinId) {
+  if (!skinId) return 'Basic';
+  if (SKIN_PRICES[skinId] === undefined) return 'Basic';
+  const p = SKIN_PRICES[skinId];
+  if (p >= 1500) return 'Mythic';
+  if (p >= 900) return 'Legendary';
+  if (p >= 600) return 'Epic';
+  if (p >= 430) return 'Rare';
+  if (p >= 300) return 'Uncommon';
+  return 'Common';
+}
+
+/** Exponential decay applied lazily on read, so no background timers are needed. */
+function decayed(value, sinceMs, halfLifeSec) {
+  if (!value) return 0;
+  const secs = Math.max(0, sinceMs / 1000);
+  return value * Math.pow(0.5, secs / halfLifeSec);
+}
+
+/** Faster answers are worth more, flattening out so a lucky fast guess is not decisive. */
+function speedFactor(ms) {
+  const s = Math.max(0.4, Math.min(20, (Number(ms) || 8000) / 1000));
+  return 1.6 / (1 + s / 4);   // ~1.45 at 0.5s, ~1.07 at 2s, ~0.53 at 8s
+}
+
+const liveShared = new Map();   // gameCode -> shared mode state, rebuilt on demand
+
+function sharedState(gameCode, mode) {
+  let s = liveShared.get(gameCode);
+  if (!s) {
+    s = { mode, updatedAt: Date.now(), pot: 40, lastCrack: null, cracks: [], current: null, currentMs: null, recent: [] };
+    liveShared.set(gameCode, s);
+  }
+  return s;
+}
+
+/** The Vault pot fills on a clock; read it lazily. */
+function vaultPot(shared) {
+  const grown = shared.pot + ((Date.now() - shared.updatedAt) / 1000) * 3.5;
+  return Math.min(600, grown);
+}
+
+async function liveParticipants(gameId) {
+  return (await dbAll(
+    `SELECT gp.user_id, gp.player_name, gp.live_score, gp.live_streak, gp.live_state,
+            gp.live_answered_at, gp.live_total_ms, gp.live_answers,
+            ue.avatar_skin
+       FROM game_participants gp
+       LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
+      WHERE gp.game_id = ?`, [gameId])) || [];
+}
+
+function liveRow(p, mode, now) {
+  const since = p.live_answered_at ? now - new Date(p.live_answered_at).getTime() : 0;
+  const score = decayed(Number(p.live_score) || 0, since, LIVE_DECAY_HALFLIFE[mode] || 120);
+  let st = {};
+  try { st = JSON.parse(p.live_state || '{}'); } catch { st = {}; }
+  return {
+    userId: p.user_id,
+    name: p.player_name,
+    skin: p.avatar_skin || null,
+    tier: skinTierOf(p.avatar_skin),
+    score: Math.round(score * 100) / 100,
+    streak: p.live_streak || 0,
+    answers: p.live_answers || 0,
+    // Eclipse radius decays too, otherwise territory would be permanent.
+    radius: mode === 'eclipse' ? Math.round(decayed(st.radius || 0, since, 70) * 100) / 100 : undefined,
+    // Cumulative answer time is the final tiebreaker: lower is better.
+    totalMs: p.live_total_ms || 0,
+  };
+}
+
+// ── GET state ──────────────────────────────────────────────────────────────
+app.get('/api/games/:gameCode/live/state', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const userId = req.query.userId ? parseInt(req.query.userId, 10) : null;
+    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (!LIVE_MODES.has(game.game_mode)) return res.status(400).json({ error: 'Not a live mode' });
+
+    const mode = game.game_mode;
+    const shared = sharedState(gameCode, mode);
+    const now = Date.now();
+    const rows = (await liveParticipants(game.id)).map(p => liveRow(p, mode, now));
+
+    // Rank by score, then by speed. Two identical floats are already unlikely;
+    // total time makes a true tie essentially impossible.
+    rows.sort((a, b) => (b.score - a.score) || (a.totalMs - b.totalMs));
+    rows.forEach((r, i) => { r.rank = i + 1; });
+
+    res.json({
+      mode,
+      status: game.status,
+      players: rows,
+      me: userId ? rows.find(r => r.userId === userId) || null : null,
+      shared: {
+        pot: mode === 'vault' ? Math.round(vaultPot(shared)) : undefined,
+        lastCrack: mode === 'vault' ? shared.lastCrack : undefined,
+        current: mode === 'undertow' ? shared.current : undefined,
+        cracks: mode === 'fracture' ? shared.cracks.slice(-40) : undefined,
+      },
+    });
+  } catch (err) {
+    console.error('[live/state]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST answer ────────────────────────────────────────────────────────────
+app.post('/api/games/:gameCode/live/answer', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const { userId, questionId, correct, ms } = req.body;
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (!LIVE_MODES.has(game.game_mode)) return res.status(400).json({ error: 'Not a live mode' });
+
+    const mode = game.game_mode;
+    const shared = sharedState(gameCode, mode);
+    const now = Date.now();
+    const isCorrect = !!correct;
+    const answerMs = Math.max(150, Math.min(120000, Number(ms) || 8000));
+
+    const row = await dbGet(
+      `SELECT gp.*, ue.avatar_skin FROM game_participants gp
+       LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
+       WHERE gp.game_id = ? AND gp.user_id = ?`, [game.id, userId]);
+    if (!row) return res.status(403).json({ error: 'Not a participant' });
+
+    const since = row.live_answered_at ? now - new Date(row.live_answered_at).getTime() : 0;
+    const halfLife = LIVE_DECAY_HALFLIFE[mode] || 120;
+    let score = decayed(Number(row.live_score) || 0, since, halfLife);
+    let streak = isCorrect ? (row.live_streak || 0) + 1 : 0;
+    let st = {};
+    try { st = JSON.parse(row.live_state || '{}'); } catch { st = {}; }
+
+    const tierMul = SKIN_TIER_BONUS[skinTierOf(row.avatar_skin)] || 1;
+    const spd = speedFactor(answerMs);
+    let delta = 0;
+    const flash = { mode };
+
+    if (mode === 'vault') {
+      // The pot fills on a clock; a correct answer cracks it and takes a share
+      // set by your streak, then it resets. Wrong answers cost you the streak.
+      if (isCorrect) {
+        const pot = vaultPot(shared);
+        const cap = 1 + Math.min(5, streak) * 0.35 * tierMul;   // tier lengthens the fuse
+        const share = Math.min(1, 0.30 + 0.10 * Math.min(5, streak));
+        delta = pot * share * spd * (cap / 2);
+        shared.pot = Math.max(20, pot * (1 - share));
+        shared.updatedAt = now;
+        shared.lastCrack = { userId, name: row.player_name, amount: Math.round(delta), at: now };
+        flash.cracked = Math.round(delta);
+        flash.potLeft = Math.round(shared.pot);
+      } else {
+        delta = -Math.min(score * 0.12, 25);
+      }
+
+    } else if (mode === 'undertow') {
+      // One shared current flows toward whoever has been fastest lately. Riding
+      // it multiplies your points; fighting it divides them. Heavy skins resist
+      // the pull, light skins get swung hardest — in both directions.
+      shared.recent.push({ userId, ms: answerMs, at: now });
+      if (shared.recent.length > 6) shared.recent.shift();
+      const fastest = shared.recent.reduce((a, b) => (a && a.ms <= b.ms ? a : b), null);
+      shared.current = fastest ? { userId: fastest.userId, ms: fastest.ms } : null;
+
+      const element = row.avatar_skin || '';
+      const heavy = HEAVY_ELEMENTS.has(element);
+      const light = LIGHT_ELEMENTS.has(element);
+      const withCurrent = !shared.current || shared.current.userId === userId
+        || answerMs <= shared.current.ms * 1.25;
+      let swing = withCurrent ? 1.55 : 0.6;
+      if (heavy) swing = withCurrent ? 1.30 : 0.85;   // steadier both ways
+      if (light) swing = withCurrent ? 1.80 : 0.45;   // wilder both ways
+      delta = isCorrect ? 26 * spd * swing * tierMul : -Math.min(score * 0.10, 22);
+      flash.withCurrent = withCurrent;
+      flash.swing = Math.round(swing * 100) / 100;
+
+    } else if (mode === 'fracture') {
+      // Everyone's wrong answers crack one shared pane. Cracks near you dim your
+      // multiplier; your correct answers repair the nearest ones. Skin tier sets
+      // repair reach, so a better skin cleans up faster but never scores more.
+      const myCracks = shared.cracks.filter(c => c.near === userId).length;
+      const dim = Math.max(0.3, 1 - myCracks * 0.08);
+      if (isCorrect) {
+        const reach = Math.round(1 + (tierMul - 1) * 8);   // 1..3 cracks per answer
+        let repaired = 0;
+        for (let i = shared.cracks.length - 1; i >= 0 && repaired < reach; i--) {
+          if (shared.cracks[i].near === userId) { shared.cracks.splice(i, 1); repaired++; }
+        }
+        delta = 30 * spd * dim * tierMul;
+        flash.repaired = repaired;
+      } else {
+        // A wrong answer cracks the glass next to whoever is nearest in rank.
+        const others = (await liveParticipants(game.id))
+          .map(p => liveRow(p, mode, now))
+          .sort((a, b) => b.score - a.score);
+        const meIdx = others.findIndex(o => o.userId === userId);
+        const neighbour = others[meIdx + 1] || others[meIdx - 1] || { userId };
+        shared.cracks.push({ near: neighbour.userId, at: now, x: Math.random(), y: Math.random() });
+        if (shared.cracks.length > 120) shared.cracks.shift();
+        delta = -Math.min(score * 0.08, 18);
+        flash.crackedNear = neighbour.userId;
+      }
+      flash.dim = Math.round(dim * 100) / 100;
+
+    } else if (mode === 'eclipse') {
+      // Your skin's glow lights territory. Radius grows with correct answers and
+      // decays constantly, so ground is held only by continuing to answer.
+      // Overlap with a more recently-active player eats into your effective area.
+      let radius = decayed(st.radius || 0, since, 70);
+      radius = isCorrect
+        ? Math.min(30, radius + 2.6 * spd * tierMul)
+        : Math.max(0, radius - 2.2);
+      st.radius = radius;
+
+      const rivals = (await liveParticipants(game.id)).filter(p => p.user_id !== userId);
+      let contested = 0;
+      for (const rv of rivals) {
+        let rst = {}; try { rst = JSON.parse(rv.live_state || '{}'); } catch { rst = {}; }
+        const rvSince = rv.live_answered_at ? now - new Date(rv.live_answered_at).getTime() : Infinity;
+        const rvRadius = decayed(rst.radius || 0, rvSince, 70);
+        // Whoever answered most recently owns the overlap.
+        if (rvSince < 0 || rvRadius <= 0) continue;
+        contested += Math.min(radius, rvRadius) * 0.12;
+      }
+      const area = Math.PI * radius * radius;
+      const effective = Math.max(0, area - contested * 10);
+      delta = (effective / 12) - score;   // score IS the lit area, scaled
+      flash.radius = Math.round(radius * 100) / 100;
+      flash.contested = Math.round(contested * 100) / 100;
+    }
+
+    score = Math.max(0, score + delta);
+
+    await dbRun(
+      `UPDATE game_participants
+          SET live_score = ?, live_streak = ?, live_state = ?, live_answered_at = ?,
+              live_total_ms = COALESCE(live_total_ms, 0) + ?,
+              live_answers  = COALESCE(live_answers, 0) + 1,
+              score = ?
+        WHERE game_id = ? AND user_id = ?`,
+      [score, streak, JSON.stringify(st), new Date(now).toISOString(), answerMs, Math.round(score), game.id, userId]
+    );
+
+    // Same answer log as every other mode, so stats and analytics still work.
+    if (questionId) {
+      await dbRun(
+        'INSERT INTO game_answers (game_id, user_id, question_id, answer, is_correct, time_taken) VALUES (?, ?, ?, ?, ?, ?)',
+        [game.id, userId, questionId, '', isCorrect ? 1 : 0, Math.round(answerMs / 100) / 10]
+      );
+    }
+
+    res.json({
+      delta: Math.round(delta * 100) / 100,
+      score: Math.round(score * 100) / 100,
+      streak,
+      flash,
+    });
+  } catch (err) {
+    console.error('[live/answer]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Lock in final scores when the game ends so the existing results page works.
 // Called explicitly by /end and /abandon below.
 async function settleMarketsScores(gameCode) {
@@ -8267,6 +8577,12 @@ async function initSchema() {
     `ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 1`,
     `ALTER TABLE users ADD COLUMN verification_token TEXT`,
     `ALTER TABLE game_participants ADD COLUMN wager_streak INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN live_score REAL DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN live_streak INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN live_state TEXT DEFAULT '{}'`,
+    `ALTER TABLE game_participants ADD COLUMN live_answered_at DATETIME`,
+    `ALTER TABLE game_participants ADD COLUMN live_total_ms INTEGER DEFAULT 0`,
+    `ALTER TABLE game_participants ADD COLUMN live_answers INTEGER DEFAULT 0`,
     `ALTER TABLE questions ADD COLUMN image_url TEXT`,
     `ALTER TABLE game_participants ADD COLUMN tower_floor INTEGER DEFAULT 0`,
     `ALTER TABLE game_participants ADD COLUMN is_ghost INTEGER DEFAULT 0`,

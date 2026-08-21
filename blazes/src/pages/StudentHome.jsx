@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { authHeaders } from '../utils/auth';
 import AchievementsMap from './AchievementsMap';
 import SkinsPage, { AvatarPreview, cacheEquippedSkin, initialEquippedSkin } from './SkinsPage';
 import CreateKit from '../components/CreateKit';
@@ -1706,7 +1707,7 @@ export default function StudentHome() {
                       className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 text-sm">Cancel</button>
                     <button onClick={async () => {
                       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-                      await fetch(`${base}/api/kits/${deleteKitConfirm.id}`, { method: 'DELETE' });
+                      await fetch(`${base}/api/kits/${deleteKitConfirm.id}`, { method: 'DELETE', headers: authHeaders() });
                       setDeleteKitConfirm(null);
                       fetch(`${base}/api/kits/teacher/${user.id}`).then(r => r.json()).then(setMyKits).catch(() => {});
                     }}
@@ -2121,7 +2122,7 @@ export default function StudentHome() {
                                     try {
                                       const bse = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                                       const res = await fetch(`${bse}/api/upload-audio`, {
-                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        method: 'POST', headers: authHeaders(),
                                         body: JSON.stringify({ audioData: reader.result })
                                       });
                                       const data = await res.json();
@@ -2145,7 +2146,7 @@ export default function StudentHome() {
                                     try {
                                       const bse = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
                                       const res = await fetch(`${bse}/api/upload-audio`, {
-                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        method: 'POST', headers: authHeaders(),
                                         body: JSON.stringify({ audioData: reader.result })
                                       });
                                       const data = await res.json();

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { authHeaders } from '../utils/auth';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Flame, Users, Plus, Trash2, ArrowLeft, BookOpen, Clock, Check, X, ClipboardList, Play } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
@@ -230,7 +231,7 @@ export default function ClassroomPage() {
   };
 
   const handleDeleteAssignment = async (id) => {
-    await fetch(`${base}/api/assignments/${id}`, { method: 'DELETE' });
+    await fetch(`${base}/api/assignments/${id}`, { method: 'DELETE', headers: authHeaders() });
     setDeleteAssignmentConfirm(null);
     fetchAssignments();
   };
@@ -701,7 +702,7 @@ export default function ClassroomPage() {
               <button onClick={() => setDeleteClassroomConfirm(false)}
                 className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 text-sm">Cancel</button>
               <button onClick={async () => {
-                await fetch(`${base}/api/classrooms/${classroomId}`, { method: 'DELETE' });
+                await fetch(`${base}/api/classrooms/${classroomId}`, { method: 'DELETE', headers: authHeaders() });
                 navigate(-1);
               }}
                 className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-sm">Delete Forever</button>
@@ -773,7 +774,7 @@ export default function ClassroomPage() {
                       const file = e.target.files?.[0]; if (!file) return;
                       const reader = new FileReader();
                       reader.onload = async () => {
-                        const res = await fetch(`${base}/api/upload-image`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageData: reader.result }) });
+                        const res = await fetch(`${base}/api/upload-image`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ imageData: reader.result }) });
                         const data = await res.json();
                         if (data.url) setEditForm(prev => ({ ...prev, imageUrl: data.url }));
                       };

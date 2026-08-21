@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { authHeaders } from '../utils/auth';
 import { Plus, Lock, Music, Sigma } from 'lucide-react';
 import ImagePicker from './ImagePicker';
 
@@ -136,7 +137,7 @@ export default function AddQuestionForm({
       const reader = new FileReader();
       reader.onload = async () => {
         const res = await fetch(`${BASE}/api/upload-image`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: authHeaders(),
           body: JSON.stringify({ imageData: reader.result }),
         });
         const data = await res.json();
@@ -154,7 +155,7 @@ export default function AddQuestionForm({
     reader.onload = async () => {
       try {
         const res = await fetch(`${BASE}/api/upload-audio`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: authHeaders(),
           body: JSON.stringify({ audioData: reader.result }),
         });
         const data = await res.json();

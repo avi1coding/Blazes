@@ -4,6 +4,7 @@ import { Flame, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
 import QuestionView from '../components/QuestionView';
 import { AvatarPreview, getSkinColor } from './SkinsPage';
 import { LIVE_MODE_META } from '../utils/liveModes';
+import { authHeaders, handleUnauthorized } from '../utils/auth';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -61,14 +62,17 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
     return () => { window.removeEventListener('pagehide', leave); leave(); };
   }, [gameCode, user.id]);
 
-  const handleAnswer = useCallback(async ({ correct, ms }) => {
+  const handleAnswer = useCallback(async ({ correct, ms, answer }) => {
     const q = questions[queue[qIdx]];
     setBusy(true);
     try {
       const r = await fetch(`${BASE}/api/games/${gameCode}/live/answer`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, questionId: q?.id ?? null, correct, ms }),
+        method: 'POST', headers: authHeaders(),
+        // `answer` lets the server re-grade rather than trust `correct`.
+        // userId is ignored now — identity comes from the token.
+        body: JSON.stringify({ questionId: q?.id ?? null, answer, correct, ms }),
       });
+      if (handleUnauthorized(r)) return;
       const d = await r.json().catch(() => ({}));
       if (r.ok) {
         setFlash({ ...d, correct });
@@ -80,7 +84,9 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
         // session while nothing was ever recorded.
         setProblem(d.error === 'Not a participant'
           ? 'You are not in this game. Ask your teacher for the code and join again.'
-          : (d.message || d.error || 'That answer did not save. Check your connection.'));
+          : d.error === 'duplicate'
+            ? null   // harmless double-submit; nothing to tell the player
+            : (d.message || d.error || 'That answer did not save. Check your connection.'));
       }
     } catch {
       setProblem('That answer did not save. Check your connection.');

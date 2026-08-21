@@ -90,7 +90,14 @@ app.use(readAuth);
 // Serve uploaded question images
 const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', express.static(uploadsDir, {
+  // Defence in depth behind the allowlist above: never sniff a content type,
+  // never execute, and always download rather than render.
+  setHeaders: (r) => {
+    r.setHeader('X-Content-Type-Options', 'nosniff');
+    r.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+  },
+}));
 
 // Render (and most PaaS) terminate TLS at a proxy and forward plain HTTP.
 // Without this, req.protocol is 'http' and express-session refuses to send
@@ -1861,35 +1868,77 @@ app.get('/api/students/needing-help/:teacherId', (req, res) => {
 });
 
 // Upload question image (base64)
-app.post('/api/upload-image', (req, res) => {
+//
+// The extension used to come straight from the data-URI subtype, so
+// "data:image/html;base64,..." wrote a .html file into /uploads, which is served
+// from the app's own origin — stored XSS with access to the token in
+// localStorage. Both the subtype and the file's magic bytes are now checked.
+const IMAGE_TYPES = {
+  png:  [[0x89, 0x50, 0x4e, 0x47]],
+  jpg:  [[0xff, 0xd8, 0xff]],
+  jpeg: [[0xff, 0xd8, 0xff]],
+  gif:  [[0x47, 0x49, 0x46, 0x38]],
+  webp: [[0x52, 0x49, 0x46, 0x46]],
+};
+const AUDIO_TYPES = {
+  mp3:  [[0x49, 0x44, 0x33], [0xff, 0xfb], [0xff, 0xf3], [0xff, 0xf2]],
+  wav:  [[0x52, 0x49, 0x46, 0x46]],
+  ogg:  [[0x4f, 0x67, 0x67, 0x53]],
+  m4a:  [[0x66, 0x74, 0x79, 0x70]],   // at offset 4
+  mp4:  [[0x66, 0x74, 0x79, 0x70]],
+};
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+function magicOk(buffer, signatures, ext) {
+  if (!signatures) return false;
+  const offset = (ext === 'm4a' || ext === 'mp4') ? 4 : 0;
+  return signatures.some(sig => sig.every((b, i) => buffer[offset + i] === b));
+}
+
+app.post('/api/upload-image', requireAuth, (req, res) => {
   const { imageData } = req.body; // base64 string like "data:image/png;base64,..."
   if (!imageData) return res.status(400).json({ error: 'No image data' });
   try {
     const matches = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
     if (!matches) return res.status(400).json({ error: 'Invalid image format' });
-    const ext = matches[1];
+    const ext = String(matches[1]).toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(IMAGE_TYPES, ext)) {
+      return res.status(400).json({ error: 'Unsupported image type. Use PNG, JPG, GIF or WebP.' });
+    }
     const buffer = Buffer.from(matches[2], 'base64');
+    if (buffer.length > MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'Image is too large (8MB max).' });
+    if (!magicOk(buffer, IMAGE_TYPES[ext], ext)) {
+      return res.status(400).json({ error: 'That file is not a real image.' });
+    }
     const filename = `q_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
     fs.writeFileSync(path.join(uploadsDir, filename), buffer);
-    const url = `${req.protocol}://${req.get('host')}/uploads/${filename}`;
-    res.json({ url });
+    // Relative URL: building it from the client-supplied Host header baked
+    // localhost into rows that production then tried to load.
+    res.json({ url: `/uploads/${filename}` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/upload-audio', (req, res) => {
+app.post('/api/upload-audio', requireAuth, (req, res) => {
   const { audioData } = req.body;
   if (!audioData) return res.status(400).json({ error: 'No audio data' });
   try {
     const matches = audioData.match(/^data:audio\/(\w+);base64,(.+)$/);
     if (!matches) return res.status(400).json({ error: 'Invalid audio format' });
-    const ext = matches[1] === 'mpeg' ? 'mp3' : matches[1];
+    const raw = String(matches[1]).toLowerCase();
+    const ext = raw === 'mpeg' ? 'mp3' : (raw === 'x-m4a' ? 'm4a' : raw);
+    if (!Object.prototype.hasOwnProperty.call(AUDIO_TYPES, ext)) {
+      return res.status(400).json({ error: 'Unsupported audio type. Use MP3, WAV, OGG or M4A.' });
+    }
     const buffer = Buffer.from(matches[2], 'base64');
+    if (buffer.length > MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'Audio is too large (8MB max).' });
+    if (!magicOk(buffer, AUDIO_TYPES[ext], ext)) {
+      return res.status(400).json({ error: 'That file is not a real audio clip.' });
+    }
     const filename = `audio_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
     fs.writeFileSync(path.join(uploadsDir, filename), buffer);
-    const url = `${req.protocol}://${req.get('host')}/uploads/${filename}`;
-    res.json({ url });
+    res.json({ url: `/uploads/${filename}` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2043,9 +2092,14 @@ app.put('/api/kits/:kitId', (req, res) => {
 //      disconnects them from the soon-to-be-gone questions)
 //   2. delete the questions
 //   3. delete the kit
-app.delete('/api/kits/:kitId', async (req, res) => {
+app.delete('/api/kits/:kitId', requireAuth, async (req, res) => {
   const { kitId } = req.params;
   try {
+    // These routes read no identity at all before this, so anyone could walk the
+    // id space and permanently destroy every kit, classroom and grade record.
+    const kitOwner = await dbGet('SELECT teacher_id FROM question_kits WHERE id = ?', [kitId]);
+    if (!kitOwner) return res.status(404).json({ error: 'Kit not found' });
+    if (kitOwner.teacher_id !== actingUserId(req)) return res.status(403).json({ error: 'Not your kit' });
     // Refuse if assignments still point here. Nulling assignments.kit_id below left
     // them listed (every listing endpoint LEFT JOINs) but permanently unstartable,
     // because /assignments/:id/play INNER JOINs question_kits — students got
@@ -4370,9 +4424,14 @@ async function getTeacherClassroomIds(teacherId) {
   return [...new Set([...(owned || []).map(c => c.id), ...(coTeaching || []).map(c => c.id)])];
 }
 
-app.post('/api/classrooms', async (req, res) => {
-  const { teacherId, name, subject, gradeLevel, imageUrl } = req.body;
-  if (!teacherId || !name) return res.status(400).json({ error: 'Teacher ID and name required' });
+app.post('/api/classrooms', requireAuth, async (req, res) => {
+  // Owner is the caller, from the token. Accepting a body teacherId let anyone
+  // create a classroom "owned" by any id — step one of a chain that ended in
+  // overwriting another student's password.
+  const teacherId = actingUserId(req);
+  const { name, subject, gradeLevel, imageUrl } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name required' });
+  if (req.auth?.role !== 'teacher') return res.status(403).json({ error: 'Only teachers can create classrooms' });
   try {
     const id = await new Promise((resolve, reject) => {
       db.run('INSERT INTO classrooms (teacher_id, name, subject, grade_level, image_url) VALUES (?, ?, ?, ?, ?)',
@@ -4589,8 +4648,11 @@ app.delete('/api/classrooms/:classroomId/students/:studentId', async (req, res) 
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/classrooms/:classroomId', async (req, res) => {
+app.delete('/api/classrooms/:classroomId', requireAuth, async (req, res) => {
   try {
+    if (!(await teacherHasClassroom(actingUserId(req), req.params.classroomId))) {
+      return res.status(403).json({ error: 'Not your classroom' });
+    }
     await dbRun('DELETE FROM classroom_students WHERE classroom_id = ?', [req.params.classroomId]);
     await dbRun('DELETE FROM assignment_submissions WHERE assignment_id IN (SELECT id FROM assignments WHERE classroom_id = ?)', [req.params.classroomId]);
     await dbRun('DELETE FROM assignments WHERE classroom_id = ?', [req.params.classroomId]);
@@ -4600,19 +4662,22 @@ app.delete('/api/classrooms/:classroomId', async (req, res) => {
 });
 
 // Teacher reset student password
-app.post('/api/classrooms/:classroomId/students/:studentId/reset-password', async (req, res) => {
-  const { newPassword, teacherId } = req.body;
+app.post('/api/classrooms/:classroomId/students/:studentId/reset-password', requireAuth, async (req, res) => {
+  const { newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
   try {
     const classroom = await dbGet('SELECT teacher_id FROM classrooms WHERE id = ?', [req.params.classroomId]);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
-    // The owner check was missing entirely: classroom.teacher_id was selected and then
-    // never compared, so this route would overwrite any student's password for anyone
-    // who called it. Co-teachers are included via teacherHasClassroom.
-    if (!teacherId || !(await teacherHasClassroom(teacherId, req.params.classroomId))) {
+    // Identity from the token, never the body — a body teacherId could simply
+    // name the owner of a classroom the attacker had just created.
+    if (req.auth?.role !== 'teacher' || !(await teacherHasClassroom(actingUserId(req), req.params.classroomId))) {
       return res.status(403).json({ error: 'Not your classroom' });
     }
-    const enrolled = await dbGet('SELECT id FROM classroom_students WHERE classroom_id = ? AND student_id = ?', [req.params.classroomId, req.params.studentId]);
+    // status must be 'accepted': an unconsented 'pending' row used to be enough
+    // to authorise overwriting that student's password.
+    const enrolled = await dbGet(
+      "SELECT id FROM classroom_students WHERE classroom_id = ? AND student_id = ? AND status = 'accepted'",
+      [req.params.classroomId, req.params.studentId]);
     if (!enrolled) return res.status(403).json({ error: 'Student not in this classroom' });
     const hashed = await bcrypt.hash(newPassword, 10);
     await dbRun('UPDATE users SET password = ? WHERE id = ?', [hashed, req.params.studentId]);
@@ -4743,8 +4808,13 @@ app.post('/api/assignments/:assignmentId/submit', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/assignments/:assignmentId', async (req, res) => {
+app.delete('/api/assignments/:assignmentId', requireAuth, async (req, res) => {
   try {
+    const asg = await dbGet('SELECT classroom_id FROM assignments WHERE id = ?', [req.params.assignmentId]);
+    if (!asg) return res.status(404).json({ error: 'Assignment not found' });
+    if (!(await teacherHasClassroom(actingUserId(req), asg.classroom_id))) {
+      return res.status(403).json({ error: 'Not your classroom' });
+    }
     await dbRun('DELETE FROM assignment_submissions WHERE assignment_id = ?', [req.params.assignmentId]);
     await dbRun('DELETE FROM assignments WHERE id = ?', [req.params.assignmentId]);
     res.json({ success: true });
@@ -8278,6 +8348,52 @@ function liveRow(p, mode, now) {
   };
 }
 
+
+/**
+ * Re-grades a live-mode answer on the server. Returns true/false when it can
+ * decide, or null when the shape is not server-checkable (in which case the
+ * caller keeps the client's verdict).
+ */
+function gradeLiveAnswer(q, answer) {
+  if (answer === undefined || answer === null || answer === '') return null;
+  const given = String(answer).trim();
+  const correctRaw = q.correct_answer;
+  if (correctRaw === undefined || correctRaw === null) return null;
+  const type = q.answer_type || 'multiple_choice';
+
+  if (type === 'math_equation') {
+    const u = parseFloat(given), c = parseFloat(correctRaw);
+    if (isNaN(u) || isNaN(c)) return false;
+    return Math.abs(u - c) <= Math.abs(c * 0.01) + 0.001;
+  }
+  if (type === 'multi_select') {
+    return given.split('').sort().join('') === String(correctRaw).split('').sort().join('');
+  }
+  if (type === 'multiple_choice' || type === 'true_false' || !type) {
+    const opts = [q.option_a, q.option_b, q.option_c, q.option_d];
+    const raw = String(correctRaw).trim();
+    // Kits store multiple choice as a LETTER ('A'..'D'); the API converts it to
+    // an index for the client, so the raw column and the client's answer text
+    // are in different alphabets. Handle letter, index and literal text.
+    const letterIdx = /^[A-Da-d]$/.test(raw) ? raw.toUpperCase().charCodeAt(0) - 65 : -1;
+    if (letterIdx >= 0 && opts[letterIdx]) {
+      return given.toLowerCase() === String(opts[letterIdx]).toLowerCase();
+    }
+    const asIdx = Number(raw);
+    if (Number.isInteger(asIdx) && opts[asIdx]) {
+      return given.toLowerCase() === String(opts[asIdx]).toLowerCase();
+    }
+    return given.toLowerCase() === raw.toLowerCase();
+  }
+  if (type === 'short_answer' || type === 'fill_blank') {
+    // Same trim+lowercase compare /api/check-answer uses.
+    return given.toLowerCase() === String(correctRaw).toLowerCase();
+  }
+  // ordering / matching / image_label / audio: the client sends a derived
+  // string we cannot reconstruct here, so its verdict stands.
+  return null;
+}
+
 // ── GET state ──────────────────────────────────────────────────────────────
 app.get('/api/games/:gameCode/live/state', async (req, res) => {
   try {
@@ -8316,21 +8432,47 @@ app.get('/api/games/:gameCode/live/state', async (req, res) => {
 });
 
 // ── POST answer ────────────────────────────────────────────────────────────
-app.post('/api/games/:gameCode/live/answer', async (req, res) => {
+app.post('/api/games/:gameCode/live/answer', requireAuth, async (req, res) => {
   try {
     const { gameCode } = req.params;
-    const { userId, questionId, correct, ms } = req.body;
-    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    // Identity from the token. Taking userId from the body let anyone inflate
+    // their own standing, or post `correct: false` as a rival to drive that
+    // rival's score to zero — and the score column feeds placement BlazesBucks.
+    const userId = actingUserId(req);
+    const { questionId, answer, correct, ms } = req.body;
 
     const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
     if (!LIVE_MODES.has(game.game_mode)) return res.status(400).json({ error: 'Not a live mode' });
+    if (game.status === 'ended' || game.status === 'abandoned') {
+      return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
+    }
 
     const mode = game.game_mode;
     const shared = sharedState(gameCode, mode);
     const now = Date.now();
-    const isCorrect = !!correct;
     const answerMs = Math.max(150, Math.min(120000, Number(ms) || 8000));
+
+    // Grade on the server whenever we can. The client still reports what it
+    // computed, but its verdict is only trusted for question shapes the server
+    // cannot re-check (and never when the stored answer says otherwise).
+    let isCorrect = !!correct;
+    if (questionId) {
+      const q = await dbGet('SELECT * FROM questions WHERE id = ? AND kit_id = ?', [questionId, game.kit_id]);
+      if (!q) return res.status(400).json({ error: 'Unknown question for this game' });
+      const graded = gradeLiveAnswer(q, answer);
+      if (graded !== null) isCorrect = graded;
+
+      // One score per question per attempt: without this the same request could
+      // be replayed indefinitely for unbounded points.
+      // datetime('now', ...) not an ISO string: answered_at is written by SQLite's
+      // CURRENT_TIMESTAMP as 'YYYY-MM-DD HH:MM:SS', which never string-compares
+      // greater than an ISO value containing 'T'. The guard silently never fired.
+      const already = await dbGet(
+        "SELECT id FROM game_answers WHERE game_id = ? AND user_id = ? AND question_id = ? AND answered_at > datetime('now', '-3 seconds')",
+        [game.id, userId, questionId]);
+      if (already) return res.status(429).json({ error: 'duplicate', message: 'Already answered.' });
+    }
 
     const row = await dbGet(
       `SELECT gp.*, ue.avatar_skin FROM game_participants gp

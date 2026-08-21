@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { authHeaders } from '../utils/auth';
 
 // ─── Stale-while-revalidate cache helpers ───────────────────────────────
 // Persist heavy dashboard pieces (stats, kits, classrooms, etc.) to
@@ -1480,7 +1481,7 @@ export default function TeacherHome() {
                             const reader = new FileReader();
                             reader.onload = async () => {
                               const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-                              const res = await fetch(`${base}/api/upload-image`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageData: reader.result }) });
+                              const res = await fetch(`${base}/api/upload-image`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ imageData: reader.result }) });
                               const data = await res.json();
                               if (data.url) setNewClassroom(prev => ({ ...prev, imageUrl: data.url }));
                             };
@@ -1496,9 +1497,10 @@ export default function TeacherHome() {
                     <button onClick={async () => {
                       if (!newClassroom.name) return;
                       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+                      // teacherId now comes from the token and is ignored here.
                       await fetch(`${base}/api/classrooms`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ teacherId: user.id, name: newClassroom.name, subject: newClassroom.subject, gradeLevel: newClassroom.gradeLevel, imageUrl: newClassroom.imageUrl })
+                        method: 'POST', headers: authHeaders(),
+                        body: JSON.stringify({ name: newClassroom.name, subject: newClassroom.subject, gradeLevel: newClassroom.gradeLevel, imageUrl: newClassroom.imageUrl })
                       });
                       setShowCreateClassroom(false);
                       setNewClassroom({ name: '', subject: '', gradeLevel: '', imageUrl: '' });
@@ -1902,7 +1904,7 @@ export default function TeacherHome() {
                         setKits(kits.filter(k => k.id !== kitId));
                         setDeleteConfirm(null);
                         const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
-                        fetch(`${base}/api/kits/${kitId}`, { method: 'DELETE' })
+                        fetch(`${base}/api/kits/${kitId}`, { method: 'DELETE', headers: authHeaders() })
                           .then(r => { if (!r.ok) throw new Error('Delete failed'); })
                           .catch(error => {
                             console.error('Error deleting kit:', error);

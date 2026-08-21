@@ -28,6 +28,7 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
   const [state, setState] = useState(null);
   const [flash, setFlash] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState(null);
   const flashTimer = useRef(null);
 
   const refresh = useCallback(async () => {
@@ -47,6 +48,19 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
 
   useEffect(() => () => clearTimeout(flashTimer.current), []);
 
+  // Tell the server when we go, otherwise a player who closes the tab shows in
+  // the standings as still playing indefinitely.
+  useEffect(() => {
+    const leave = () => {
+      try {
+        const body = JSON.stringify({ userId: user.id });
+        navigator.sendBeacon?.(`${BASE}/api/games/${gameCode}/leave`, new Blob([body], { type: 'application/json' }));
+      } catch { /* best effort */ }
+    };
+    window.addEventListener('pagehide', leave);
+    return () => { window.removeEventListener('pagehide', leave); leave(); };
+  }, [gameCode, user.id]);
+
   const handleAnswer = useCallback(async ({ correct, ms }) => {
     const q = questions[queue[qIdx]];
     setBusy(true);
@@ -55,14 +69,22 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, questionId: q?.id ?? null, correct, ms }),
       });
-      const d = await r.json();
+      const d = await r.json().catch(() => ({}));
       if (r.ok) {
         setFlash({ ...d, correct });
         clearTimeout(flashTimer.current);
         flashTimer.current = setTimeout(() => setFlash(null), 3200);
         refresh();
+      } else {
+        // Silently dropping this meant a non-participant could play a whole
+        // session while nothing was ever recorded.
+        setProblem(d.error === 'Not a participant'
+          ? 'You are not in this game. Ask your teacher for the code and join again.'
+          : (d.message || d.error || 'That answer did not save. Check your connection.'));
       }
-    } catch { /* the answer is lost but play continues; the next one will land */ }
+    } catch {
+      setProblem('That answer did not save. Check your connection.');
+    }
     setBusy(false);
   }, [gameCode, user.id, questions, queue, qIdx, refresh]);
 
@@ -79,7 +101,9 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
 
   const me = state?.me;
   const players = state?.players || [];
+  const gameOver = state?.status === 'ended' || state?.status === 'abandoned';
   const myColor = getSkinColor(equippedSkinId) || meta.accent;
+  const homePath = user?.role === 'teacher' ? '/home/teacher' : '/home/student';
 
   if (!questions.length) {
     return (
@@ -94,6 +118,23 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
     );
   }
 
+  if (gameOver) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl p-8 text-center border-2 border-gray-100 max-w-sm">
+          <Flame className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <p className="font-black text-gray-900 mb-1">This game has ended</p>
+          <p className="text-sm text-gray-500 mb-4">
+            {me ? `You finished with ${Math.round(me.score)} at rank #${me.rank}.` : 'Thanks for playing.'}
+          </p>
+          <button onClick={() => navigate(homePath)} className="px-5 py-2.5 bg-gray-900 text-white rounded-xl font-bold">
+            Back to home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const q = questions[queue[qIdx]];
   const Icon = meta.icon;
 
@@ -103,7 +144,7 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
         {/* Header */}
         <div className="flex items-center justify-between mb-4 gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => navigate('/home/student')} className="p-2 rounded-lg hover:bg-gray-200" aria-label="Leave">
+            <button onClick={() => navigate(homePath)} className="p-2 rounded-lg hover:bg-gray-200" aria-label="Leave">
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
             <AvatarPreview skinId={equippedSkinId} initial={user?.name?.[0] || '?'} size={38} />
@@ -132,6 +173,13 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
 
         <ModePanel mode={mode} state={state} me={me} user={user} myColor={myColor} />
 
+        {problem && (
+          <div className="mb-4 px-4 py-2.5 rounded-xl font-bold text-sm bg-red-50 text-red-800 border-2 border-red-200 flex items-center gap-2">
+            <TrendingDown className="w-4 h-4 flex-shrink-0" />
+            <span>{problem}</span>
+            <button onClick={() => setProblem(null)} className="ml-auto text-red-500 hover:text-red-700 font-black">&times;</button>
+          </div>
+        )}
         {flash && <FlashLine flash={flash} mode={mode} />}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start">

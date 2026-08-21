@@ -1236,7 +1236,9 @@ app.post('/api/auth/check-email', async (req, res) => {
 });
 
 app.post('/api/auth/register', async (req, res) => {
-  console.log('REGISTER attempt:', req.body);
+  // Never log req.body here: it carries the plaintext password, which would be
+  // written to Render's log stream for every account ever created.
+  console.log('REGISTER attempt:', req.body?.email, 'role:', req.body?.role);
 
   try {
     let { email, password, role, name } = req.body;
@@ -8185,7 +8187,11 @@ app.post('/api/games/:gameCode/markets/answer', async (req, res) => {
 const LIVE_MODES = new Set(['vault', 'undertow', 'fracture', 'eclipse']);
 
 // Score half-life in seconds. Slower modes decay slower.
-const LIVE_DECAY_HALFLIFE = { vault: 150, undertow: 110, fracture: 130, eclipse: 90 };
+// Eclipse's score is derived from its radius, so the two MUST decay at the same
+// rate — with different half-lives the radius faded faster and a correct answer
+// after an idle gap came out as a points LOSS.
+const ECLIPSE_HALFLIFE = 70;
+const LIVE_DECAY_HALFLIFE = { vault: 150, undertow: 110, fracture: 130, eclipse: ECLIPSE_HALFLIFE };
 
 // Skin tier -> small advantage. Cosmetics should flavour play, not decide it.
 const SKIN_TIER_BONUS = { Basic: 1.0, Common: 1.03, Uncommon: 1.06, Rare: 1.10, Epic: 1.14, Legendary: 1.19, Mythic: 1.25 };
@@ -8260,7 +8266,7 @@ function liveRow(p, mode, now) {
     streak: p.live_streak || 0,
     answers: p.live_answers || 0,
     // Eclipse radius decays too, otherwise territory would be permanent.
-    radius: mode === 'eclipse' ? Math.round(decayed(st.radius || 0, since, 70) * 100) / 100 : undefined,
+    radius: mode === 'eclipse' ? Math.round(decayed(st.radius || 0, since, ECLIPSE_HALFLIFE) * 100) / 100 : undefined,
     // Cumulative answer time is the final tiebreaker: lower is better.
     totalMs: p.live_total_ms || 0,
   };
@@ -8398,7 +8404,7 @@ app.post('/api/games/:gameCode/live/answer', async (req, res) => {
         const meIdx = others.findIndex(o => o.userId === userId);
         const neighbour = others[meIdx + 1] || others[meIdx - 1] || { userId };
         shared.cracks.push({ near: neighbour.userId, at: now, x: Math.random(), y: Math.random() });
-        if (shared.cracks.length > 120) shared.cracks.shift();
+        while (shared.cracks.length > 120) shared.cracks.shift();
         delta = -Math.min(score * 0.08, 18);
         flash.crackedNear = neighbour.userId;
       }
@@ -8408,7 +8414,7 @@ app.post('/api/games/:gameCode/live/answer', async (req, res) => {
       // Your skin's glow lights territory. Radius grows with correct answers and
       // decays constantly, so ground is held only by continuing to answer.
       // Overlap with a more recently-active player eats into your effective area.
-      let radius = decayed(st.radius || 0, since, 70);
+      let radius = decayed(st.radius || 0, since, ECLIPSE_HALFLIFE);
       radius = isCorrect
         ? Math.min(30, radius + 2.6 * spd * tierMul)
         : Math.max(0, radius - 2.2);
@@ -8419,14 +8425,17 @@ app.post('/api/games/:gameCode/live/answer', async (req, res) => {
       for (const rv of rivals) {
         let rst = {}; try { rst = JSON.parse(rv.live_state || '{}'); } catch { rst = {}; }
         const rvSince = rv.live_answered_at ? now - new Date(rv.live_answered_at).getTime() : Infinity;
-        const rvRadius = decayed(rst.radius || 0, rvSince, 70);
+        const rvRadius = decayed(rst.radius || 0, rvSince, ECLIPSE_HALFLIFE);
         // Whoever answered most recently owns the overlap.
         if (rvSince < 0 || rvRadius <= 0) continue;
         contested += Math.min(radius, rvRadius) * 0.12;
       }
       const area = Math.PI * radius * radius;
       const effective = Math.max(0, area - contested * 10);
-      delta = (effective / 12) - score;   // score IS the lit area, scaled
+      // Score IS the lit area, scaled. Floor the delta at 0 on a correct answer so
+      // rejoining after a break can never read as a penalty for answering well.
+      delta = (effective / 12) - score;
+      if (isCorrect && delta < 0) delta = 0;
       flash.radius = Math.round(radius * 100) / 100;
       flash.contested = Math.round(contested * 100) / 100;
     }

@@ -306,7 +306,18 @@ export default function QuestionView({ question, questionNumber = 1, onAnswer, o
                     ? matchSel[pair.left] === pair.right ? 'bg-green-100 border-2 border-green-500' : 'bg-red-100 border-2 border-red-500'
                     : dragOverLeft === pair.left ? 'bg-blue-100 border-2 border-blue-500' : 'bg-white border-2 border-gray-200'}`}>
                   <div>{pair.left}</div>
-                  {matchSel[pair.left] && <div className="mt-1 text-xs font-semibold text-blue-600">to {matchSel[pair.left]}</div>}
+                  {matchSel[pair.left] && (
+                    <div className="mt-1 text-xs font-semibold flex items-center gap-1 text-blue-600">
+                      <span className="truncate">{matchSel[pair.left]}</span>
+                      {/* Without this a mis-drop was permanent and the student was
+                          locked into an answer they could see was wrong. */}
+                      {!answered && (
+                        <button type="button" aria-label="Remove match"
+                          onClick={() => setMatchSel(prev => { const n = { ...prev }; delete n[pair.left]; return n; })}
+                          className="ml-auto text-gray-400 hover:text-red-500 font-black px-1">&times;</button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -322,9 +333,15 @@ export default function QuestionView({ question, questionNumber = 1, onAnswer, o
               })}
             </div>
           </div>
-          {!answered && (
-            <button onClick={() => gradeTyped('submit')} className="w-full mt-4 py-4 bg-blue-600 text-white font-black rounded-2xl text-lg">Submit Matches</button>
-          )}
+          {!answered && (() => {
+            const done = question.correctAnswer.every(p => matchSel[p.left]);
+            return (
+              <button onClick={() => gradeTyped('submit')} disabled={!done}
+                className="w-full mt-4 py-4 bg-blue-600 text-white font-black rounded-2xl text-lg disabled:opacity-40">
+                {done ? 'Submit Matches' : `Match all ${question.correctAnswer.length} to submit`}
+              </button>
+            );
+          })()}
         </div>
 
       /* ── true / false ───────────────────────────────────────────────────── */

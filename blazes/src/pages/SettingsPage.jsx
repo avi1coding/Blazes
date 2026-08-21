@@ -184,7 +184,9 @@ export default function SettingsPage() {
     if (!emailValue.trim()) return;
     setSaving(true);
     try {
-      const body = { userId: user.id, email: emailValue.trim() };
+      // Server reads `newEmail`; sending `email` made this endpoint always 400.
+      // userId is ignored now — identity comes from the token.
+      const body = { newEmail: emailValue.trim() };
       if (userInfo?.hasPassword !== false && emailPassword) body.password = emailPassword;
       const res = await fetch(`${base}/api/auth/change-email`, {
         method: 'PUT',

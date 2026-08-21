@@ -339,9 +339,10 @@ export default function StudentHome() {
       )}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between py-2">
-            {/* Left: Logo + Nav tabs */}
-            <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
+          <div className="flex items-center justify-between py-2 gap-2">
+            {/* Left: Logo + Nav tabs. min-w-0 + scroll so a narrow phone scrolls
+                the tabs rather than widening the whole page. */}
+            <div className="flex items-center gap-2 sm:gap-4 md:gap-6 min-w-0 overflow-x-auto no-scrollbar">
               <div className="flex items-center gap-2 mr-2">
                 <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
                   <Flame className="w-5 h-5 text-white" strokeWidth={2.5} />
@@ -400,12 +401,12 @@ export default function StudentHome() {
               {/* Level button — students previously had no route to /hub at all,
                   so there was nowhere to see what level they were on. */}
               <button onClick={() => navigate('/hub')} title="View your level"
-                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all shadow-sm">
+                className="flex items-center gap-2 p-1 sm:pl-1 sm:pr-3 sm:py-1 rounded-full bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all shadow-sm flex-shrink-0">
                 <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 100%)', boxShadow: '0 1px 4px rgba(249,115,22,0.4)' }}>
                   <Star className="w-3.5 h-3.5 fill-white text-white" strokeWidth={2.5} />
                 </div>
-                <span className="text-sm font-black text-gray-900 tabular-nums">Lv {seasonProgress?.level || 1}</span>
+                <span className="hidden sm:inline text-sm font-black text-gray-900 tabular-nums">Lv {seasonProgress?.level || 1}</span>
               </button>
 
               <div className="hidden sm:flex items-center gap-1 bg-yellow-50 border border-yellow-200 px-2.5 py-1 rounded-full">

@@ -580,12 +580,14 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
         </div>
       )}
       
-      <div className="max-w-4xl mx-auto flex items-center justify-between mb-4 sm:mb-8">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 mb-4 sm:mb-8">
+        {/* min-w-0 + truncate: a long player name used to push the header past a
+            phone's viewport and scroll the whole page sideways. */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <AvatarPreview skinId={equippedSkinId} initial={user?.name?.[0] || '?'} size={40} isPlus={isBlazesPlusCached()} />
-          <span className="font-black text-lg sm:text-xl" style={{ color: getNameColor(equippedSkinId) }}>{user?.name || 'Player'}</span>
+          <span className="font-black text-lg sm:text-xl truncate" style={{ color: getNameColor(equippedSkinId) }}>{user?.name || 'Player'}</span>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {!isAssignment && game?.host_id === user?.id && (
             <button onClick={async () => {
               try {

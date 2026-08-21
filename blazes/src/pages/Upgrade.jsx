@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { authHeaders, handleUnauthorized } from '../utils/auth';
 import { ArrowLeft, Check, Crown, Building2, Flame, Sparkles, Zap, BarChart3, FileText, Users as UsersIcon, Trophy, Shield } from 'lucide-react';
 
 export default function Upgrade() {
@@ -39,9 +40,10 @@ export default function Upgrade() {
     try {
       const res = await fetch(`${base}/api/payments/checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, plan })
+        headers: authHeaders(),
+        body: JSON.stringify({ plan })
       });
+      if (handleUnauthorized(res)) return;
       const data = await res.json();
       if (data.url) window.location.href = data.url;
       else setError(data.error || 'Could not create checkout session.');
@@ -58,9 +60,11 @@ export default function Upgrade() {
     try {
       const res = await fetch(`${base}/api/subscription/start-trial`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
+        headers: authHeaders(),
+        // userId now comes from the token; sending it would be ignored.
+        body: JSON.stringify({}),
       });
+      if (handleUnauthorized(res)) return;
       const data = await res.json();
       if (!res.ok) { setTrialError(data.error || 'Could not start trial.'); }
       else {
@@ -287,9 +291,10 @@ export default function Upgrade() {
                   try {
                     const res = await fetch(`${base}/api/subscription/downgrade`, {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ userId: user.id })
+                      headers: authHeaders(),
+                      body: JSON.stringify({})
                     });
+                    if (handleUnauthorized(res)) return;
                     if (res.ok) { setSubscription({ tier: 'free' }); setShowCancelConfirm(false); }
                     else { const d = await res.json(); setError(d.error || 'Failed to cancel'); setShowCancelConfirm(false); }
                   } catch { setError('Could not connect'); setShowCancelConfirm(false); }

@@ -3504,9 +3504,11 @@ app.get('/api/blazesbucks/config', (req, res) => {
 });
 
 // Claim one period of play-time BB mid-game (called by the client timer)
-app.post('/api/blazesbucks/claim-playtime', async (req, res) => {
-  const { userId, gameCode } = req.body;
-  if (!userId) return res.status(400).json({ error: 'userId required' });
+app.post('/api/blazesbucks/claim-playtime', requireAuth, async (req, res) => {
+  // Identity from the token: this route mints BlazesBucks, and taking userId
+  // from the body let anyone credit any account.
+  const userId = actingUserId(req);
+  const { gameCode } = req.body;
 
   const PERIOD_SECONDS = (parseInt(process.env.PLAYTIME_PERIOD_MINUTES) || 1) * 60;
   const now = Date.now();
@@ -6680,10 +6682,11 @@ app.get('/api/subscription/:userId', async (req, res) => {
 // Activate the 3-day Teacher Pro free trial. Server-validated: must be teacher,
 // must currently be on free, must not have used the trial before. Sets the
 // expiry timestamp and flips trial_used so the trial can never be replayed.
-app.post('/api/subscription/start-trial', async (req, res) => {
+app.post('/api/subscription/start-trial', requireAuth, async (req, res) => {
   try {
-    const { userId } = req.body;
-    if (!userId) return res.status(400).json({ error: 'userId required' });
+    // From the token, not the body: a trial can only be used once, so a body
+    // userId let anyone permanently burn another teacher's free trial.
+    const userId = actingUserId(req);
     const user = await dbGet('SELECT role, subscription_tier, trial_used FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.role !== 'teacher') return res.status(403).json({ error: 'Trial is for teachers only' });
@@ -6703,10 +6706,13 @@ app.post('/api/subscription/start-trial', async (req, res) => {
 });
 
 // Create Stripe checkout session
-app.post('/api/payments/checkout', async (req, res) => {
+app.post('/api/payments/checkout', requireAuth, async (req, res) => {
   if (!stripe) return res.status(500).json({ error: 'Stripe not configured' });
   try {
-    const { userId, plan } = req.body;
+    // Identity from the token so a checkout session is always created against
+    // the signed-in account, never one named in the request.
+    const userId = actingUserId(req);
+    const { plan } = req.body;
     const user = await dbGet('SELECT id, email, name, stripe_customer_id FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -6840,10 +6846,11 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
 });
 
 // Cancel subscription
-app.post('/api/payments/cancel', async (req, res) => {
+app.post('/api/payments/cancel', requireAuth, async (req, res) => {
   if (!stripe) return res.status(500).json({ error: 'Stripe not configured' });
   try {
-    const { userId } = req.body;
+    // Cancelling someone's paid subscription must be their own decision.
+    const userId = actingUserId(req);
     const user = await dbGet('SELECT subscription_id FROM users WHERE id = ?', [userId]);
     if (!user?.subscription_id) return res.status(400).json({ error: 'No active subscription' });
     await stripe.subscriptions.cancel(user.subscription_id);
@@ -6856,10 +6863,9 @@ app.post('/api/payments/cancel', async (req, res) => {
 });
 
 // Direct plan downgrade (for non-Stripe plans or manual management)
-app.post('/api/subscription/downgrade', async (req, res) => {
+app.post('/api/subscription/downgrade', requireAuth, async (req, res) => {
   try {
-    const { userId } = req.body;
-    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const userId = actingUserId(req);
     // If they have a Stripe subscription, try to cancel it
     const user = await dbGet('SELECT subscription_id FROM users WHERE id = ?', [userId]);
     if (user?.subscription_id && stripe) {

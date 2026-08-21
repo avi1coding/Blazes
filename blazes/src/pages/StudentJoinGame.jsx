@@ -6,7 +6,10 @@ import { AvatarPreview, isBlazesPlusCached } from './SkinsPage';
 export default function StudentJoinGame() {
   const navigate = useNavigate();
   const location = useLocation();
-  const gameCode = location.state?.gameCode || '';
+  // Seeded from the router, but editable: location.state is lost on refresh and
+  // the landing page's CTA can navigate here without one. Without this the page
+  // showed a blank code, a skeleton that never resolved and a dead Join button.
+  const [gameCode, setGameCode] = useState(location.state?.gameCode || '');
   const storedUser = (() => {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); }
     catch { return null; }
@@ -34,7 +37,7 @@ export default function StudentJoinGame() {
 
   // Fetch game settings to know if custom names are allowed
   useEffect(() => {
-    if (!gameCode) return;
+    if (!gameCode || gameCode.length < 4) { setAllowCustomNames(null); return; }
     const fetchSettings = async () => {
       try {
         const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -157,12 +160,28 @@ export default function StudentJoinGame() {
 
           <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center border-2 border-gray-200">
             <p className="text-sm text-gray-600 mb-2">Game Code</p>
-            <p className="text-3xl font-black text-gray-900 tracking-widest">{gameCode}</p>
+            {location.state?.gameCode ? (
+              <p className="text-3xl font-black text-gray-900 tracking-widest">{gameCode}</p>
+            ) : (
+              <input
+                type="text"
+                value={gameCode}
+                onChange={(e) => setGameCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                placeholder="ABC123"
+                autoFocus
+                maxLength={6}
+                className="w-full bg-transparent text-3xl font-black text-gray-900 tracking-widest text-center outline-none placeholder:text-gray-300"
+              />
+            )}
           </div>
 
           <form onSubmit={handleJoinGame} className="space-y-4">
             {/* Name section */}
-            {allowCustomNames === null ? (
+            {!gameCode || gameCode.length < 4 ? (
+              <p className="text-sm text-gray-500 font-semibold text-center py-3">
+                Enter the 6-character code your teacher gave you.
+              </p>
+            ) : allowCustomNames === null ? (
               <div className="h-14 bg-gray-100 rounded-xl animate-pulse" />
             ) : showNameInput ? (
               <div>
@@ -205,7 +224,7 @@ export default function StudentJoinGame() {
 
             <button
               type="submit"
-              disabled={isLoading || allowCustomNames === null}
+              disabled={isLoading || !gameCode || gameCode.length < 4 || allowCustomNames === null}
               className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white font-black py-3 rounded-xl hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Joining...' : 'Join Game'}

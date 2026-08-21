@@ -74,7 +74,11 @@ export function createSeamlessLoop(src, initialVolume = 0.3) {
     try {
       const response = await fetch(src);
       const arrayBuffer = await response.arrayBuffer();
+      // destroy() nulls audioCtx, and StrictMode mounts/unmounts twice in dev, so
+      // the fetch above can resolve after this loop was torn down.
+      if (!audioCtx) return;
       buffer = await audioCtx.decodeAudioData(arrayBuffer);
+      if (!audioCtx) return;
 
       const sampleRate = buffer.sampleRate;
       const startSample = snapToZeroCrossing(buffer, findFirstNonSilent(buffer));

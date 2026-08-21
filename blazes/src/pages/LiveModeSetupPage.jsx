@@ -47,7 +47,7 @@ export default function LiveModeSetupPage() {
         body: JSON.stringify({
           hostId: user.id, kitId: kit.id, gameCode, gameMode: mode,
           // endless: no timer, and the queue reshuffles forever.
-          settings: { gameName, hostName: user.name, allowCustomPlayerNames, hostPlays, endless: true },
+          settings: { gameName, hostName: user.name, allowCustomPlayerNames, hostPlays, endless: true, allowLateJoin: true },
         }),
       });
       if (!res.ok) throw new Error('Failed to create game. Please try again.');

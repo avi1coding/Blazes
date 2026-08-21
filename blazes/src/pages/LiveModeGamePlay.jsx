@@ -31,6 +31,11 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState(null);
   const flashTimer = useRef(null);
+  // Session tallies for the reward post on leave. Refs, because the unmount
+  // cleanup would otherwise close over the counts as they were on first render.
+  const answeredRef = useRef(0);
+  const correctRef = useRef(0);
+  const scoreRef = useRef(0);
 
   const refresh = useCallback(async () => {
     try {
@@ -56,6 +61,19 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
       try {
         const body = JSON.stringify({ userId: user.id });
         navigator.sendBeacon?.(`${BASE}/api/games/${gameCode}/leave`, new Blob([body], { type: 'application/json' }));
+        // Credit the session. /live/answer writes game_answers, which feeds the
+        // accuracy stats, so without this live play only ever counted against a
+        // student: no BlazesBucks, no XP, no day-streak row, no achievements.
+        if (answeredRef.current > 0) {
+          const summary = JSON.stringify({
+            userId: user.id,
+            finalScore: Math.round(scoreRef.current),
+            questionsAnswered: answeredRef.current,
+            correctCount: correctRef.current,
+            totalQuestions: answeredRef.current,
+          });
+          navigator.sendBeacon?.(`${BASE}/api/games/${gameCode}/answers`, new Blob([summary], { type: 'application/json' }));
+        }
       } catch { /* best effort */ }
     };
     window.addEventListener('pagehide', leave);
@@ -75,6 +93,10 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
       if (handleUnauthorized(r)) return;
       const d = await r.json().catch(() => ({}));
       if (r.ok) {
+        answeredRef.current += 1;
+        // Trust the server's verdict, not the client's — it re-grades.
+        if ((d.delta ?? 0) > 0) correctRef.current += 1;
+        scoreRef.current = d.score ?? scoreRef.current;
         setFlash({ ...d, correct });
         clearTimeout(flashTimer.current);
         flashTimer.current = setTimeout(() => setFlash(null), 3200);

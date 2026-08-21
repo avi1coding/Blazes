@@ -2803,6 +2803,7 @@ app.put('/api/games/:gameCode/end', (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       // For Elemental Markets games, lock in portfolio values as final scores
       try { await app.locals.settleMarketsScores?.(gameCode); } catch (_) {}
+      try { await app.locals.settleLiveScores?.(gameCode); } catch (_) {}
 
       // Placement BB: 10+ participants, game >= 5 min
       db.get('SELECT * FROM games WHERE game_code = ?', [gameCode], (err, game) => {
@@ -2870,6 +2871,7 @@ app.put('/api/games/:gameCode/abandon', (req, res) => {
     async function (err) {
       if (err) return res.status(500).json({ error: err.message });
       try { await app.locals.settleMarketsScores?.(gameCode); } catch (_) {}
+      try { await app.locals.settleLiveScores?.(gameCode); } catch (_) {}
       res.json({ message: 'Game abandoned', changed: this.changes });
     }
   );
@@ -8641,6 +8643,30 @@ async function settleMarketsScores(gameCode) {
   }
 }
 app.locals.settleMarketsScores = settleMarketsScores;
+
+/**
+ * Freeze each live-mode player's CURRENT (decayed) standing into `score` before
+ * results and placement BlazesBucks are computed. Without this, /results ranked
+ * by the raw stored value, so someone who stopped answering an hour ago could
+ * outrank the player who was visibly winning on the decayed leaderboard players
+ * actually saw.
+ */
+async function settleLiveScores(gameCode) {
+  try {
+    const game = await dbGet('SELECT id, game_mode FROM games WHERE game_code = ?', [gameCode]);
+    if (!game || !LIVE_MODES.has(game.game_mode)) return;
+    const now = Date.now();
+    for (const p of await liveParticipants(game.id)) {
+      const row = liveRow(p, game.game_mode, now);
+      await dbRun('UPDATE game_participants SET score = ? WHERE game_id = ? AND user_id = ?',
+        [Math.round(row.score), game.id, p.user_id]);
+    }
+  } catch (err) {
+    console.error('[settleLiveScores]', err);
+  }
+}
+app.locals.settleLiveScores = settleLiveScores;
+
 
 // Serve frontend static files in production
 const clientBuildPath = path.join(__dirname, '..', 'blazes', 'dist');

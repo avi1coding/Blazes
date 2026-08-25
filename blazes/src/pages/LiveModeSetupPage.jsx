@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Play, Clock } from 'lucide-react';
 import HostPlaysToggle from '../components/HostPlaysToggle';
-import StyledSelect from '../components/StyledSelect';
 import { LIVE_MODE_META } from '../utils/liveModes';
 
 /**
@@ -21,6 +20,7 @@ export default function LiveModeSetupPage() {
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
   const [hostPlays, setHostPlays] = useState(true);
   const [minutes, setMinutes] = useState('15');
+  const [noLimit, setNoLimit] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +37,8 @@ export default function LiveModeSetupPage() {
   }
 
   const Icon = meta.icon;
+  const minutesNum = Number(minutes);
+  const minutesValid = Number.isFinite(minutesNum) && minutesNum >= 1 && minutesNum <= 300;
 
   const handleCreateGame = async () => {
     setLoading(true);
@@ -53,7 +55,7 @@ export default function LiveModeSetupPage() {
           settings: {
             gameName, hostName: user.name, allowCustomPlayerNames, hostPlays,
             endless: true, allowLateJoin: true,
-            timeLimit: minutes === 'open' ? 0 : Number(minutes) * 60,
+            timeLimit: noLimit ? 0 : Math.round(Number(minutes) * 60),
           },
         }),
       });
@@ -87,33 +89,38 @@ export default function LiveModeSetupPage() {
 
           <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">{meta.blurb}</p>
 
-          <div className="mb-6">
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-400" /> Game length
-            </label>
-            <StyledSelect
-              value={minutes}
-              onChange={setMinutes}
-              options={[
-                { value: '5', label: '5 minutes' },
-                { value: '10', label: '10 minutes' },
-                { value: '15', label: '15 minutes' },
-                { value: '20', label: '20 minutes' },
-                { value: '30', label: '30 minutes' },
-                { value: '45', label: '45 minutes' },
-                { value: '60', label: '1 hour' },
-                { value: 'open', label: 'No limit — I will end it myself' },
-              ]}
-            />
-            <p className="text-xs text-gray-500 font-semibold mt-2">
-              You can extend the clock or end the game at any point while it is running.
-            </p>
-          </div>
 
           <div className="mb-6">
             <label className="block text-sm font-bold text-gray-700 mb-2">Game name</label>
             <input type="text" value={gameName} onChange={(e) => setGameName(e.target.value)}
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl font-semibold focus:border-red-500 focus:outline-none" />
+          </div>
+
+          <div className="mb-6">
+            <label className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-400" /> Game length
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number" min="1" max="300" step="1" inputMode="numeric"
+                value={minutes}
+                disabled={noLimit}
+                onChange={(e) => setMinutes(e.target.value)}
+                className="w-32 px-4 py-3 border-2 border-gray-200 rounded-xl font-semibold text-center focus:border-red-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+              />
+              <span className={`text-sm font-bold ${noLimit ? 'text-gray-400' : 'text-gray-600'}`}>minutes</span>
+            </div>
+            <label className="flex items-center gap-3 mt-3 cursor-pointer">
+              <input type="checkbox" checked={noLimit} onChange={(e) => setNoLimit(e.target.checked)}
+                className="w-5 h-5 rounded accent-red-600" />
+              <span className="text-sm font-semibold text-gray-700">No time limit &mdash; I&rsquo;ll end it myself</span>
+            </label>
+            {!noLimit && !minutesValid && (
+              <p className="text-xs text-red-600 font-bold mt-2">Enter a length between 1 and 300 minutes.</p>
+            )}
+            <p className="text-xs text-gray-500 font-semibold mt-2">
+              You can extend the clock or end the game at any point while it is running.
+            </p>
           </div>
 
           <label className="flex items-center gap-3 mb-4 cursor-pointer">
@@ -127,7 +134,7 @@ export default function LiveModeSetupPage() {
 
           {error && <p className="text-sm font-bold text-red-600 mt-4">{error}</p>}
 
-          <button onClick={handleCreateGame} disabled={loading}
+          <button onClick={handleCreateGame} disabled={loading || (!noLimit && !minutesValid)}
             className="w-full mt-6 py-4 bg-red-600 text-white font-black rounded-xl hover:bg-red-700 disabled:opacity-60 flex items-center justify-center gap-2">
             <Play className="w-5 h-5" /> {loading ? 'Creating...' : 'Create Game'}
           </button>

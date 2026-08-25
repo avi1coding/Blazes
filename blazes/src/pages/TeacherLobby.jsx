@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { playerLimitsFor, playerCountProblem } from '../utils/playerLimits';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Flame, Users, Copy, Zap, CheckCircle, Eye } from 'lucide-react';
 import Toast from '../components/Toast';
@@ -229,14 +230,18 @@ export default function TeacherLobby() {
     }
 
     const isTeacher = user?.role === 'teacher';
-    const isSurvival = game.game_mode === 'survival';
     const settingsObj = (() => {
       try { return typeof game.settings === 'string' ? JSON.parse(game.settings) : (game.settings || {}); }
       catch { return {}; }
     })();
     const hostPlays = !!settingsObj.hostPlays;
     const hasPlayers = participants.length >= 1 || hostPlays;
-    const canStart = hasPlayers && (!isSurvival || participants.length >= 2);
+    // Player counts are a per-mode rule now, not a survival special case. The
+    // same limits are enforced in PUT /start, which is what actually holds.
+    const totalPlayers = participants.length + (hostPlays ? 1 : 0);
+    const limits = playerLimitsFor(game.game_mode);
+    const countProblem = playerCountProblem(game.game_mode, totalPlayers);
+    const canStart = hasPlayers && !countProblem;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-8 px-4">
@@ -383,7 +388,9 @@ export default function TeacherLobby() {
                         Cancel
                     </button>
                     <div className="flex-1 flex flex-col gap-2">
-                        {hostPlays && participants.length === 0 && (
+                        {/* Only offer solo where the mode actually allows it — otherwise
+                            this contradicted the "needs at least N players" line below. */}
+                        {hostPlays && participants.length === 0 && limits.min <= 1 && (
                             <p className="text-center text-sm font-bold text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
                                 You're playing — ready to start solo
                             </p>
@@ -393,11 +400,14 @@ export default function TeacherLobby() {
                                 Wait for at least one player to join.
                             </p>
                         )}
-                        {isSurvival && hasPlayers && participants.length < 2 && (
-                            <p className="text-center text-sm font-bold text-red-600">
-                                Survival mode needs at least 2 players to start.
+                        {countProblem && (
+                            <p className="text-center text-sm font-bold text-red-600 mb-2">
+                                {countProblem}
                             </p>
                         )}
+                        <p className="text-center text-xs font-semibold text-gray-400 mb-2">
+                            This mode supports {limits.min}&ndash;{limits.max} players
+                        </p>
                         <button
                             onClick={startGame}
                             disabled={isStarting || !canStart}

@@ -2719,6 +2719,28 @@ app.post('/api/games/:gameCode/leave', async (req, res) => {
 });
 
 // Start a game (ONLY the host who must be a teacher can start - students can NEVER start)
+
+/**
+ * Player counts each mode needs to work. Mirrors blazes/src/utils/playerLimits.js;
+ * the lobby disables Start and explains why, but this is the check that holds,
+ * because the lobby is not the only thing that can call /start.
+ */
+const MODE_PLAYER_LIMITS = {
+  classic_timed:     { min: 1, max: 30 },
+  regular:           { min: 1, max: 30 },
+  survival:          { min: 2, max: 50 },
+  elemental_clash:   { min: 2, max: 50 },
+  elemental_wager:   { min: 1, max: 50 },
+  elemental_markets: { min: 1, max: 50 },
+  arena:             { min: 2, max: 50 },
+  inferno_tower:     { min: 2, max: 50 },
+  vault:             { min: 2, max: 50 },
+  undertow:          { min: 2, max: 50 },
+  fracture:          { min: 2, max: 50 },
+  eclipse:           { min: 2, max: 50 },
+};
+const playerLimitsFor = (mode) => MODE_PLAYER_LIMITS[mode] || { min: 1, max: 50 };
+
 app.put('/api/games/:gameCode/start', (req, res) => {
   const { gameCode } = req.params;
   const { userId } = req.body;
@@ -2731,7 +2753,7 @@ app.put('/api/games/:gameCode/start', (req, res) => {
      JOIN users u ON g.host_id = u.id
      WHERE g.game_code = ?`,
     [gameCode],
-    (err, row) => {
+    async (err, row) => {
       if (err) return res.status(500).json({ error: err.message });
       if (!row) return res.status(404).json({ error: 'Game not found' });
 
@@ -2739,6 +2761,24 @@ app.put('/api/games/:gameCode/start', (req, res) => {
 
       if (parseInt(userId) !== row.host_id) {
         return res.status(403).json({ error: `Only the game host can start the game (host: ${row.host_id}, you: ${userId})` });
+      }
+
+      // Too few players and the mode does not work; too many and it degrades.
+      const limits = playerLimitsFor(row.game_mode);
+      const counted = await new Promise(resolve => db.get(
+        `SELECT COUNT(*) AS n FROM game_participants gp JOIN games g ON g.id = gp.game_id WHERE g.game_code = ?`,
+        [gameCode], (_, r) => resolve(r?.n || 0)));
+      if (counted < limits.min) {
+        return res.status(409).json({
+          error: 'too_few_players',
+          message: `This mode needs at least ${limits.min} players to start. ${counted} ${counted === 1 ? 'has' : 'have'} joined.`,
+        });
+      }
+      if (counted > limits.max) {
+        return res.status(409).json({
+          error: 'too_many_players',
+          message: `This mode supports up to ${limits.max} players. ${counted} have joined.`,
+        });
       }
 
       const extraFields = row.game_mode === 'survival'

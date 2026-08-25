@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Play, Infinity as InfinityIcon } from 'lucide-react';
+import { Play, Clock } from 'lucide-react';
 import HostPlaysToggle from '../components/HostPlaysToggle';
+import StyledSelect from '../components/StyledSelect';
 import { LIVE_MODE_META } from '../utils/liveModes';
 
 /**
- * One setup page for all four endless live modes. They share every option
- * because they share an engine — there is no time limit to configure, since
- * none of them end.
+ * One setup page for all four live modes. They share every option because they
+ * share an engine. The teacher owns the clock: the game runs until they press
+ * End or the length they set here runs out, and they can extend it mid-game.
  */
 export default function LiveModeSetupPage() {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function LiveModeSetupPage() {
   const [gameName, setGameName] = useState(`${kit?.title || 'Blazes'} ${meta?.name || 'Game'}`);
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
   const [hostPlays, setHostPlays] = useState(true);
+  const [minutes, setMinutes] = useState('15');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -46,8 +48,13 @@ export default function LiveModeSetupPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           hostId: user.id, kitId: kit.id, gameCode, gameMode: mode,
-          // endless: no timer, and the queue reshuffles forever.
-          settings: { gameName, hostName: user.name, allowCustomPlayerNames, hostPlays, endless: true, allowLateJoin: true },
+          // The question queue still reshuffles forever; the teacher's clock is
+          // what ends the game. timeLimit is in seconds, as the other modes store it.
+          settings: {
+            gameName, hostName: user.name, allowCustomPlayerNames, hostPlays,
+            endless: true, allowLateJoin: true,
+            timeLimit: minutes === 'open' ? 0 : Number(minutes) * 60,
+          },
         }),
       });
       if (!res.ok) throw new Error('Failed to create game. Please try again.');
@@ -80,13 +87,27 @@ export default function LiveModeSetupPage() {
 
           <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">{meta.blurb}</p>
 
-          <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-            <InfinityIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" strokeWidth={2.5} />
-            <div className="text-sm text-blue-900">
-              <span className="font-black">This mode never ends.</span> There is no timer and no final
-              scoreboard — students play for as long as you like and can join or leave at any point.
-              Standings fade when someone stops answering, so they always reflect current effort.
-            </div>
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-400" /> Game length
+            </label>
+            <StyledSelect
+              value={minutes}
+              onChange={setMinutes}
+              options={[
+                { value: '5', label: '5 minutes' },
+                { value: '10', label: '10 minutes' },
+                { value: '15', label: '15 minutes' },
+                { value: '20', label: '20 minutes' },
+                { value: '30', label: '30 minutes' },
+                { value: '45', label: '45 minutes' },
+                { value: '60', label: '1 hour' },
+                { value: 'open', label: 'No limit — I will end it myself' },
+              ]}
+            />
+            <p className="text-xs text-gray-500 font-semibold mt-2">
+              You can extend the clock or end the game at any point while it is running.
+            </p>
           </div>
 
           <div className="mb-6">

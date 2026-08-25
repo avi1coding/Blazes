@@ -8396,6 +8396,68 @@ function gradeLiveAnswer(q, answer) {
   return null;
 }
 
+
+/**
+ * Seconds remaining in a live game, or null when the host has not set a limit.
+ * The limit lives in settings.timeLimit (seconds) exactly as the other timed
+ * modes store it, and the host can grow it mid-game via /live/extend.
+ */
+function liveSettings(game) {
+  const raw = game?.settings;
+  if (!raw) return {};
+  if (typeof raw !== 'string') return raw;
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+
+/** SQLite writes 'YYYY-MM-DD HH:MM:SS' in UTC; new Date() would read that as local. */
+function startedAtMs(game) {
+  if (!game?.started_at) return null;
+  const v = game.started_at;
+  return new Date(v.includes('T') ? v : v.replace(' ', 'T') + 'Z').getTime();
+}
+
+function liveSecondsLeft(game) {
+  const limit = Number(liveSettings(game).timeLimit) || 0;
+  const started = startedAtMs(game);
+  if (!limit || !started) return null;
+  const elapsed = (Date.now() - started) / 1000;
+  return Math.max(0, Math.round(limit - elapsed));
+}
+
+/** Ends a live game once its clock runs out, settling scores first. */
+async function endLiveGameIfExpired(game) {
+  if (!game || game.status !== 'started') return false;
+  const left = liveSecondsLeft(game);
+  if (left === null || left > 0) return false;
+  await app.locals.settleLiveScores?.(game.game_code);
+  await dbRun("UPDATE games SET status = 'ended', ended_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'started'", [game.id]);
+  return true;
+}
+
+// Host extends the clock without interrupting play.
+app.post('/api/games/:gameCode/live/extend', requireAuth, async (req, res) => {
+  try {
+    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [req.params.gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (!LIVE_MODES.has(game.game_mode)) return res.status(400).json({ error: 'Not a live mode' });
+    if (game.host_id !== actingUserId(req)) return res.status(403).json({ error: 'Only the host can extend this game' });
+    if (game.status !== 'started') return res.status(409).json({ error: 'Game is not running' });
+
+    const minutes = Math.max(1, Math.min(60, Number(req.body?.minutes) || 5));
+    const settings = liveSettings(game);
+    // If the host never set a limit, extending starts the clock from now.
+    const started = startedAtMs(game);
+    const elapsed = started ? (Date.now() - started) / 1000 : 0;
+    const base = Number(settings.timeLimit) || Math.round(elapsed);
+    settings.timeLimit = base + minutes * 60;
+    await dbRun('UPDATE games SET settings = ? WHERE id = ?', [JSON.stringify(settings), game.id]);
+    res.json({ minutes, secondsLeft: liveSecondsLeft({ ...game, settings }) });
+  } catch (err) {
+    console.error('[live/extend]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET state ──────────────────────────────────────────────────────────────
 app.get('/api/games/:gameCode/live/state', async (req, res) => {
   try {
@@ -8406,6 +8468,9 @@ app.get('/api/games/:gameCode/live/state', async (req, res) => {
     if (!LIVE_MODES.has(game.game_mode)) return res.status(400).json({ error: 'Not a live mode' });
 
     const mode = game.game_mode;
+    // The clock is the teacher's: reaching zero ends the game the same way the
+    // End button does, settling scores on the way out.
+    if (await endLiveGameIfExpired(game)) game.status = 'ended';
     const shared = sharedState(gameCode, mode);
     const now = Date.now();
     const rows = (await liveParticipants(game.id)).map(p => liveRow(p, mode, now));
@@ -8418,6 +8483,8 @@ app.get('/api/games/:gameCode/live/state', async (req, res) => {
     res.json({
       mode,
       status: game.status,
+      secondsLeft: liveSecondsLeft(game),
+      isHost: userId != null && game.host_id === userId,
       players: rows,
       me: userId ? rows.find(r => r.userId === userId) || null : null,
       shared: {
@@ -8446,6 +8513,7 @@ app.post('/api/games/:gameCode/live/answer', requireAuth, async (req, res) => {
     const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
     if (!LIVE_MODES.has(game.game_mode)) return res.status(400).json({ error: 'Not a live mode' });
+    if (await endLiveGameIfExpired(game)) game.status = 'ended';
     if (game.status === 'ended' || game.status === 'abandoned') {
       return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
     }

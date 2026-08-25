@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Flame, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
+import { Flame, ArrowLeft, TrendingUp, TrendingDown, Clock, Plus, Square } from 'lucide-react';
 import QuestionView from '../components/QuestionView';
 import { AvatarPreview, getSkinColor } from './SkinsPage';
 import { LIVE_MODE_META } from '../utils/liveModes';
@@ -10,7 +10,10 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
 
 /**
- * Shared shell for the four endless live modes.
+ * Shared shell for the four live modes.
+ *
+ * The teacher owns the clock: the game runs until they end it or the length they
+ * set runs out, and they can extend it from here without interrupting play.
  *
  * It owns the question queue, the answer round-trip and the standings poll.
  * Everything mode-specific is one panel plus a flash message, because the
@@ -30,6 +33,8 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
   const [flash, setFlash] = useState(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState(null);
+  const [secondsLeft, setSecondsLeft] = useState(null);
+  const [extending, setExtending] = useState(false);
   const flashTimer = useRef(null);
   // Session tallies for the reward post on leave. Refs, because the unmount
   // cleanup would otherwise close over the counts as they were on first render.
@@ -40,7 +45,12 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
   const refresh = useCallback(async () => {
     try {
       const r = await fetch(`${BASE}/api/games/${gameCode}/live/state?userId=${user.id}`);
-      if (r.ok) setState(await r.json());
+      if (r.ok) {
+        const d = await r.json();
+        setState(d);
+        // Re-sync from the server; the local tick below keeps it moving between polls.
+        if (d.secondsLeft !== null && d.secondsLeft !== undefined) setSecondsLeft(d.secondsLeft);
+      }
     } catch { /* transient poll failure is fine, the next tick retries */ }
   }, [gameCode, user.id]);
 
@@ -53,6 +63,37 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
   }, [refresh]);
 
   useEffect(() => () => clearTimeout(flashTimer.current), []);
+
+  // Tick the clock locally so it counts down smoothly rather than jumping
+  // every poll. The server remains the authority on when the game ends.
+  useEffect(() => {
+    if (secondsLeft === null) return;
+    const t = setInterval(() => setSecondsLeft(s => (s === null ? null : Math.max(0, s - 1))), 1000);
+    return () => clearInterval(t);
+  }, [secondsLeft === null]);
+
+  const extend = useCallback(async (mins) => {
+    setExtending(true);
+    try {
+      const r = await fetch(`${BASE}/api/games/${gameCode}/live/extend`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ minutes: mins }),
+      });
+      if (handleUnauthorized(r)) return;
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) { setSecondsLeft(d.secondsLeft ?? null); refresh(); }
+      else setProblem(d.error || 'Could not extend the game.');
+    } catch { setProblem('Could not extend the game.'); }
+    setExtending(false);
+  }, [gameCode, refresh]);
+
+  const endGame = useCallback(async () => {
+    try {
+      await fetch(`${BASE}/api/games/${gameCode}/end`, {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({}),
+      });
+      refresh();
+    } catch { setProblem('Could not end the game.'); }
+  }, [gameCode, refresh]);
 
   // Tell the server when we go, otherwise a player who closes the tab shows in
   // the standings as still playing indefinitely.
@@ -132,6 +173,7 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
   const gameOver = state?.status === 'ended' || state?.status === 'abandoned';
   const myColor = getSkinColor(equippedSkinId) || meta.accent;
   const homePath = user?.role === 'teacher' ? '/home/teacher' : '/home/student';
+  const isHost = state?.isHost || initialGame?.host_id === user?.id;
 
   if (!questions.length) {
     return (
@@ -184,6 +226,29 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {secondsLeft !== null && (
+              <div className={`px-3 py-2 rounded-xl border-2 text-center flex items-center gap-1.5 ${
+                secondsLeft <= 60 ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-700'}`}>
+                <Clock className="w-4 h-4" />
+                <span className="font-black tabular-nums">
+                  {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
+                </span>
+              </div>
+            )}
+            {isHost && (
+              <>
+                <button onClick={() => extend(5)} disabled={extending}
+                  title="Add 5 minutes"
+                  className="px-3 py-2 rounded-xl bg-white border-2 border-gray-200 hover:border-green-400 hover:bg-green-50 font-black text-sm text-gray-700 disabled:opacity-60 flex items-center gap-1">
+                  <Plus className="w-4 h-4" />5m
+                </button>
+                <button onClick={endGame}
+                  title="End the game for everyone"
+                  className="px-3 py-2 rounded-xl bg-gray-900 hover:bg-red-700 text-white font-black text-sm flex items-center gap-1.5">
+                  <Square className="w-3.5 h-3.5 fill-current" /> End
+                </button>
+              </>
+            )}
             <div className="px-4 py-2 rounded-xl bg-white border-2 shadow-sm text-right" style={{ borderColor: myColor }}>
               <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Standing</div>
               <div className="text-xl font-black tabular-nums" style={{ color: myColor }}>

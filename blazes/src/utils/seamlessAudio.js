@@ -8,11 +8,11 @@
 //   1. Trim encoder silence at both ends (real silence, not low music).
 //   2. Snap the trimmed loop points to nearby zero crossings to minimise discontinuity.
 //   3. Schedule iterations manually with a short equal-loudness crossfade so the
-//      tail of one iteration overlaps the head of the next — clicks become inaudible.
+//      tail of one iteration overlaps the head of the next. Clicks become inaudible.
 
 const SILENCE_THRESHOLD = 0.005; // ~ -46 dBFS, cuts encoder padding without eating quiet intros
 const ZERO_CROSSING_SEARCH = 2048; // samples to search for the closest zero crossing
-const CROSSFADE_SEC = 0.06; // 60 ms — short enough to be inaudible on most music
+const CROSSFADE_SEC = 0.06; // 60 ms. Short enough to be inaudible on most music
 
 function findFirstNonSilent(buffer, threshold = SILENCE_THRESHOLD) {
   const channels = buffer.numberOfChannels;
@@ -37,7 +37,7 @@ function findLastNonSilent(buffer, threshold = SILENCE_THRESHOLD) {
 }
 
 // Snap a sample index to the nearest sample with the smallest absolute amplitude
-// across all channels — minimises the pop at the splice point.
+// across all channels. Minimises the pop at the splice point.
 function snapToZeroCrossing(buffer, sampleIdx) {
   const length = buffer.length;
   const channels = buffer.numberOfChannels;

@@ -115,7 +115,7 @@ export default function Upgrade() {
           </div>
         )}
 
-        {/* Trial banner — teachers only, only when eligible */}
+        {/* Trial banner. Teachers only, only when eligible */}
         {!isStudent && trialEligible && (
           <div className="mb-8 max-w-3xl mx-auto rounded-2xl p-5 sm:p-6 border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -275,7 +275,7 @@ export default function Upgrade() {
           </div>
         )}
 
-        {/* Cancel modal — unchanged behaviour */}
+        {/* Cancel modal. Unchanged behaviour */}
         {showCancelConfirm && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCancelConfirm(false)}>
             <div className="bg-white rounded-3xl p-7 max-w-sm w-full shadow-2xl text-center" onClick={e => e.stopPropagation()}>

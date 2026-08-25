@@ -51,7 +51,7 @@ export default function Landing() {
                 Win Big.
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-white/90 mb-6 sm:mb-8">
-                The multiplayer study game that makes learning fun. Compete with friends, climb leaderboards, and master your subjects.
+                A multiplayer study game. Compete with classmates, move up the leaderboard, and review your subjects.
               </p>
             </div>
 
@@ -116,7 +116,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-4">How It Works</h2>
-            <p className="text-base sm:text-lg md:text-xl text-gray-600">Get started in seconds. No downloads. No hassle.</p>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600">Get started in seconds. No downloads. No setup.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
@@ -134,7 +134,7 @@ export default function Landing() {
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-orange-600 rounded-full flex items-center justify-center text-white font-black text-sm">2</div>
               </div>
               <h3 className="text-2xl font-black text-gray-900 mb-3">Answer Questions</h3>
-              <p className="text-gray-600">Race against the clock and other players to answer questions correctly.</p>
+              <p className="text-gray-600">Answer questions correctly before the timer runs out and before other players do.</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-6 relative">
@@ -142,13 +142,13 @@ export default function Landing() {
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-red-700 rounded-full flex items-center justify-center text-white font-black text-sm">3</div>
               </div>
               <h3 className="text-2xl font-black text-gray-900 mb-3">Win & Learn</h3>
-              <p className="text-gray-600">Climb the leaderboard, earn rewards, and master your subjects.</p>
+              <p className="text-gray-600">Move up the leaderboard, earn rewards, and learn your subjects.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* See It In Action — gameplay mockups */}
+      {/* See It In Action. Gameplay mockups */}
       <section className="py-16 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10 sm:mb-14">
@@ -190,28 +190,28 @@ export default function Landing() {
                 <BarChart3 className="w-6 h-6 text-white" strokeWidth={2.5} />
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">Live Leaderboards</h3>
-              <p className="text-gray-600">See how you stack up against your classmates in real-time. Competition drives motivation!</p>
+              <p className="text-gray-600">Compare your score with your classmates in real time.</p>
             </div>
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 hover:border-orange-500 transition-colors">
               <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center mb-4">
                 <Zap className="w-6 h-6 text-white" strokeWidth={2.5} />
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">Power-Ups</h3>
-              <p className="text-gray-600">Use strategic power-ups to boost your score, freeze opponents, or get hints.</p>
+              <p className="text-gray-600">Use power-ups to add points, pause opponents, or reveal hints.</p>
             </div>
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 hover:border-red-500 transition-colors">
               <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center mb-4">
                 <Users className="w-6 h-6 text-white" strokeWidth={2.5} />
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">Team Mode</h3>
-              <p className="text-gray-600">Work together with teammates to defeat rival groups in epic team battles.</p>
+              <p className="text-gray-600">Work with teammates to score more points than the opposing group.</p>
             </div>
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 hover:border-orange-500 transition-colors">
               <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center mb-4">
                 <Target className="w-6 h-6 text-white" strokeWidth={2.5} />
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">Progress Tracking</h3>
-              <p className="text-gray-600">Monitor your improvement over time with detailed stats and achievements.</p>
+              <p className="text-gray-600">See your results over time with detailed stats and achievements.</p>
             </div>
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 hover:border-red-500 transition-colors">
               <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center mb-4">
@@ -250,7 +250,7 @@ export default function Landing() {
               </div>
               <div>
                 <h3 className="text-xl font-black text-gray-900 mb-2">Competitive Learning</h3>
-                <p className="text-gray-600">Turn studying into a thrilling challenge game where students compete in real-time to answer questions and climb the leaderboard.</p>
+                <p className="text-gray-600">Studying becomes a competitive game where students answer questions in real time and move up the leaderboard.</p>
               </div>
             </div>
             <div className="flex gap-4">
@@ -283,7 +283,7 @@ export default function Landing() {
               </div>
               <div>
                 <h3 className="text-xl font-black text-gray-900 mb-2">Any Subject, Any Device</h3>
-                <p className="text-gray-600">Create custom question sets for any topic and play on phones, tablets, or computers – no app required.</p>
+                <p className="text-gray-600">Create custom question sets for any topic and play on phones, tablets, or computers - no app required.</p>
               </div>
             </div>
             <div className="flex gap-4">
@@ -336,7 +336,7 @@ export default function Landing() {
             <Flame className="w-8 h-8 sm:w-10 sm:h-10 text-orange-500" strokeWidth={2.5} />
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 sm:mb-6">
-            Ready to Ignite Your<br/>Learning?
+            Ready to Start<br/>Learning?
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-white/90 mb-8 sm:mb-10">
             Join students who are studying smarter, not harder. Your first game is just a code away!

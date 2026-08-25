@@ -109,7 +109,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
     }
   }, [game]);
 
-  // Game-time countdown — tick at 4Hz so the seconds change crisply on the boundary
+  // Game-time countdown. Tick at 4Hz so the seconds change crisply on the boundary
   useEffect(() => {
     if (!game?.settings) return;
     const settings = typeof game.settings === 'string' ? JSON.parse(game.settings) : game.settings;
@@ -217,7 +217,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
       setTimeout(() => setScorePop(null), 1100);
     }
 
-    // Schedule advance IMMEDIATELY — don't wait for the server roundtrip
+    // Schedule advance IMMEDIATELY. Don't wait for the server roundtrip
     advanceTimeoutRef.current = setTimeout(advanceQuestion, 800);
 
     // Fire the answer submission in the background
@@ -319,7 +319,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
         <div className="fixed inset-0 pointer-events-none z-[20] animate-pulse"
           style={{ boxShadow: 'inset 0 0 200px rgba(239, 68, 68, 0.6), inset 0 0 80px rgba(239, 68, 68, 0.3)' }} />
       )}
-      {/* Hit effect — flash + label */}
+      {/* Hit effect, flash + label */}
       {hitEffect && (() => {
         const HitIcon = hitEffect.blocked ? Shield :
           hitEffect.itemKey === 'lightning' ? Zap :
@@ -352,7 +352,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
         );
       })()}
 
-      {/* Floating score pop — appears near the score badge */}
+      {/* Floating score pop. Appears near the score badge */}
       {scorePop && (
         <div key={scorePop.ts} className="fixed top-16 left-1/2 -translate-x-1/2 z-[55] pointer-events-none">
           <div className={`text-3xl sm:text-4xl font-black animate-bounce ${
@@ -365,7 +365,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
         </div>
       )}
 
-      {/* Combo break — angry red flash */}
+      {/* Combo break. Angry red flash */}
       {comboBreakFlash && (
         <>
           <div className="fixed inset-0 z-[60] pointer-events-none bg-red-600/40 animate-pulse" />
@@ -477,7 +477,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
           <div className="max-w-7xl mx-auto mt-2 text-center">
             <span className="inline-flex items-center gap-1.5 bg-orange-500/20 border border-orange-400/40 rounded-full px-3 py-1 text-xs font-black text-orange-200">
               <Flame className="w-3.5 h-3.5" /> {combo} streak
-              {combo >= 10 ? ' — ULTIMATE STRIKE earned!' : combo >= 7 ? ' — +5 score per answer (perm)' : combo >= 5 ? ' — Free attack earned!' : combo >= 3 ? ' — +5 bonus score' : ''}
+              {combo >= 10 ? '. ULTIMATE STRIKE earned!' : combo >= 7 ? '. +5 score per answer (perm)' : combo >= 5 ? '. Free attack earned!' : combo >= 3 ? '. +5 bonus score' : ''}
             </span>
           </div>
         )}
@@ -492,7 +492,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
         )}
       </header>
 
-      {/* Question — takes the full remaining space */}
+      {/* Question. Takes the full remaining space */}
       <main className="flex-1 flex flex-col px-3 sm:px-6 py-4 sm:py-6">
         {!q ? (
           <div className="flex-1 flex items-center justify-center">
@@ -507,7 +507,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
               </span>
             </div>
 
-            {/* Question card — fills the space */}
+            {/* Question card. Fills the space */}
             <div className="flex-1 bg-gradient-to-br from-white/[0.08] to-white/[0.03] backdrop-blur-sm border border-white/10 rounded-3xl p-6 sm:p-8 md:p-10 flex flex-col shadow-2xl shadow-purple-950/30">
               <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-6 sm:mb-8 leading-tight whitespace-pre-line bg-gradient-to-br from-white to-purple-100 bg-clip-text text-transparent">{q.question_text}</h2>
 
@@ -517,13 +517,13 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
                 </div>
               )}
 
-              {/* Answers — render based on question type */}
+              {/* Answers. Render based on question type */}
               <div className="flex-1 flex flex-col">
                 {(() => {
                   const type = q.answer_type || 'multiple_choice';
                   const colors = ['from-red-600 to-rose-600', 'from-blue-600 to-cyan-600', 'from-yellow-600 to-orange-600', 'from-green-600 to-emerald-600'];
 
-                  // True/False — render two big buttons
+                  // True/False. Render two big buttons
                   if (type === 'true_false') {
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 content-center flex-1">
@@ -548,7 +548,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
                     );
                   }
 
-                  // Short answer / fill blank — text input
+                  // Short answer / fill blank, text input
                   if (type === 'short_answer' || type === 'fill_blank' || type === 'math_equation') {
                     return (
                       <form onSubmit={(e) => {
@@ -571,7 +571,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
                     );
                   }
 
-                  // Multiple choice / multi_select / audio — render A/B/C/D options
+                  // Multiple choice / multi_select / audio. Render A/B/C/D options
                   return (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 content-center flex-1">
                       {['option_a', 'option_b', 'option_c', 'option_d'].map((key, i) => {
@@ -669,7 +669,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
               <button onClick={() => setShowInventory(false)} className="p-2 hover:bg-white/10 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
             {inventory.length === 0 ? (
-              <p className="text-white/50 text-center py-8">Empty — buy items from the shop!</p>
+              <p className="text-white/50 text-center py-8">Empty. Buy items from the shop!</p>
             ) : (
               <div className="space-y-2">
                 {inventory.map((inv) => {
@@ -718,11 +718,11 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
               <div className="text-yellow-300 font-black text-2xl flex items-center justify-center gap-1.5">
                 <Trophy className="w-5 h-5" /> {score}
               </div>
-              <p className="text-[10px] text-white/40 mt-1">Items cost score — spend wisely</p>
+              <p className="text-[10px] text-white/40 mt-1">Items cost score, spend wisely</p>
             </div>
             {(stockCrash || inflation) && (
               <p className={`text-center text-sm font-bold mb-4 ${stockCrash ? 'text-green-300' : 'text-red-300'}`}>
-                {stockCrash ? 'Stock Crash — 50% off!' : 'Inflation — prices 3x!'}
+                {stockCrash ? 'Stock Crash. 50% off!' : 'Inflation, prices 3x!'}
               </p>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -776,11 +776,11 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
               <div>
                 <h3 className="font-black text-purple-300 mb-1 flex items-center gap-1.5"><ShoppingBag className="w-4 h-4" /> Shop items</h3>
                 <ul className="text-white/70 space-y-0.5 ml-1">
-                  <li>• <span className="text-white">Lightning</span> (15) — pick a target, deal -25</li>
-                  <li>• <span className="text-white">Fireball</span> (30) — -15 to 3 random players</li>
-                  <li>• <span className="text-white">Shield</span> (15) — block one attack against you</li>
-                  <li>• <span className="text-white">Mirror</span> (30) — reflect next attack back</li>
-                  <li>• <span className="text-white">Double Down</span> (20) — next correct = 20</li>
+                  <li>• <span className="text-white">Lightning</span> (15). Pick a target, deal -25</li>
+                  <li>• <span className="text-white">Fireball</span> (30). -15 to 3 random players</li>
+                  <li>• <span className="text-white">Shield</span> (15). Block one attack against you</li>
+                  <li>• <span className="text-white">Mirror</span> (30). Reflect next attack back</li>
+                  <li>• <span className="text-white">Double Down</span> (20). Next correct = 20</li>
                 </ul>
               </div>
               <div>

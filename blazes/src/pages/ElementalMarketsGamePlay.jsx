@@ -100,7 +100,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
   }, [game]);
 
   // Game timer. When time hits zero we need the server to mark the game ended
-  // AND settle each participant's score to their final portfolio value — without
+  // AND settle each participant's score to their final portfolio value, without
   // this, the leaderboard on the results page shows 0 for everyone. The /end
   // endpoint is idempotent, so it's safe for every client to call.
   const handleGameOver = useCallback(async () => {
@@ -232,7 +232,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
             </div>
             <div
               className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-2 flex items-center gap-2"
-              title="Your current score — cash plus the market value of any shares you own. This is what gets saved when the game ends."
+              title="Your current score. Cash plus the market value of any shares you own. This is what gets saved when the game ends."
             >
               <Trophy className="w-4 h-4 text-yellow-300" />
               <div>
@@ -306,7 +306,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
         )}
       </header>
 
-      {/* Question is the centerpiece — full-width centered card. The Markets button
+      {/* Question is the centerpiece. Full-width centered card. The Markets button
           up top opens the trading panel as a modal so trading never crowds the
           question, even on a small screen. */}
       <main className="flex-1 max-w-3xl w-full mx-auto px-3 sm:px-6 py-6 sm:py-10 flex flex-col">
@@ -412,7 +412,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
         </div>
       </main>
 
-      {/* Markets modal — full-screen overlay with all six stock cards. Clicking
+      {/* Markets modal. Full-screen overlay with all six stock cards. Clicking
           a card opens the per-stock buy/sell modal (existing flow). */}
       {showMarkets && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-stretch sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowMarkets(false)}>
@@ -551,7 +551,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
         </div>
       )}
 
-      {/* End-game confirm — host only */}
+      {/* End-game confirm, host only */}
       {showEndConfirm && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowEndConfirm(false)}>
           <div className="bg-slate-900 border border-red-500/30 rounded-3xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
@@ -575,7 +575,7 @@ export default function ElementalMarketsGamePlay({ gameCode: propCode, user: pro
         </div>
       )}
 
-      {/* Cash-flash keyframes via inline style — once-per-component is fine */}
+      {/* Cash-flash keyframes via inline style. Once-per-component is fine */}
       <style>{`@keyframes cashFlash {
         0% { opacity: 0; transform: translateY(0); }
         20% { opacity: 1; transform: translateY(-4px); }

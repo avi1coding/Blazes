@@ -32,7 +32,7 @@ const CATEGORIES = [
         achievements: [
             { id: 'warm_up', bb: 10, name: 'Warm Up', desc: '5 correct in a row', icon: Flame },
             { id: 'perfect_session', bb: 100, name: 'Perfect Session', desc: '10 correct in a row', icon: Star },
-            { id: 'on_fire', bb: 40, name: 'On Fire', desc: '20 correct in a row', icon: Flame },
+            { id: 'on_fire', bb: 40, name: 'Twenty in a Row', desc: '20 correct in a row', icon: Flame },
             { id: 'unstoppable', bb: 80, name: 'Unstoppable', desc: '30 correct in a row', icon: Flame },
             { id: 'inhuman', bb: 150, name: 'Inhuman', desc: '50 correct in a row', icon: Crown },
         ]

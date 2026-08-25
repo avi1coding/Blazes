@@ -18,9 +18,9 @@ export default function StudentMonitor() {
       try {
         const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
-        // Fetch game data — wrap every access defensively so a bad response
+        // Fetch game data. Wrap every access defensively so a bad response
         // shape can't render-crash the page and trip the global ErrorBoundary
-        // (which silently redirects to /home/* — that's why this view kept
+        // (which silently redirects to /home/*. That's why this view kept
         // bouncing teachers back to the home screen).
         const gameResponse = await fetch(`${base}/api/games/${gameCode}`);
         const gameData = gameResponse.ok ? await gameResponse.json() : null;
@@ -37,7 +37,7 @@ export default function StudentMonitor() {
         setStudentData(student || null);
 
         // Fetch student's answers for this game. The endpoint returns an
-        // object `{ answers, totalScore, correctCount, game }` — unwrap the
+        // object `{ answers, totalScore, correctCount, game }`, unwrap the
         // array so the timeline + stats below actually render.
         const answersResponse = await fetch(
           `${base}/api/games/${gameCode}/student/${userId}/answers`
@@ -243,7 +243,7 @@ export default function StudentMonitor() {
                 const timed = studentAnswers.filter(a => a.time_taken != null);
                 return timed.length > 0
                   ? (timed.reduce((sum, a) => sum + a.time_taken, 0) / timed.length).toFixed(1) + 's'
-                  : '—';
+                  : '-';
               })()}
             </div>
           </div>

@@ -14,7 +14,7 @@ export default function StudentJoinGame() {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); }
     catch { return null; }
   })();
-  // A stored 'guest' user is from a previous join — they're not a real
+  // A stored 'guest' user is from a previous join. They're not a real
   // logged-in account, so each new join should prompt for a name again
   // instead of silently reusing the old one as if it were the account name.
   const user = storedUser?.role === 'guest' ? null : storedUser;
@@ -54,7 +54,7 @@ export default function StudentJoinGame() {
     fetchSettings();
   }, [gameCode]);
 
-  // Anonymous joiners always pick their own display name — the teacher's
+  // Anonymous joiners always pick their own display name, the teacher's
   // "use account names" toggle only controls whether logged-in players are
   // forced to use their account name (because they actually have one).
   const isAnonymous = !user;

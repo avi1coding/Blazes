@@ -113,7 +113,7 @@ export default function LiveModeSetupPage() {
             <label className="flex items-center gap-3 mt-3 cursor-pointer">
               <input type="checkbox" checked={noLimit} onChange={(e) => setNoLimit(e.target.checked)}
                 className="w-5 h-5 rounded accent-red-600" />
-              <span className="text-sm font-semibold text-gray-700">No time limit &mdash; I&rsquo;ll end it myself</span>
+              <span className="text-sm font-semibold text-gray-700">No time limit , I&rsquo;ll end it myself</span>
             </label>
             {!noLimit && !minutesValid && (
               <p className="text-xs text-red-600 font-bold mt-2">Enter a length between 1 and 300 minutes.</p>

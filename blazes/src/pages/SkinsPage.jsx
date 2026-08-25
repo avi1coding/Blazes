@@ -22,17 +22,17 @@ import {
 
 // TEMP: flip to true to render every skin as owned/unlocked so the user can
 // visually review all orb designs without actually buying them. This only
-// affects the local UI — the server still tracks real ownership, so equip
+// affects the local UI, the server still tracks real ownership, so equip
 // requests will be locally previewed but won't persist.
 const PREVIEW_ALL_SKINS = true;
 
-// ─── Skin icons — mapped to lucide-react components ────────────────────
+// ─── Skin icons. Mapped to lucide-react components ────────────────────
 // Each skin id resolves to a professionally-designed Lucide icon component.
 // Some concepts share the same icon where the closest match is reused
 // (e.g. "blaze" + "fire" both → Flame); the orb gradient + tier glow keep
 // them visually distinct.
 const SKIN_ICONS = {
-    // Common — elemental
+    // Common, elemental
     air: Wind,
     fire: Flame,
     earth: Globe,
@@ -136,7 +136,7 @@ export const SEASON_PACKS = [
         name: 'Mythological Pack',
         season: 1,
         cost: 30, // BB per open
-        description: 'Legends of Olympus — 13 limited edition skins',
+        description: 'Legends of Olympus. 13 limited edition skins',
         bg: 'linear-gradient(135deg,#7c3aed,#1e1b4b)',
         skins: [
             // id, name, tier, drop chance %
@@ -264,8 +264,8 @@ const TIER_COLORS = {
     Mythic: { badge: '#be185d', bg: '#fdf2f8' },
 };
 
-// Small avatar for nav / lobby — shows icon, animated border by rarity, profile frame
-// Global tier cache — populated by skin fetches
+// Small avatar for nav / lobby. Shows icon, animated border by rarity, profile frame
+// Global tier cache. Populated by skin fetches
 const _tierCache = {};
 export function cacheTier(userId, tier) { _tierCache[userId] = tier; }
 export function getCachedTier(userId) { return _tierCache[userId] || null; }
@@ -311,7 +311,7 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
     const tier = skin?.tier || 'Basic';
     const rb = RARITY_BORDERS[tier] || RARITY_BORDERS.Basic;
     const IconComp = skin ? SKIN_ICONS[skin.id] : null;
-    // Round to integer pixels — fractional sizes cause sub-pixel blur on SVG strokes
+    // Round to integer pixels. Fractional sizes cause sub-pixel blur on SVG strokes
     const iconSize = Math.round(size * 0.55);
     const tierRank = { Basic: 0, Common: 1, Uncommon: 2, Rare: 3, Epic: 4, Legendary: 5, Mythic: 6 }[tier] || 0;
     const plusRingWidth = Math.max(3, Math.round(size * 0.04));
@@ -337,7 +337,7 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     </div>
                 </>
             )}
-            {/* Animated frame ring for Rare+ (only if not Plus — Plus replaces it) */}
+            {/* Animated frame ring for Rare+ (only if not Plus, Plus replaces it) */}
             {!isPlus && showFrame && tier !== 'Basic' && tier !== 'Common' && tier !== 'Uncommon' && (
                 <div style={{
                     position: 'absolute', inset: 0, borderRadius: '50%',
@@ -345,7 +345,7 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                     animation: rb.animation || 'none',
                 }} />
             )}
-            {/* Inner circle — clean gradient sphere, no inset highlights, just outer glow */}
+            {/* Inner circle. Clean gradient sphere, no inset highlights, just outer glow */}
             <div style={{
                 width: size, height: size, borderRadius: '50%',
                 background: bg,
@@ -365,7 +365,7 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                         }}
                     />
                 ) : skin ? (
-                    /* Basic / iconless skin — show the gradient orb alone, no letter */
+                    /* Basic / iconless skin. Show the gradient orb alone, no letter */
                     null
                 ) : (
                     <span style={{ color: 'white', fontWeight: 900, fontSize: size * 0.42, textShadow: '0 2px 6px rgba(0,0,0,0.5)', position: 'relative', zIndex: 2 }}>{initial || '?'}</span>
@@ -387,7 +387,7 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
                         }} />
                     </>
                 )}
-                {/* Conic shimmer rotation for Mythic only — subtle rainbow sweep */}
+                {/* Conic shimmer rotation for Mythic only. Subtle rainbow sweep */}
                 {tier === 'Mythic' && (
                     <span style={{
                         position: 'absolute', inset: 0, borderRadius: '50%',
@@ -485,7 +485,7 @@ function ShopCard({ skin, inStock, isOwned, isEquipped, canAfford, isBuying, onB
                 </div>
             )}
 
-            {/* Avatar preview — same rich orb everywhere; locked skins show the orb dimmed
+            {/* Avatar preview. Same rich orb everywhere; locked skins show the orb dimmed
                 with a lock badge so the shopper can still see what they're working toward. */}
             <div style={{
                 width: '100%', height: 96, marginTop: 22, marginBottom: 10,
@@ -629,7 +629,7 @@ function SkinCard({ skin, isOwned, isEquipped, canAfford, isBuying, onBuy, onEqu
                 </div>
             )}
 
-            {/* Avatar circle — same rich orb; locked dimmed + lock badge */}
+            {/* Avatar circle. Same rich orb; locked dimmed + lock badge */}
             <div style={{
                 width: '100%', height: 96, marginTop: 22, marginBottom: 10,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1011,7 +1011,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                         <div style={{ textAlign: 'right' }}>
                             <div style={{ color: '#c7d2fe', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>NEXT RESET IN</div>
                             <div style={{ color: '#fde68a', fontSize: 20, fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>
-                                {countdown || '—'}
+                                {countdown || '-'}
                             </div>
                         </div>
                     </div>
@@ -1243,7 +1243,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                         </div>
                     </div>
 
-                    {/* ═══ FULL-SCREEN PACK OPENING — MYTHOLOGICAL THEME ═══ */}
+                    {/* ═══ FULL-SCREEN PACK OPENING. MYTHOLOGICAL THEME ═══ */}
                     {pendingResults && revealPhase !== 'idle' && (
                         <div style={{
                             position: 'fixed', inset: 0, zIndex: 200,
@@ -1292,7 +1292,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
 
                             {/* Skip all */}
 
-                            {/* STATE: Waiting — mythological pack card */}
+                            {/* STATE: Waiting. Mythological pack card */}
                             {revealPhase === 'waiting' && (
                                 <div onClick={handleTapPack} style={{ cursor: 'pointer', textAlign: 'center' }}>
                                     <div style={{
@@ -1321,7 +1321,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                                 </div>
                             )}
 
-                            {/* STATE: Opening — golden burst */}
+                            {/* STATE: Opening, golden burst */}
                             {revealPhase === 'opening' && (
                                 <div style={{
                                     width: 170, height: 240, borderRadius: 20,
@@ -1338,7 +1338,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                                 </div>
                             )}
 
-                            {/* STATE: Show result — single skin revealed */}
+                            {/* STATE: Show result. Single skin revealed */}
                             {revealPhase === 'showResult' && (() => {
                                 const item = pendingResults.items[currentOpenIndex];
                                 const skinData = SKIN_BY_ID[item.id];

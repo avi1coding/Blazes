@@ -178,7 +178,7 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
 
   return (
     <div className="h-screen bg-gray-950 flex flex-col overflow-hidden">
-      {/* Header — full width */}
+      {/* Header, full width */}
       <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-3 flex-shrink-0">
         <div className="flex items-center justify-between bg-gray-900/80 backdrop-blur rounded-2xl p-3 border border-gray-800">
           <div className="flex items-center gap-3">
@@ -221,7 +221,7 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
         )}
       </div>
 
-      {/* Main content area — game + optional leaderboard */}
+      {/* Main content area. Game + optional leaderboard */}
       <div className="flex-1 flex overflow-hidden">
         {/* Game area */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-8 pb-6">
@@ -312,14 +312,14 @@ export default function ElementalWagerGamePlay({ gameCode, user, equippedSkinId 
             </div>
             <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-3">{score} pts</div>
             <div className="text-gray-500 text-base">
-              {streak > 0 ? `${streak} in a row — Tier ${currentTier}` : 'Streak reset'}
+              {streak > 0 ? `${streak} in a row. Tier ${currentTier}` : 'Streak reset'}
             </div>
           </div>
         )}
           </div>
         </div>
 
-        {/* Leaderboard sidebar — right side on desktop */}
+        {/* Leaderboard sidebar. Right side on desktop */}
         {hasMultiplayer && showLeaderboard && (() => {
           const sorted = rankParticipants(participants);
           const places = sorted.map(p => p.rank);

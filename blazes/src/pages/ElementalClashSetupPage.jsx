@@ -8,7 +8,7 @@ export default function ElementalClashSetupPage() {
   const location = useLocation();
   const { kit, user } = location.state || {};
 
-  const [gameName, setGameName] = useState(`${kit?.title || 'Clash'} — Elemental Clash`);
+  const [gameName, setGameName] = useState(`${kit?.title || 'Clash'}. Elemental Clash`);
   const [timeLimit, setTimeLimit] = useState(300); // seconds
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
   const [hostPlays, setHostPlays] = useState(false);

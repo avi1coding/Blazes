@@ -16,7 +16,7 @@ export default function StudentHome() {
   const [searchParams] = useSearchParams();
   const { tab: urlTab } = useParams();
   const [cancelNotice, setCancelNotice] = useState(location.state?.notice || '');
-  // URL is the source of truth for which section is shown — each tab has its
+  // URL is the source of truth for which section is shown, each tab has its
   // own page like /home/student/kits, /home/student/stats. Falls back to the
   // legacy ?tab= query string for older links, then to 'dashboard'.
   const activeTab = urlTab || searchParams.get('tab') || 'dashboard';
@@ -102,7 +102,7 @@ export default function StudentHome() {
   const [seasonProgress, setSeasonProgress] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [upgradePrompt, setUpgradePrompt] = useState({ show: false, feature: '', desc: '', tier: '' });
-  // Recent-game review (Plus only) — opens a modal showing every question
+  // Recent-game review (Plus only). Opens a modal showing every question
   // they answered with full detail (their pick vs. correct answer, time, points).
   const [reviewGameCode, setReviewGameCode] = useState(null);
   const [reviewData, setReviewData] = useState(null);
@@ -399,7 +399,7 @@ export default function StudentHome() {
               )}
               <NotificationDropdown userId={user?.id} />
 
-              {/* Level button — students previously had no route to /hub at all,
+              {/* Level button. Students previously had no route to /hub at all,
                   so there was nowhere to see what level they were on. */}
               <button onClick={() => navigate('/hub')} title="View your level"
                 className="flex items-center gap-2 p-1 sm:pl-1 sm:pr-3 sm:py-1 rounded-full bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all shadow-sm flex-shrink-0">
@@ -656,7 +656,7 @@ export default function StudentHome() {
                     const rawMap = {};
                     raw.forEach(d => { rawMap[d.date] = d; });
 
-                    // Build buckets — always include all, even empty ones
+                    // Build buckets. Always include all, even empty ones
                     const buckets = [];
                     for (let i = 0; i < bucketCount; i++) {
                       const bStart = new Date(startDate.getTime() + i * bucketSize * 86400000);
@@ -888,7 +888,7 @@ export default function StudentHome() {
                   )}
                 </div>
 
-                {/* 5. Recent Games table — Plus members can click any row to open a
+                {/* 5. Recent Games table, Plus members can click any row to open a
                     full per-question review of that game. Free members see a lock
                     and an upgrade prompt. */}
                 {(() => {
@@ -934,7 +934,7 @@ export default function StudentHome() {
                                     setUpgradePrompt({
                                       show: true,
                                       feature: 'Game Review',
-                                      desc: 'Re-open any past game and walk through every question — your answer, the correct answer, time taken, and points earned.',
+                                      desc: 'Re-open any past game and walk through every question. Your answer, the correct answer, time taken, and points earned.',
                                       tier: 'Blazes Plus',
                                     });
                                   }
@@ -1130,7 +1130,7 @@ export default function StudentHome() {
                                 <div key={h} className="relative group">
                                   <div className="aspect-square rounded-lg flex items-center justify-center text-[9px] font-bold"
                                     style={{ background: q > 0 ? `rgba(239, 68, 68, ${intensity})` : '#f3f4f6', color: intensity > 0.5 ? 'white' : '#6b7280' }}
-                                    title={`${h}:00 — ${q} questions, ${acc}% accuracy`}>
+                                    title={`${h}:00. ${q} questions, ${acc}% accuracy`}>
                                     {h}
                                   </div>
                                 </div>
@@ -1341,7 +1341,7 @@ export default function StudentHome() {
                           <div className="text-center text-xs text-gray-400 font-semibold">
                             {(studentAnalytics.retryImprovement.retryAcc || 0) > (studentAnalytics.retryImprovement.firstAttemptAcc || 0)
                               ? 'You improve when you see a question again!'
-                              : 'Keep reviewing — practice makes perfect'}
+                              : 'Keep reviewing. Practice makes perfect'}
                           </div>
                         </div>
                       )}
@@ -2585,7 +2585,7 @@ export default function StudentHome() {
         </div>
       )}
 
-      {/* Recent Game Review Modal — Plus members only. Walks through every
+      {/* Recent Game Review Modal, Plus members only. Walks through every
           question they answered with full detail. */}
       {reviewGameCode && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setReviewGameCode(null)}>
@@ -2667,7 +2667,7 @@ export default function StudentHome() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Question {i + 1}</div>
-                              <div className="text-sm font-bold text-gray-900 leading-snug mt-0.5">{a.question_text || '—'}</div>
+                              <div className="text-sm font-bold text-gray-900 leading-snug mt-0.5">{a.question_text || '-'}</div>
                             </div>
                           </div>
 
@@ -2711,7 +2711,7 @@ export default function StudentHome() {
                               </div>
                               <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
                                 <div className="text-[10px] font-black uppercase tracking-wider text-emerald-600 mb-0.5">Correct</div>
-                                <div className="font-bold text-emerald-800">{a.correct_answer || '—'}</div>
+                                <div className="font-bold text-emerald-800">{a.correct_answer || '-'}</div>
                               </div>
                             </div>
                           )}
@@ -2720,7 +2720,7 @@ export default function StudentHome() {
                           <div className="px-4 py-2 bg-white/60 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-500">
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" strokeWidth={2.5} />
-                              {a.time_taken != null ? `${Number(a.time_taken).toFixed(1)}s` : '—'}
+                              {a.time_taken != null ? `${Number(a.time_taken).toFixed(1)}s` : '-'}
                             </span>
                             <span className="tabular-nums">+{a.points_earned || 0} pts</span>
                           </div>

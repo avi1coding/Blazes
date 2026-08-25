@@ -36,7 +36,7 @@ function ClassicMock({ className }) {
         <div className="text-[8px] font-bold text-amber-600 uppercase tracking-wider">Question 4</div>
         <div className="text-[10px] sm:text-xs font-black text-gray-900 leading-tight mt-0.5">Capital of France?</div>
       </div>
-      {/* Answer grid — flex grows to fill */}
+      {/* Answer grid. Flex grows to fill */}
       <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0">
         {[
           { l: 'A', t: 'Berlin' },
@@ -227,7 +227,7 @@ function VaultMock({ className }) {
         <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
           <div className="h-full w-2/3 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full" />
         </div>
-        <div className="text-[7px] text-gray-500 font-semibold mt-1">Maya cracked it for 132</div>
+        <div className="text-[7px] text-gray-500 font-semibold mt-1">Maya took 132</div>
       </div>
       <div className="bg-green-50 border border-green-300 rounded-md px-1.5 py-1 flex items-center gap-1 flex-shrink-0">
         <span className="text-[9px] font-black text-green-700">+132</span>
@@ -255,14 +255,14 @@ function UndertowMock({ className }) {
           <span className="font-black text-[9px] text-gray-900">UNDERTOW</span>
         </div>
         <div className="bg-cyan-500 rounded-md px-1.5 py-0.5">
-          <span className="font-black text-[8px] text-white">YOU HOLD IT</span>
+          <span className="font-black text-[8px] text-white">YOU HAVE IT</span>
         </div>
       </div>
       <div className="bg-white rounded-lg shadow-sm p-2 border border-cyan-200 flex-shrink-0">
         <div className="text-[8px] font-black text-gray-600 uppercase tracking-wider mb-1">Current</div>
         <div className="h-2 rounded-full bg-gradient-to-r from-cyan-200 via-cyan-500 to-cyan-200" />
         <div className="flex items-center justify-between mt-1">
-          <span className="text-[7px] font-semibold text-cyan-700">Flowing toward you</span>
+          <span className="text-[7px] font-semibold text-cyan-700">Moving toward you</span>
           <span className="text-[8px] font-black text-cyan-700">1.8x</span>
         </div>
       </div>

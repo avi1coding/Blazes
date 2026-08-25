@@ -93,7 +93,7 @@ export default function GameStatsModal({ gameCode, onClose, pro = false }) {
               <StatBox icon={Users} color="text-green-600" label="Players" value={stats.players || 0} />
               <StatBox icon={Zap} color="text-yellow-500" label="Top Score" value={fmtScore(topScore, stats.game_mode)} />
               <StatBox icon={BarChart3} color="text-blue-600" label="Avg Score" value={fmtScore(stats.avg_score, stats.game_mode)} />
-              <StatBox icon={Clock} color="text-purple-600" label="Avg Time" value={stats.avg_time ? `${Number(stats.avg_time).toFixed(1)}s` : '—'} />
+              <StatBox icon={Clock} color="text-purple-600" label="Avg Time" value={stats.avg_time ? `${Number(stats.avg_time).toFixed(1)}s` : '-'} />
             </div>
 
             {/* Overall accuracy bar */}
@@ -117,7 +117,7 @@ export default function GameStatsModal({ gameCode, onClose, pro = false }) {
               </div>
             )}
 
-            {/* Per-player breakdown — Pro tier makes each row expandable so the
+            {/* Per-player breakdown. Pro tier makes each row expandable so the
                 teacher can drill into every individual answer (which one,
                 correct/wrong, time taken). Free tier sees just the summary
                 row and an upgrade nudge below the table. */}
@@ -229,9 +229,9 @@ function PlayerAnswers({ answers }) {
             {a.is_correct ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <XMark className="w-3.5 h-3.5" strokeWidth={3} />}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold text-gray-900 truncate">Q{i + 1}. {a.question_text || '—'}</div>
+            <div className="text-xs font-bold text-gray-900 truncate">Q{i + 1}. {a.question_text || '-'}</div>
             <div className="text-[11px] text-gray-500 font-medium">
-              Answered <span className="font-bold text-gray-700">{a.answer ?? '—'}</span>
+              Answered <span className="font-bold text-gray-700">{a.answer ?? '-'}</span>
               {a.time_taken != null && <> · <Clock className="inline w-3 h-3 -mt-0.5" /> {Number(a.time_taken).toFixed(1)}s</>}
               {a.points_earned != null && <> · +{a.points_earned} pts</>}
             </div>
@@ -260,7 +260,7 @@ function PerQuestionAccuracy({ participants }) {
   const rows = Array.from(byQ.entries())
     .map(([qid, v]) => ({
       qid,
-      text: v.question_text || '—',
+      text: v.question_text || '-',
       total: v.total,
       correct: v.correct,
       acc: v.total > 0 ? Math.round((v.correct / v.total) * 100) : null,

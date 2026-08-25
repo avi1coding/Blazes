@@ -38,7 +38,7 @@
   animation: none !important;
 }
 
-/* Skin rarity border animations — opacity/scale only, no outward box-shadow bleed */
+/* Skin rarity border animations. Opacity/scale only, no outward box-shadow bleed */
 @keyframes rare-glow {
   0%, 100% { opacity: 0.7; }
   50% { opacity: 1; }
@@ -68,7 +68,7 @@
   to { transform: rotate(360deg); }
 }
 
-/* Subtle icon breathe — Legendary + Mythic */
+/* Subtle icon breathe. Legendary + Mythic */
 @keyframes skin-icon-pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.06); }

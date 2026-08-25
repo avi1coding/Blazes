@@ -72,7 +72,7 @@ export default function VolumeControl({ audioRef }) {
               disabled={muted}
               className="flex-1 h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <span className="text-gray-500 text-xs font-bold w-8 text-right">{muted ? '—' : `${volume}`}</span>
+            <span className="text-gray-500 text-xs font-bold w-8 text-right">{muted ? '-' : `${volume}`}</span>
           </div>
         </div>
       )}

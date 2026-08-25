@@ -66,7 +66,7 @@ export default function SignUp() {
       setEmailTaken(!!data.exists);
       setCheckedEmail(trimmed);
     } catch {
-      // network error — silently skip the pre-check; the submit will still catch duplicates
+      // network error. Silently skip the pre-check; the submit will still catch duplicates
     }
   };
 

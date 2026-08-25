@@ -7,7 +7,7 @@ export default function ElementalWagerSetupPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { kit, user } = location.state || {};
-  const [gameName, setGameName] = useState(`${kit?.title || 'Wager'} — Risk & Reward`);
+  const [gameName, setGameName] = useState(`${kit?.title || 'Wager'}, Risk & Reward`);
   const [timeLimit, setTimeLimit] = useState(180);
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
   const [hostPlays, setHostPlays] = useState(false);

@@ -17,7 +17,7 @@ const tursoClient = createClient({
   ...(process.env.TURSO_AUTH_TOKEN ? { authToken: process.env.TURSO_AUTH_TOKEN } : {}),
 });
 
-// Compatibility wrapper — provides the same callback API as sqlite3
+// Compatibility wrapper. Provides the same callback API as sqlite3
 // so the rest of the 6700+ lines of code work without changes
 const db = {
   run(sql, params, callback) {
@@ -85,7 +85,7 @@ app.use((req, res, next) => {
 });
 app.use(cookieParser());
 // Attaches req.auth when the caller sent a valid token. Does not reject on its
-// own — only routes using requireAuth demand one.
+// own, only routes using requireAuth demand one.
 app.use(readAuth);
 // Serve uploaded question images
 const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
@@ -147,7 +147,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           }
           return done(null, user);
         }
-        // New user — fetch birthday from Google People API to determine role
+        // New user. Fetch birthday from Google People API to determine role
         const createUser = (role) => {
           console.log('[Auth] Creating new user:', email, 'role:', role);
           db.run('INSERT INTO users (email, name, role, google_access_token, google_refresh_token, google_scopes) VALUES (?, ?, ?, ?, ?, ?)',
@@ -164,7 +164,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             });
           });
         };
-        // Always create new users as pending — they'll pick teacher/student on first sign-in
+        // Always create new users as pending. They'll pick teacher/student on first sign-in
         createUser('pending');
       });
     } catch (e) {
@@ -765,7 +765,7 @@ db.run(`ALTER TABLE game_participants ADD COLUMN wager_streak INTEGER DEFAULT 0`
 // Elemental Markets columns
 db.run(`ALTER TABLE game_participants ADD COLUMN mkt_cash REAL DEFAULT 1000`, () => { });
 db.run(`ALTER TABLE game_participants ADD COLUMN mkt_holdings TEXT DEFAULT '{}'`, () => { });
-// Cost basis per symbol — weighted-avg price at which the player currently
+// Cost basis per symbol. Weighted-avg price at which the player currently
 // holds those shares. Used to show profit/loss on the sell modal so players
 // can see what they'd earn or lose before clicking sell.
 db.run(`ALTER TABLE game_participants ADD COLUMN mkt_cost_basis TEXT DEFAULT '{}'`, () => { });
@@ -875,7 +875,7 @@ db.run(`CREATE TABLE IF NOT EXISTS season_badges (
   UNIQUE(user_id, season_number)
 )`);
 
-// AI usage tracking — daily limits per feature
+// AI usage tracking. Daily limits per feature
 db.run(`CREATE TABLE IF NOT EXISTS ai_usage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
@@ -896,8 +896,8 @@ const randomBasicSkin = () => BASIC_SKIN_IDS[Math.floor(Math.random() * BASIC_SK
 // undefined → null. Many endpoints destructure optional fields off req.body
 // and pass them straight through, so when a caller omits a column we'd
 // previously hit a runtime error and the INSERT/UPDATE was lost. We patch
-// the raw db.run/get/all methods so EVERY endpoint — even the ones using
-// the callback API — gets undefined → null sanitisation for free.
+// the raw db.run/get/all methods so EVERY endpoint, even the ones using
+// the callback API. Gets undefined → null sanitisation for free.
 const _safeParams = (params) => (Array.isArray(params) ? params : []).map(v => v === undefined ? null : v);
 const _origRun = db.run.bind(db);
 const _origGet = db.get.bind(db);
@@ -918,7 +918,7 @@ db.all = function (sql, params, cb) {
   return _origAll(sql, params, cb);
 };
 // Treat libsql/Turso network blips (premature close, reset, timeout) as
-// retryable — the libsql client routes every query through HTTP, and we've
+// retryable, the libsql client routes every query through HTTP, and we've
 // been seeing intermittent ERR_STREAM_PREMATURE_CLOSE from cross-fetch.
 function isTransientDbError(err) {
   const s = String(err?.code || err?.errno || err?.message || '');
@@ -926,7 +926,7 @@ function isTransientDbError(err) {
 }
 
 // Callback-style db.get with up to 3 retries on transient errors. Backoff is
-// 150ms × attempt so the third attempt is at 450ms — far enough that a flaky
+// 150ms × attempt so the third attempt is at 450ms. Far enough that a flaky
 // connection has a chance to recover, short enough that the user doesn't
 // notice the retry.
 function dbGetRetry(sql, params, cb, maxRetries = 3) {
@@ -1160,7 +1160,7 @@ async function endRound(game, questions, caller = 'unknown') {
           await dbRun('UPDATE game_participants SET eliminated = 0, lives = 1 WHERE game_id = ? AND user_id = ?', [game.id, p.user_id]);
         }
         await dbRun('UPDATE games SET sudden_death = 1 WHERE id = ?', [game.id]);
-        console.log(`[endRound] SUDDEN DEATH triggered — ${justEliminated.length} players revived`);
+        console.log(`[endRound] SUDDEN DEATH triggered. ${justEliminated.length} players revived`);
         return; // Don't end the game
       }
     }
@@ -1282,7 +1282,7 @@ app.post('/api/auth/register', async (req, res) => {
         transporter.sendMail({
           from: `"Blazes" <${process.env.CONTACT_EMAIL_USER}>`,
           to: email,
-          subject: 'Blazes — Verify Your Email',
+          subject: 'Blazes. Verify Your Email',
           html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
   <h1 style="color:#dc2626;font-size:28px;margin-bottom:8px;">Blazes</h1>
   <h2 style="margin-bottom:16px;">Verify Your Email</h2>
@@ -1408,7 +1408,7 @@ app.post('/api/auth/verify-password', (req, res) => {
   });
 });
 
-// Forgot password — send reset email or redirect to Google verify
+// Forgot password. Send reset email or redirect to Google verify
 const crypto = require('crypto');
 app.post('/api/auth/forgot-password', async (req, res) => {
   let { email } = req.body;
@@ -1442,7 +1442,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     await transporter.sendMail({
       from: `"Blazes" <${process.env.CONTACT_EMAIL_USER}>`,
       to: user.email,
-      subject: 'Blazes — Password Reset',
+      subject: 'Blazes, Password Reset',
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
           <h1 style="color:#dc2626;font-size:28px;margin-bottom:8px;">Blazes</h1>
@@ -1477,7 +1477,7 @@ app.get('/auth/google/reset', (req, res, next) => {
   passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
 });
 
-// Email-OTP Settings unlock — primary path for accounts without a password.
+// Email-OTP Settings unlock. Primary path for accounts without a password.
 // Stores the code hashed (not plain) so a memory dump doesn't leak it.
 const settingsUnlockCodes = new Map(); // userId -> { hash, expires, attempts }
 const SETTINGS_UNLOCK_TTL_MS = 10 * 60 * 1000;
@@ -1515,7 +1515,7 @@ app.post('/api/auth/request-unlock-code', async (req, res) => {
     await transporter.sendMail({
       from: `"Blazes" <${process.env.CONTACT_EMAIL_USER}>`,
       to: user.email,
-      subject: 'Blazes — Settings verification code',
+      subject: 'Blazes. Settings verification code',
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
           <h1 style="color:#dc2626;font-size:28px;margin-bottom:8px;">Blazes</h1>
@@ -1774,7 +1774,7 @@ app.get('/api/activity/:userId/:limit', async (req, res) => {
     );
     const mapped = (games || []).map(g => ({
       id: g.game_code,
-      description: `${g.game_mode === 'survival' ? 'Survival' : g.game_mode === 'elemental_clash' ? 'Elemental Clash' : g.game_mode === 'inferno_tower' ? 'Inferno Tower' : 'Classic'} game (${g.game_code}) — ${g.playerCount} players${g.topScore ? `, top score: ${g.topScore}` : ''}`,
+      description: `${g.game_mode === 'survival' ? 'Survival' : g.game_mode === 'elemental_clash' ? 'Elemental Clash' : g.game_mode === 'inferno_tower' ? 'Inferno Tower' : 'Classic'} game (${g.game_code}). ${g.playerCount} players${g.topScore ? `, top score: ${g.topScore}` : ''}`,
       xpGained: g.topScore || 0,
       created_at: g.started_at || g.created_at,
       status: g.status,
@@ -1871,7 +1871,7 @@ app.get('/api/students/needing-help/:teacherId', (req, res) => {
 //
 // The extension used to come straight from the data-URI subtype, so
 // "data:image/html;base64,..." wrote a .html file into /uploads, which is served
-// from the app's own origin — stored XSS with access to the token in
+// from the app's own origin. Stored XSS with access to the token in
 // localStorage. Both the subtype and the file's magic bytes are now checked.
 const IMAGE_TYPES = {
   png:  [[0x89, 0x50, 0x4e, 0x47]],
@@ -1999,7 +1999,7 @@ app.post('/api/kits/:kitId/questions', (req, res) => {
   );
 });
 
-// Add many questions to a kit in one round-trip — used by Publish Kit.
+// Add many questions to a kit in one round-trip. Used by Publish Kit.
 // Replaces a sequential `for await` loop in CreateKit that took
 // (questions × per-call latency) wall-clock; a 20-question kit on Turso
 // previously took ~5s and now lands in ~300ms.
@@ -2085,7 +2085,7 @@ app.put('/api/kits/:kitId', (req, res) => {
 // Delete a kit (and all its questions).
 //
 // The previous version failed silently whenever the kit had ever been used
-// in a game or referenced by an assignment — every FK pointing at this kit
+// in a game or referenced by an assignment, every FK pointing at this kit
 // or its questions had to be cleared first or the deletes blew up. Now:
 //   1. parallel: drop game_answers for these questions, null out games.kit_id,
 //      null out assignments.kit_id  (preserves game/assignment history but
@@ -2102,7 +2102,7 @@ app.delete('/api/kits/:kitId', requireAuth, async (req, res) => {
     if (kitOwner.teacher_id !== actingUserId(req)) return res.status(403).json({ error: 'Not your kit' });
     // Refuse if assignments still point here. Nulling assignments.kit_id below left
     // them listed (every listing endpoint LEFT JOINs) but permanently unstartable,
-    // because /assignments/:id/play INNER JOINs question_kits — students got
+    // because /assignments/:id/play INNER JOINs question_kits, students got
     // "Assignment not found" forever, including ones already mid-run.
     const inUse = await dbAll('SELECT id, title FROM assignments WHERE kit_id = ?', [kitId]);
     if (inUse && inUse.length) {
@@ -2113,7 +2113,7 @@ app.delete('/api/kits/:kitId', requireAuth, async (req, res) => {
       });
     }
 
-    // Phase 1 — clear dependents/references in parallel
+    // Phase 1. Clear dependents/references in parallel
     await Promise.all([
       dbRun(
         'DELETE FROM game_answers WHERE question_id IN (SELECT id FROM questions WHERE kit_id = ?)',
@@ -2122,9 +2122,9 @@ app.delete('/api/kits/:kitId', requireAuth, async (req, res) => {
       dbRun('UPDATE games SET kit_id = NULL WHERE kit_id = ?', [kitId]),
       dbRun('UPDATE assignments SET kit_id = NULL WHERE kit_id = ?', [kitId]),
     ]);
-    // Phase 2 — questions
+    // Phase 2, questions
     await dbRun('DELETE FROM questions WHERE kit_id = ?', [kitId]);
-    // Phase 3 — the kit itself
+    // Phase 3, the kit itself
     await dbRun('DELETE FROM question_kits WHERE id = ?', [kitId]);
     res.json({ message: 'Kit deleted successfully' });
   } catch (err) {
@@ -2272,10 +2272,10 @@ app.get('/api/games/:gameCode', (req, res) => {
             return { id: q.id, text: q.question_text, options: [], correctAnswer: correctRaw, image_url: q.image_url, answerType: 'short_answer' };
           }
 
-          // Fill blank — multiple choice style (has options) or typed fallback
+          // Fill blank. Multiple choice style (has options) or typed fallback
           if (q.answer_type === 'fill_blank') {
             if (opts.length > 0) {
-              // Has options — treat like MC
+              // Has options, treat like MC
               const letterMatch = correctUpper.match(/[A-D](?!.*[A-D])/);
               const correctIdx = letterMatch ? ['A', 'B', 'C', 'D'].indexOf(letterMatch[0]) : -1;
               if (correctIdx >= 0) {
@@ -2408,7 +2408,7 @@ app.get('/api/games/:gameCode/state', (req, res) => {
   });
 });
 
-// Answer checking for short answer / fill blank types — exact match only (case-insensitive)
+// Answer checking for short answer / fill blank types. Exact match only (case-insensitive)
 app.post('/api/check-answer', (req, res) => {
   const { userAnswer, correctAnswer } = req.body;
   if (!userAnswer || !correctAnswer) return res.json({ isCorrect: false });
@@ -2441,7 +2441,7 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
     if (!question) return res.status(404).json({ error: 'Question not found' });
 
     // Scoring:
-    // Arena mode: flat 10 points per correct (no time pressure — answer at your own pace)
+    // Arena mode: flat 10 points per correct (no time pressure. Answer at your own pace)
     // Other timed modes (classic, survival, wager): 50-100 based on speed. We
     // used to fall back to flat 10 when a question lacked a time_limit, which
     // made classic feel like it just counted by tens. Now we always use the
@@ -2495,7 +2495,7 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
         combo = 0;
       }
 
-      // Combo milestones — bonuses go into score
+      // Combo milestones. Bonuses go into score
       // permBonus is capped at 5 (one-time at streak 7, no stacking on later 7s)
       // Ultimate ready flag: client picks target, server applies via attack endpoint
       const milestones = { 3: { bonus: 5 }, 5: { freeItem: true }, 7: { permBonus: 5 }, 10: { ultimate: true } };
@@ -2506,7 +2506,7 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
       if (milestone) {
         if (milestone.bonus) pointsEarned += milestone.bonus;
         if (milestone.permBonus && permBonus < 5) {
-          // Cap perm bonus at 5 — only awarded the first time you hit streak 7
+          // Cap perm bonus at 5, only awarded the first time you hit streak 7
           extraPermBonus = Math.min(milestone.permBonus, 5 - permBonus);
         }
         if (milestone.freeItem) {
@@ -2625,11 +2625,11 @@ app.post('/api/games/:gameCode/join', async (req, res) => {
       // single game with two "Alex"es on the leaderboard is confusing for
       // the teacher and the room. Compare case-insensitively against any
       // already-joined player who isn't this same user. If a guest is using
-      // a default "Guest"/"Player" name, skip the check — collisions there
+      // a default "Guest"/"Player" name, skip the check, collisions there
       // are expected and the teacher can spot them visually.
       const trimmedName = String(playerName || '').trim();
       const isPlaceholder = !trimmedName || /^(guest|player)$/i.test(trimmedName);
-      // The host always wins any name collision in their own game — their
+      // The host always wins any name collision in their own game, their
       // account name is theirs, and silently failing their auto-join (so they
       // never appear on the leaderboard) is much worse than a duplicate label
       // for the teacher to notice.
@@ -2690,10 +2690,10 @@ app.post('/api/games/:gameCode/join', async (req, res) => {
   });
 });
 
-// Pending-leave timers — give players a 5s grace period after a tab close so a
+// Pending-leave timers. Give players a 5s grace period after a tab close so a
 // quick refresh doesn't show them as "Left" to the teacher. Cleared if the
 // player rejoins within the window. In-memory map; if the server restarts the
-// pending leaves are dropped, which is fine — the player's UI will rejoin.
+// pending leaves are dropped, which is fine, the player's UI will rejoin.
 const pendingLeaves = new Map(); // key: `${gameId}:${userId}` -> timeoutId
 const LEAVE_GRACE_MS = 5000;
 
@@ -2833,7 +2833,7 @@ app.put("/api/games/:gameCode/cancel", (req, res) => {
   );
 });
 
-// End a game — awards placement BB if 10+ participants
+// End a game. Awards placement BB if 10+ participants
 app.put('/api/games/:gameCode/end', (req, res) => {
   const { gameCode } = req.params;
 
@@ -2902,7 +2902,7 @@ app.put('/api/games/:gameCode/end', (req, res) => {
 
 // Host bailed out mid-game. Marks status='ended' and abandoned=1 so the results
 // page can show a "host ended early" message instead of the placement leaderboard.
-// No placement BB awarded — the game wasn't completed normally.
+// No placement BB awarded, the game wasn't completed normally.
 app.put('/api/games/:gameCode/abandon', (req, res) => {
   const { gameCode } = req.params;
   db.run(
@@ -2917,7 +2917,7 @@ app.put('/api/games/:gameCode/abandon', (req, res) => {
   );
 });
 
-// Submit final score for game — awards BB based on new economy
+// Submit final score for game. Awards BB based on new economy
 app.post('/api/games/:gameCode/answers', async (req, res) => {
   const { gameCode } = req.params;
   const { userId, finalScore, questionsAnswered, correctCount, totalQuestions } = req.body;
@@ -2946,10 +2946,10 @@ app.post('/api/games/:gameCode/answers', async (req, res) => {
     // server already accumulated the correct value via /api/games/:gameCode/answer
     // (which applies the 50-100 speed curve per correct answer). The client-
     // computed `finalScore` uses a different formula (pointsPerCorrectAnswer
-    // default 100) and overwriting clobbered the real tally — that's why
+    // default 100) and overwriting clobbered the real tally, that's why
     // classic-mode results were showing 10 instead of the real score.
 
-    // Assignment completion check — must run before BB economy early returns
+    // Assignment completion check. Must run before BB economy early returns
     if (game.assignment_id) {
       try {
         const assignment = await dbGet('SELECT * FROM assignments WHERE id = ?', [game.assignment_id]);
@@ -3295,7 +3295,7 @@ app.post('/api/games/:gameCode/answers', async (req, res) => {
   });
 });
 
-// Get full game results (all participants) — used by teacher results page
+// Get full game results (all participants). Used by teacher results page
 app.get('/api/games/:gameCode/results', (req, res) => {
   const { gameCode } = req.params;
 
@@ -3460,7 +3460,7 @@ app.get('/api/games/:gameCode/student/:userId/answers', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!game) return res.status(404).json({ error: 'Game not found' });
 
-    // Get answers — join with questions so the client can render the FULL
+    // Get answers. Join with questions so the client can render the FULL
     // question (text + options + which one was correct) alongside what the
     // student picked. This is what powers the Plus-tier "review your game"
     // detail view.
@@ -3538,7 +3538,7 @@ app.get('/api/games/:gameCode/ai-overview/:userId', async (req, res) => {
         const idx = 'ABCD'.indexOf(correctAns.toUpperCase());
         correctAns = [a.option_a, a.option_b, a.option_c, a.option_d][idx] || correctAns;
       }
-      return `${i + 1}. "${a.question_text}" — Student answered: "${a.answer}" — ${a.is_correct ? 'CORRECT' : `WRONG (correct: ${correctAns})`} — ${a.time_taken ? a.time_taken + 's' : 'N/A'}`;
+      return `${i + 1}. "${a.question_text}". Student answered: "${a.answer}". ${a.is_correct ? 'CORRECT' : `WRONG (correct: ${correctAns})`}. ${a.time_taken ? a.time_taken + 's' : 'N/A'}`;
     }).join('\n');
 
     const result = await groq.chat.completions.create({
@@ -3546,13 +3546,13 @@ app.get('/api/games/:gameCode/ai-overview/:userId', async (req, res) => {
       messages: [
         {
           role: 'system',
-          content: `You are a friendly, encouraging study coach giving a student a quick review of their quiz performance. Be concise and helpful. Use a warm, supportive tone — this is for students aged 10-16.
+          content: `You are a friendly, encouraging study coach giving a student a quick review of their quiz performance. Be concise and helpful. Use a warm, supportive tone, this is for students aged 10-16.
 
 Format your response exactly like this:
 1. Start with a one-line overall verdict (encouraging even if they did poorly)
-2. "Strengths:" — 1-2 bullet points on what they did well
-3. "To Improve:" — 1-2 bullet points on what to study more, referencing specific topics they got wrong
-4. "Quick Tip:" — One actionable study tip based on their mistakes
+2. "Strengths:". 1-2 bullet points on what they did well
+3. "To Improve:". 1-2 bullet points on what to study more, referencing specific topics they got wrong
+4. "Quick Tip:", One actionable study tip based on their mistakes
 
 Keep the entire response under 150 words. No markdown headers, just plain text with the labels above.`
         },
@@ -3612,7 +3612,7 @@ app.post('/api/blazesbucks/claim-playtime', requireAuth, async (req, res) => {
   const secondsSinceLast = (now - last) / 1000;
 
   if (secondsSinceLast < PERIOD_SECONDS * 0.9) {
-    // Too soon — duplicate call, ignore it
+    // Too soon. Duplicate call, ignore it
     console.log(`[BB] Rejected duplicate claim for user ${userId} (${secondsSinceLast.toFixed(1)}s since last claim, period=${PERIOD_SECONDS}s)`);
     db.get('SELECT balance FROM blazes_bucks WHERE user_id = ?', [userId], (err, row) => {
       res.json({ bbEarned: 0, balance: row?.balance || 0 });
@@ -4131,7 +4131,7 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
     const multiGames5 = multiplayerGames.filter(g => g.pcount >= 5);
     const joinedMulti = multiplayerGames.some(g => g.pcount >= 5);
 
-    // Wins in multiplayer (5+ players) — check if user is top scorer
+    // Wins in multiplayer (5+ players). Check if user is top scorer
     let multiWins = 0;
     for (const g of multiGames5) {
       const top = await q('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score DESC LIMIT 1', [g.id]);
@@ -4380,7 +4380,7 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
         // Send notification for achievement
         if (await shouldNotify(userId, 'achievement')) {
           await dbRun('INSERT INTO notifications (user_id, type, title, message) VALUES (?, ?, ?, ?)',
-            [userId, 'achievement', 'Achievement Unlocked!', `"${ach.name}" — +${ach.bb} BlazesBucks`]);
+            [userId, 'achievement', 'Achievement Unlocked!', `"${ach.name}". +${ach.bb} BlazesBucks`]);
         }
         console.log('[Achievement] Unlocked', ach.id, 'for user', userId, '(+' + ach.bb + ' BB)');
       }
@@ -4468,7 +4468,7 @@ async function getTeacherClassroomIds(teacherId) {
 
 app.post('/api/classrooms', requireAuth, async (req, res) => {
   // Owner is the caller, from the token. Accepting a body teacherId let anyone
-  // create a classroom "owned" by any id — step one of a chain that ended in
+  // create a classroom "owned" by any id. Step one of a chain that ended in
   // overwriting another student's password.
   const teacherId = actingUserId(req);
   const { name, subject, gradeLevel, imageUrl } = req.body;
@@ -4710,7 +4710,7 @@ app.post('/api/classrooms/:classroomId/students/:studentId/reset-password', requ
   try {
     const classroom = await dbGet('SELECT teacher_id FROM classrooms WHERE id = ?', [req.params.classroomId]);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
-    // Identity from the token, never the body — a body teacherId could simply
+    // Identity from the token, never the body, a body teacherId could simply
     // name the owner of a classroom the attacker had just created.
     if (req.auth?.role !== 'teacher' || !(await teacherHasClassroom(actingUserId(req), req.params.classroomId))) {
       return res.status(403).json({ error: 'Not your classroom' });
@@ -4888,7 +4888,7 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
   try {
     const { teacherId } = req.params;
 
-    // Get all classroom student IDs first — most other queries depend on the studentIds list.
+    // Get all classroom student IDs first, most other queries depend on the studentIds list.
     const classroomStudents = await dbAll(`
       SELECT DISTINCT cs.student_id, u.name, u.email, c.name AS classroom_name, c.id AS classroom_id
       FROM classroom_students cs
@@ -4902,7 +4902,7 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
     const placeholders = hasStudents ? studentIds.map(() => '?').join(',') : '';
     const teacherScope = `(g.host_id=${parseInt(teacherId)} OR g.kit_id IN (SELECT k.id FROM question_kits k WHERE k.teacher_id=${parseInt(teacherId)}))`;
 
-    // Run every independent query in parallel — drops wall time from sum-of-queries to slowest-query.
+    // Run every independent query in parallel. Drops wall time from sum-of-queries to slowest-query.
     const [
       studentsRaw,
       assignmentStats,
@@ -5009,7 +5009,7 @@ app.get('/api/analytics/teacher/:teacherId', async (req, res) => {
         GROUP BY a.id ORDER BY a.due_date DESC LIMIT 20
       `, [teacherId, teacherId]),
 
-      // Recent games — only include games where at least one answer was
+      // Recent games, only include games where at least one answer was
       // submitted. A teacher who clicked Start but no students answered
       // anything is noise, not a "recent game" worth showing.
       // game_name is pulled out of the settings JSON (every setup page writes
@@ -5833,7 +5833,7 @@ app.post('/api/auth/resend-verification', async (req, res) => {
     await transporter.sendMail({
       from: `"Blazes" <${process.env.CONTACT_EMAIL_USER}>`,
       to: email,
-      subject: 'Blazes — Verify Your Email',
+      subject: 'Blazes. Verify Your Email',
       html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;"><h1 style="color:#dc2626;font-size:28px;margin-bottom:8px;">Blazes</h1><h2 style="margin-bottom:16px;">Verify Your Email</h2><p>Click below to verify:</p><a href="${verifyUrl}" style="display:inline-block;background:#dc2626;color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:bold;margin:20px 0;">Verify Email</a></div>`,
     });
     res.json({ success: true });
@@ -5854,7 +5854,7 @@ app.get('/api/flashcards/:kitId', async (req, res) => {
 
     const kit = await dbGet('SELECT title, description FROM question_kits WHERE id = ?', [req.params.kitId]);
     const allQuestions = await dbAll('SELECT id, question_text, answer_type, correct_answer, option_a, option_b, option_c, option_d, image_url FROM questions WHERE kit_id = ?', [req.params.kitId]);
-    // Filter out audio questions — AI can't listen to audio clips
+    // Filter out audio questions. AI can't listen to audio clips
     const questions = (allQuestions || []).filter(q => q.answer_type !== 'audio');
     if (questions.length === 0) return res.json({ cards: [], total: 0 });
 
@@ -5921,7 +5921,7 @@ Your job: create exactly ${requestedCount} flashcards. Each flashcard has:
 
 Important rules:
 - These are FLASHCARDS, not quiz questions. The front should ask something simple and direct.
-- The back should be a concise, memorizable answer — a word, phrase, or 1-2 sentences max.
+- The back should be a concise, memorizable answer, a word, phrase, or 1-2 sentences max.
 - You can generate MORE flashcards than source questions by breaking down complex topics, testing different angles, or creating definition/concept cards from the material.
 - You can also generate FEWER by focusing on the most important concepts.
 - Do NOT number them. Do NOT include the question type. Just clean Q&A.
@@ -6015,7 +6015,7 @@ app.get('/api/export/stats/:userId', async (req, res) => {
     // ── Build workbook ──
     const wb = XLSX.utils.book_new();
 
-    // 1. Overview — separated Solo vs Multiplayer
+    // 1. Overview. Separated Solo vs Multiplayer
     const ov = [
       ['BLAZES STATS REPORT', '', ''], [],
       ['PROFILE', '', ''],
@@ -6554,7 +6554,7 @@ ${sourceText.substring(0, 8000)}
 
 REQUIREMENTS:
 - Difficulty: ${difficulty}
-- Use a VARIETY of question types from the list above. Spread them out evenly — do NOT just use one type.
+- Use a VARIETY of question types from the list above. Spread them out evenly. Do NOT just use one type.
 - For multiple_choice: provide 4 options (option_a, option_b, option_c, option_d). correct_answer is the letter: "A", "B", "C", or "D"
 - For true_false: correct_answer is "True" or "False". No options needed.
 - For multi_select: provide 4 options (option_a through option_d). correct_answer is the correct letters combined, e.g. "AC" or "ABD"
@@ -6927,7 +6927,7 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
             }
           }
         }
-        console.log(`[Stripe] Blazes Plus activated for user ${userId}, expires ${expires} — all pack skins granted`);
+        console.log(`[Stripe] Blazes Plus activated for user ${userId}, expires ${expires}, all pack skins granted`);
       } else if (plan.startsWith('bb_')) {
         const bb = parseInt(session.metadata?.bb) || 0;
         if (bb > 0) {
@@ -7096,7 +7096,7 @@ app.put('/api/auth/change-password', requireAuth, async (req, res) => {
 
 app.delete('/api/auth/delete-account/:userId', requireAuth, async (req, res) => {
   try {
-    // Ignore the :userId in the path — you may only delete your own account.
+    // Ignore the :userId in the path. You may only delete your own account.
     const userId = actingUserId(req);
     const { password } = req.body;
     const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
@@ -7191,7 +7191,7 @@ app.post('/api/contact', async (req, res) => {
     await transporter.sendMail({
       from: `"Blazes Contact" <${process.env.CONTACT_EMAIL_USER}>`,
       to: process.env.CONTACT_EMAIL_USER,
-      subject: `[Blazes] ${esc(category)}${name ? ` — from ${esc(name)}` : ''}`,
+      subject: `[Blazes] ${esc(category)}${name ? `, from ${esc(name)}` : ''}`,
       html: `
         <h2>New Contact Form Submission</h2>
         ${name ? `<p><strong>Name:</strong> ${esc(name)}</p>` : '<p><strong>Name:</strong> <em>Not provided</em></p>'}
@@ -7212,7 +7212,7 @@ app.post('/api/contact', async (req, res) => {
 
 // =========== ARENA MODE ===========
 // Costs in score (only currency). Earn 10/correct → prices tuned for ~2-4 question commitments.
-// Damage > cost so attacks profit you relative to target — but absolute spend hurts.
+// Damage > cost so attacks profit you relative to target, but absolute spend hurts.
 const ARENA_ITEMS = {
   lightning:  { name: 'Lightning Strike', cost: 15, damage: 25 },
   fireball:   { name: 'Fireball',         cost: 30, damage: 15, multiTarget: 3 },
@@ -7255,7 +7255,7 @@ app.get('/api/games/:gameCode/arena/state/:userId', async (req, res) => {
       [game.id]
     );
 
-    // Recent incoming attacks (last 10s) — for screen-effect notifications
+    // Recent incoming attacks (last 10s), for screen-effect notifications
     const incomingAttacks = await dbAll(
       `SELECT id, attacker_id, item_key, score_delta, created_at FROM arena_attacks
        WHERE game_id = ? AND target_id = ? AND attacker_id != target_id
@@ -7322,7 +7322,7 @@ app.post('/api/games/:gameCode/arena/buy', async (req, res) => {
       await dbRun('UPDATE game_participants SET arena_double_down = arena_double_down + 1 WHERE game_id = ? AND user_id = ?', [game.id, userId]);
     }
 
-    // Items that need a target (lightning, fireball, mirror) — store as inventory
+    // Items that need a target (lightning, fireball, mirror). Store as inventory
     if (item.damage || item.effect === 'mirror') {
       await dbRun('INSERT INTO arena_attacks (game_id, attacker_id, target_id, item_key, score_delta) VALUES (?, ?, ?, ?, 0)', [game.id, userId, userId, itemKey]);
     }
@@ -7621,7 +7621,7 @@ function computeFireLevel(startedAt, settings) {
     currentInterval = Math.max(minInterval, currentInterval - accelAmount);
     time = nextAccel;
   }
-  // Start fire below players — give a 3-floor head start grace period
+  // Start fire below players. Give a 3-floor head start grace period
   return Math.max(0, fireFloor - 3);
 }
 
@@ -7664,14 +7664,14 @@ app.get('/api/games/:gameCode/inferno-state', async (req, res) => {
           for (const p of aliveBefore) {
             await dbRun('UPDATE game_participants SET tower_floor = ? WHERE game_id = ? AND user_id = ?', [fireLevel + 1, game.id, p.user_id]);
           }
-          console.log(`[inferno] SUDDEN DEATH — ${aliveBefore.length} players revived at floor ${fireLevel + 1}`);
+          console.log(`[inferno] SUDDEN DEATH. ${aliveBefore.length} players revived at floor ${fireLevel + 1}`);
         } else if (aliveAfter.count === 0 && aliveBefore.length >= 2 && game.sudden_death == 1) {
           // Second tie after sudden death → TIEBREAKER mode (keep their actual floor)
           for (const p of aliveBefore) {
             await dbRun('UPDATE game_participants SET is_ghost = 0 WHERE game_id = ? AND user_id = ?', [game.id, p.user_id]);
           }
           await dbRun(`UPDATE games SET sudden_death = 2, round_started_at = datetime('now', '+7 seconds') WHERE id = ?`, [game.id]);
-          console.log(`[inferno] TIEBREAKER — ${aliveBefore.length} players enter final question`);
+          console.log(`[inferno] TIEBREAKER. ${aliveBefore.length} players enter final question`);
         } else {
           await dbRun(`UPDATE games SET status = 'ended', ended_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'started'`, [game.id]);
           game.status = 'ended';
@@ -7746,7 +7746,7 @@ app.post('/api/games/:gameCode/inferno-answer', async (req, res) => {
         }
       }
       if (isCorrect) {
-        // This player wins — eliminate everyone else
+        // This player wins. Eliminate everyone else
         await dbRun('UPDATE game_participants SET is_ghost = 1 WHERE game_id = ? AND user_id != ?', [game.id, userId]);
         await dbRun('UPDATE game_participants SET score = score + 10 WHERE game_id = ? AND user_id = ?', [game.id, userId]);
         await dbRun(`UPDATE games SET status = 'ended', ended_at = CURRENT_TIMESTAMP WHERE id = ?`, [game.id]);
@@ -7912,7 +7912,7 @@ const MKT_NEWS_TEMPLATES = [
   { msg: 'Massive thunderstorm sweeps in',        impact: { BLT: 0.24, WND: 0.10, FRZ: -0.06 }, ticks: 5 },
   { msg: 'Tsunami warning on the horizon',        impact: { AQR: 0.22, TER: -0.12, FRZ: 0.08 }, ticks: 6 },
   { msg: 'Earthquake rattles foundations',        impact: { TER: -0.18, FYR: 0.06, BLT: 0.08 }, ticks: 6 },
-  { msg: 'Geothermal boom — earth heats up',      impact: { TER: 0.20, FYR: 0.10, FRZ: -0.05 }, ticks: 6 },
+  { msg: 'Geothermal boom. Earth heats up',      impact: { TER: 0.20, FYR: 0.10, FRZ: -0.05 }, ticks: 6 },
   { msg: 'Steady trade winds bolster transport',  impact: { WND: 0.15, FRZ: 0.05 }, ticks: 5 },
   { msg: 'Charged ions disrupt grids',            impact: { BLT: 0.18, TER: -0.06 }, ticks: 5 },
   { msg: 'Glacial retreat opens new routes',      impact: { FRZ: -0.14, AQR: 0.10, TER: 0.04 }, ticks: 7 },
@@ -7925,7 +7925,7 @@ const MKT_HISTORY_LEN = 90; // ~3 minutes of history at 2s/tick
 const marketsState = new Map();
 
 function gaussian(mean = 0, std = 1) {
-  // Box-Muller — fine for our uses
+  // Box-Muller, fine for our uses
   const u = 1 - Math.random();
   const v = Math.random();
   return mean + std * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
@@ -7965,10 +7965,10 @@ function shiftRegime(state) {
     else { state.regime = 'normal'; state.regimeTicksLeft = 25 + Math.floor(Math.random() * 25); }
   }
   if (state.regime === 'crash') {
-    state.eventLog.unshift({ id: Date.now() + Math.random(), msg: 'MARKET CRASH — all elements down sharply', impact: {}, kind: 'crash' });
+    state.eventLog.unshift({ id: Date.now() + Math.random(), msg: 'MARKET CRASH, all elements down sharply', impact: {}, kind: 'crash' });
     state.eventLog = state.eventLog.slice(0, 8);
   } else if (state.regime === 'recovery') {
-    state.eventLog.unshift({ id: Date.now() + Math.random(), msg: 'Recovery underway — markets stabilising', impact: {}, kind: 'recovery' });
+    state.eventLog.unshift({ id: Date.now() + Math.random(), msg: 'Recovery underway. Markets stabilising', impact: {}, kind: 'recovery' });
     state.eventLog = state.eventLog.slice(0, 8);
   } else if (state.regime === 'bull') {
     state.eventLog.unshift({ id: Date.now() + Math.random(), msg: 'Bull run begins', impact: {}, kind: 'bull' });
@@ -8036,7 +8036,7 @@ function simulateTick(state) {
 }
 
 // Advance the per-game market by however many ticks have elapsed since the
-// last call. Lazy simulation — no setInterval needed; the next state request
+// last call. Lazy simulation, no setInterval needed; the next state request
 // drives the catch-up.
 function advanceMarket(gameCode) {
   let state = marketsState.get(gameCode);
@@ -8238,7 +8238,7 @@ app.post('/api/games/:gameCode/markets/sell', async (req, res) => {
 });
 
 // POST /api/games/:gameCode/markets/answer { userId, questionId, isCorrect, timeTaken }
-// Cash payout for question outcomes — the only way to add capital to your portfolio.
+// Cash payout for question outcomes, the only way to add capital to your portfolio.
 app.post('/api/games/:gameCode/markets/answer', async (req, res) => {
   try {
     const { gameCode } = req.params;
@@ -8247,7 +8247,7 @@ app.post('/api/games/:gameCode/markets/answer', async (req, res) => {
     if (!game) return res.status(404).json({ error: 'Game not found' });
     if (game.status === 'ended') return res.status(400).json({ error: 'Game has ended' });
 
-    // Compute reward — base $50 correct, −$10 wrong, +$5 if answered fast
+    // Compute reward. Base $50 correct, −$10 wrong, +$5 if answered fast
     let reward = 0;
     if (isCorrect) {
       reward = 50;
@@ -8281,13 +8281,13 @@ app.post('/api/games/:gameCode/markets/answer', async (req, res) => {
 
 
 // ═══════════════════════════════════════════════════════════════════════════
-// LIVE MODES — Vault, Undertow, Fracture, Eclipse
+// LIVE MODES. Vault, Undertow, Fracture, Eclipse
 //
 // Four endless, simultaneous modes sharing one engine. Design rules they all
 // obey, which is why they can share it:
 //
 //  * A mode only ever sees (correct, milliseconds). It never learns HOW the
-//    answer was given, so every question type works — multiple choice through
+//    answer was given, so every question type works. Multiple choice through
 //    matching and audio alike.
 //  * No mode ends. Standings therefore cannot be lifetime totals or the first
 //    player to join would lead forever. Every score DECAYS toward zero on a
@@ -8306,7 +8306,7 @@ const LIVE_MODES = new Set(['vault', 'undertow', 'fracture', 'eclipse']);
 
 // Score half-life in seconds. Slower modes decay slower.
 // Eclipse's score is derived from its radius, so the two MUST decay at the same
-// rate — with different half-lives the radius faded faster and a correct answer
+// rate, with different half-lives the radius faded faster and a correct answer
 // after an idle gap came out as a points LOSS.
 const ECLIPSE_HALFLIFE = 70;
 const LIVE_DECAY_HALFLIFE = { vault: 150, undertow: 110, fracture: 130, eclipse: ECLIPSE_HALFLIFE };
@@ -8546,7 +8546,7 @@ app.post('/api/games/:gameCode/live/answer', requireAuth, async (req, res) => {
     const { gameCode } = req.params;
     // Identity from the token. Taking userId from the body let anyone inflate
     // their own standing, or post `correct: false` as a rival to drive that
-    // rival's score to zero — and the score column feeds placement BlazesBucks.
+    // rival's score to zero, and the score column feeds placement BlazesBucks.
     const userId = actingUserId(req);
     const { questionId, answer, correct, ms } = req.body;
 
@@ -8622,7 +8622,7 @@ app.post('/api/games/:gameCode/live/answer', requireAuth, async (req, res) => {
     } else if (mode === 'undertow') {
       // One shared current flows toward whoever has been fastest lately. Riding
       // it multiplies your points; fighting it divides them. Heavy skins resist
-      // the pull, light skins get swung hardest — in both directions.
+      // the pull, light skins get swung hardest, in both directions.
       shared.recent.push({ userId, ms: answerMs, at: now });
       if (shared.recent.length > 6) shared.recent.shift();
       const fastest = shared.recent.reduce((a, b) => (a && a.ms <= b.ms ? a : b), null);
@@ -8792,7 +8792,7 @@ if (fs.existsSync(clientBuildPath)) {
   console.log('[Static] No frontend build found at', clientBuildPath);
 }
 
-// Global error handler — logs the actual error instead of just "Internal Server Error"
+// Global error handler. Logs the actual error instead of just "Internal Server Error"
 app.use((err, req, res, next) => {
   console.error('[Server Error]', req.method, req.originalUrl, err.stack || err);
   res.status(500).json({ error: 'Internal server error' });
@@ -8838,7 +8838,7 @@ async function initSchema() {
     `CREATE TABLE IF NOT EXISTS arena_attacks (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER NOT NULL, attacker_id INTEGER, target_id INTEGER, item_key TEXT, score_delta INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`,
   ];
 
-  // ALTER TABLE statements — these may fail if column already exists, that's OK
+  // ALTER TABLE statements, these may fail if column already exists, that's OK
   const alterStatements = [
     `ALTER TABLE game_participants ADD COLUMN joined_game_at DATETIME`,
     `ALTER TABLE game_participants ADD COLUMN lives INTEGER DEFAULT 3`,
@@ -8904,7 +8904,7 @@ async function initSchema() {
   console.log('[Schema] Running migrations...');
   for (const sql of alterStatements) {
     try { await tursoClient.execute(sql); } catch (e) {
-      // "duplicate column" or "already exists" errors are expected — ignore them
+      // "duplicate column" or "already exists" errors are expected, ignore them
     }
   }
   console.log('[Schema] Database ready');

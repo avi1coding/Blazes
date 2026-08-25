@@ -116,7 +116,7 @@ export default function AuthCallback() {
           )}
 
           <p className="text-xs text-gray-400 text-center mt-4">
-            You can't change this later — pick what fits you best.
+            You can't change this later. Pick what fits you best.
           </p>
         </div>
       </div>

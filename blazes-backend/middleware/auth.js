@@ -2,8 +2,7 @@
 //
 // Before this existed, login/register/OAuth all handed back the literal string
 // 'jwt-token-here' and every route read the acting user's id straight out of the
-// request body or URL. Anyone could pass someone else's id and act as them —
-// including changing their password or deleting their account outright.
+// request body or URL. Anyone could pass someone else's id and act as them, // including changing their password or deleting their account outright.
 //
 // The rule this enforces: identity comes from a signed token the server issued,
 // never from something the caller can type.
@@ -29,7 +28,7 @@ function signToken(user) {
 
 /**
  * Populates req.auth from a Bearer token when one is present and valid.
- * Never rejects — routes that have not been migrated yet keep working.
+ * Never rejects. Routes that have not been migrated yet keep working.
  */
 function readAuth(req, _res, next) {
   const header = req.headers.authorization || '';

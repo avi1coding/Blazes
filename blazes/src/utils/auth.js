@@ -16,7 +16,7 @@ export function authHeaders(extra = {}) {
  * Returns true when it handled the response, so callers can bail out.
  *
  * Accounts signed in before tokens were real hold the old 'jwt-token-here'
- * placeholder, which no longer verifies — they land here once and re-login.
+ * placeholder, which no longer verifies, they land here once and re-login.
  */
 export function handleUnauthorized(res) {
   if (res?.status !== 401) return false;

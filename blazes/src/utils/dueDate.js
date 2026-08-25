@@ -1,7 +1,7 @@
 // Assignment deadlines are stored as a separate `due_date` (YYYY-MM-DD) and
 // `due_time` (HH:MM). Passing the bare date to `new Date()` parses it as UTC
 // midnight and drops the time entirely, so an assignment due 2026-08-20 23:59
-// read as overdue from 20:00 EDT on 08-19 — nearly 28 hours early.
+// read as overdue from 20:00 EDT on 08-19. Nearly 28 hours early.
 //
 // Joining the two parts without a 'Z' makes the engine parse it as local time,
 // which is what both the teacher who set it and the student reading it expect.

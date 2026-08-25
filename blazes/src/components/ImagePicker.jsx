@@ -3,24 +3,24 @@ import { ImagePlus, Link as LinkIcon, Search, UploadCloud, X, Clipboard } from '
 
 /**
  * Unified image input. Supports five ways to add an image:
- *  1. Paste a URL                  — text field
- *  2. Upload a file                — file picker button
- *  3. Drag & drop                  — anywhere on the drop zone
- *  4. Clipboard paste (Cmd/Ctrl+V) — auto-handled when the picker is focused
- *  5. Search Google Images         — button opens a new tab; user copies the
+ *  1. Paste a URL                 , text field
+ *  2. Upload a file               . File picker button
+ *  3. Drag & drop                 . Anywhere on the drop zone
+ *  4. Clipboard paste (Cmd/Ctrl+V). Auto-handled when the picker is focused
+ *  5. Search Google Images        . Button opens a new tab; user copies the
  *                                    URL back into the picker (Google blocks
  *                                    embedding their image search, so opening
  *                                    in a new tab is the only legitimate option)
  *
  * Props:
- *   value         — current image URL (string, '' when empty)
- *   onChange      — called with new URL whenever the user picks/uploads
- *   searchQuery   — optional; pre-fills the Google Images search
- *   uploadEndpoint — defaults to /api/upload-image; pass null to skip the
+ *   value        . Current image URL (string, '' when empty)
+ *   onChange     . Called with new URL whenever the user picks/uploads
+ *   searchQuery  . Optional; pre-fills the Google Images search
+ *   uploadEndpoint. Defaults to /api/upload-image; pass null to skip the
  *                    server upload and use a base64 data URL instead.
- *   accept        — defaults to 'image/*'
- *   onError       — optional toast/error callback
- *   compact       — when true, renders a single-row layout (used inline)
+ *   accept       . Defaults to 'image/*'
+ *   onError      . Optional toast/error callback
+ *   compact      , when true, renders a single-row layout (used inline)
  */
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
@@ -85,7 +85,7 @@ export default function ImagePicker({
     }
   }, [onChange, onError, uploadEndpoint]);
 
-  // Clipboard paste — only fires when the picker has been "engaged" (clicked
+  // Clipboard paste, only fires when the picker has been "engaged" (clicked
   // into / focused). Avoids hijacking pastes elsewhere on the page.
   useEffect(() => {
     if (!focused) return;
@@ -102,7 +102,7 @@ export default function ImagePicker({
           }
         }
       }
-      // Plain text paste — if it looks like a URL, use it directly so a quick
+      // Plain text paste, if it looks like a URL, use it directly so a quick
       // "right-click → copy image address → paste" works in this picker too.
       const text = e.clipboardData?.getData('text/plain');
       if (text && /^https?:\/\//i.test(text.trim())) {
@@ -138,7 +138,7 @@ export default function ImagePicker({
   const openGoogleImages = () => {
     // getSearchQuery is read at click time. AddQuestionForm's question field is an
     // uncontrolled input, so a plain searchQuery prop was a snapshot from the parent's
-    // last render — usually '' — and every search ran on "free stock image".
+    // last render. Usually '', and every search ran on "free stock image".
     const live = typeof getSearchQuery === 'function' ? getSearchQuery() : searchQuery;
     const q = encodeURIComponent((live || '').trim() || 'free stock image');
     window.open(`https://www.google.com/search?tbm=isch&q=${q}`, '_blank', 'noopener,noreferrer');
@@ -171,7 +171,7 @@ export default function ImagePicker({
         </div>
       )}
 
-      {/* Drop zone — only when no image yet, to keep the UI compact */}
+      {/* Drop zone, only when no image yet, to keep the UI compact */}
       {!value && (
         <div
           onDragOver={onDragOver}

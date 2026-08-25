@@ -41,7 +41,7 @@ export default function ProfilePage() {
   const backPath = user.role === 'teacher' ? '/home/teacher' : '/home/student';
   // Prefer in-app history so the back arrow returns to the page the user came
   // from. location.key === 'default' means this was the first navigation in
-  // this tab — no history to pop, so fall back to the role-appropriate home.
+  // this tab, no history to pop, so fall back to the role-appropriate home.
   const goBack = () => {
     if (location.key !== 'default') navigate(-1);
     else navigate(backPath);

@@ -14,9 +14,9 @@ function getFullImageUrl(url) {
  * as { correct, ms, answer }.
  *
  * The point of this component is that a game mode never has to know HOW an
- * answer was given. Modes built on it work with every question type — multiple
+ * answer was given. Modes built on it work with every question type, multiple
  * choice, true/false, short answer, fill blank, math, multi-select, image
- * labels, ordering, matching and audio — because all they receive is whether it
+ * labels, ordering, matching and audio, because all they receive is whether it
  * was right and how long it took.
  *
  * Render it with a `key` that changes per question, e.g.
@@ -38,7 +38,7 @@ export default function QuestionView({ question, questionNumber = 1, onAnswer, o
   const [answered, setAnswered] = useState(false);
   const [correct, setCorrect] = useState(null);
   const [picked, setPicked] = useState(null);
-  // Set on mount rather than in the initialiser — Date.now() during render is
+  // Set on mount rather than in the initialiser. Date.now() during render is
   // impure, and the clock should start when the question actually appears.
   const startedAt = useRef(0);
   const reportedRef = useRef(false);
@@ -104,7 +104,7 @@ export default function QuestionView({ question, questionNumber = 1, onAnswer, o
       const ok = Array.isArray(pairs) && pairs.every(p => matchSel[p.left] === p.right);
       return report(ok, JSON.stringify(matchSel));
     }
-    // short_answer / fill_blank — exact first, then the server's checker
+    // short_answer / fill_blank. Exact first, then the server's checker
     const exact = String(value).trim().toLowerCase() === String(question.correctAnswer).toLowerCase();
     if (exact) return report(true, String(value));
     try {

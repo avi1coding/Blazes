@@ -22,7 +22,7 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 export default function AddQuestionForm({
   kit,
   tier = 'free',
-  ownerEndpoint, // e.g. `kits/teacher/${user.id}` or `kits/student/${user.id}` — for refreshing the kit list
+  ownerEndpoint, // e.g. `kits/teacher/${user.id}` or `kits/student/${user.id}`, for refreshing the kit list
   onQuestionAdded,
   onUpgradePrompt,
 }) {

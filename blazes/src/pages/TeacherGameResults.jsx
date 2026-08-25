@@ -188,7 +188,7 @@ export default function TeacherGameResults() {
                     </div>
                 )}
 
-                {/* View Stats — opens the shared GameStatsModal (same UI used
+                {/* View Stats. Opens the shared GameStatsModal (same UI used
                     by the Recent Games table on the teacher home page). */}
                 <div className="mb-6">
                     <button
@@ -200,7 +200,7 @@ export default function TeacherGameResults() {
                     </button>
                 </div>
 
-                {/* Host abandoned the session — show notice instead of leaderboard */}
+                {/* Host abandoned the session. Show notice instead of leaderboard */}
                 {results?.abandoned && (
                     <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border-2 border-orange-200 text-center">
                         <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -214,7 +214,7 @@ export default function TeacherGameResults() {
                     </div>
                 )}
 
-                {/* Full Leaderboard — only when the game ended normally */}
+                {/* Full Leaderboard, only when the game ended normally */}
                 {!results?.abandoned && sorted.length > 0 && (
                     <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200">
                         <div className="flex items-center gap-2 mb-6">
@@ -294,7 +294,7 @@ export default function TeacherGameResults() {
                 )}
             </div>
 
-            {/* Shared Game Stats modal — same component used from
+            {/* Shared Game Stats modal. Same component used from
                 TeacherHome's Recent Games table for consistency. */}
             {showStats && (
                 <GameStatsModal gameCode={gameCode} onClose={() => setShowStats(false)} pro={isPro} />

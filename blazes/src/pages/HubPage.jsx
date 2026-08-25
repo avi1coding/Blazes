@@ -7,7 +7,7 @@ import AchievementsMap from './AchievementsMap';
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
 // Read user once, synchronously. localStorage.getItem returns null when missing
-// (safe — JSON.parse(null) returns null), and a try/catch guards against corrupted
+// (safe. JSON.parse(null) returns null), and a try/catch guards against corrupted
 // payloads. Returning here means the very first render already has the user, no
 // white-screen flash before a useEffect kicks in.
 function readStoredUser() {
@@ -124,14 +124,14 @@ function LevelsView({ progress, blazesBucks, isPro, navigate }) {
   const xpToNext = progress ? Math.max(0, progress.xp_for_next - progress.xp_into_level) : 0;
   const totalXp = progress?.total_xp || 0;
   const dailyPct = progress?.daily_cap > 0 ? Math.min((progress.xp_earned_today / progress.daily_cap) * 100, 100) : 0;
-  // Circular progress geometry — single SVG ring around the level number.
+  // Circular progress geometry. Single SVG ring around the level number.
   const ringR = 92;
   const ringC = 2 * Math.PI * ringR;
   const ringFilled = (xpPct / 100) * ringC;
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      {/* Hero level card — circular ring around a giant level number */}
+      {/* Hero level card. Circular ring around a giant level number */}
       <div className="relative overflow-hidden bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 rounded-3xl p-6 sm:p-8 text-white shadow-2xl">
         {/* Decorative background sparkles */}
         <div className="absolute inset-0 opacity-25 pointer-events-none">
@@ -215,7 +215,7 @@ function LevelsView({ progress, blazesBucks, isPro, navigate }) {
         </div>
       </div>
 
-      {/* Go Plus — the only route off this page. Pro users already have it. */}
+      {/* Go Plus, the only route off this page. Pro users already have it. */}
       {!isPro && (
         <div className="bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-700 rounded-2xl p-4 sm:p-5 text-white flex items-center gap-4 shadow-lg">
           <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center flex-shrink-0">
@@ -242,7 +242,7 @@ function UpgradeCard({ navigate, role }) {
     ? 'Power tools for serious teaching.'
     : 'Stand out, earn faster, collect more.';
 
-  // Feature list — same vocabulary the live /upgrade page uses, distilled to a
+  // Feature list. Same vocabulary the live /upgrade page uses, distilled to a
   // glanceable hub card. Icons make each row scannable.
   const features = isTeacher ? [
     { icon: BarChart3, label: 'Advanced class analytics', desc: 'Per-student insights, response-time heatmaps, deeper trends.' },

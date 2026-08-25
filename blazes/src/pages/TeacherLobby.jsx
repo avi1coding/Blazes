@@ -11,7 +11,7 @@ export default function TeacherLobby() {
     const { gameCode } = useParams();
     const navigate = useNavigate();
 
-    // Lobby music — seamless loop via Web Audio API
+    // Lobby music. Seamless loop via Web Audio API
     const lobbyAudioRef = useRef(null);
     useEffect(() => {
       const s = JSON.parse(localStorage.getItem('blazes_settings') || '{}');
@@ -26,13 +26,13 @@ export default function TeacherLobby() {
     // Warm the browser cache for the in-game music while the teacher is still
     // sitting in the lobby. Without this, GameMusic.mp3 starts downloading
     // only when the monitoring dashboard mounts, so the music doesn't start
-    // until several seconds into the game. Fire-and-forget fetch — we don't
+    // until several seconds into the game. Fire-and-forget fetch, we don't
     // need to use the response, we just want the bytes in the HTTP cache.
     useEffect(() => {
       const ctrl = new AbortController();
       fetch('/audio/GameMusic.mp3', { signal: ctrl.signal, cache: 'force-cache' })
         .then(r => r.arrayBuffer())
-        .catch(() => { /* offline, AbortError, etc. — silent */ });
+        .catch(() => { /* offline, AbortError, etc., silent */ });
       return () => ctrl.abort();
     }, []);
 
@@ -76,7 +76,7 @@ export default function TeacherLobby() {
 
                 // Guard: if this user is not the host, redirect them
                 if (data.host_id && data.host_id !== currentUser.id) {
-                    console.warn(`User ${currentUser.id} is not the host (${data.host_id}) — redirecting to student lobby`);
+                    console.warn(`User ${currentUser.id} is not the host (${data.host_id}). Redirecting to student lobby`);
                     navigate(`/game/lobby/${gameCode}`);
                     return;
                 }
@@ -130,7 +130,7 @@ export default function TeacherLobby() {
     const startGame = async () => {
         // Always read fresh from localStorage to avoid stale state
         const currentUser = JSON.parse(localStorage.getItem('user'));
-        console.log('startGame called — user from localStorage:', currentUser, 'gameCode:', gameCode);
+        console.log('startGame called. User from localStorage:', currentUser, 'gameCode:', gameCode);
 
         if (!currentUser) {
             setToast({ show: true, message: 'Not logged in. Please log in again.', type: 'error' });
@@ -147,7 +147,7 @@ export default function TeacherLobby() {
         // playing we open Monitor first (the per-student dashboard is the
         // primary thing they need next to the gameplay tab), then Present
         // (the projector screen). When the host isn't playing, only Present
-        // needs a popup — monitoring lives in the main tab anyway.
+        // needs a popup. Monitoring lives in the main tab anyway.
         let presentWin = null;
         let monitorWin = null;
         if (currentUser.role === 'teacher') {
@@ -277,7 +277,7 @@ export default function TeacherLobby() {
                                         <span className="font-black text-gray-900">
                                             {(game.settings.timeLimit || game.settings.gameplayTime)
                                                 ? `${Math.floor((game.settings.timeLimit || game.settings.gameplayTime) / 60)}:${((game.settings.timeLimit || game.settings.gameplayTime) % 60).toString().padStart(2, '0')}`
-                                                : '—'}
+                                                : '-'}
                                         </span>
                                     </div>
 
@@ -388,11 +388,11 @@ export default function TeacherLobby() {
                         Cancel
                     </button>
                     <div className="flex-1 flex flex-col gap-2">
-                        {/* Only offer solo where the mode actually allows it — otherwise
+                        {/* Only offer solo where the mode actually allows it, otherwise
                             this contradicted the "needs at least N players" line below. */}
                         {hostPlays && participants.length === 0 && limits.min <= 1 && (
                             <p className="text-center text-sm font-bold text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-                                You're playing — ready to start solo
+                                You're playing. Ready to start solo
                             </p>
                         )}
                         {!hasPlayers && (
@@ -406,7 +406,7 @@ export default function TeacherLobby() {
                             </p>
                         )}
                         <p className="text-center text-xs font-semibold text-gray-400 mb-2">
-                            This mode supports {limits.min}&ndash;{limits.max} players
+                            This mode supports {limits.min} to {limits.max} players
                         </p>
                         <button
                             onClick={startGame}

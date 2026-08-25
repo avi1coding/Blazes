@@ -93,7 +93,7 @@ export default function Contact() {
                 <MessageSquare className="w-6 h-6 text-red-600" strokeWidth={2.5} />
               </div>
               <h3 className="font-black text-gray-900 mb-2">Share Feedback</h3>
-              <p className="text-sm text-gray-600">Have an idea to make Blazes better? We're always listening — especially from students.</p>
+              <p className="text-sm text-gray-600">Have an idea to make Blazes better? We're always listening. Especially from students.</p>
             </div>
           </div>
 

@@ -11,7 +11,7 @@ export default function ClassroomPage() {
   const { classroomId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  // Parsed once — a fresh object each render would give every effect below a new
+  // Parsed once, a fresh object each render would give every effect below a new
   // dependency identity, re-firing them forever and hammering the API.
   const user = useMemo(() => JSON.parse(localStorage.getItem('user') || 'null'), []);
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -48,7 +48,7 @@ export default function ClassroomPage() {
   // validateAssignment, and lets the native picker grey out the rest).
   // Local time, not toISOString(): <input type="date"> is local, and a UTC date
   // greyed out today for anyone west of UTC after their evening rolled past midnight
-  // UTC — a NY teacher at 8pm could not pick a deadline of tonight.
+  // UTC, a NY teacher at 8pm could not pick a deadline of tonight.
   const todayStr = localDateInputValue();
   const maxDateStr = useMemo(() => {
     const d = new Date();
@@ -112,7 +112,7 @@ export default function ClassroomPage() {
     fetchClassroom();
   };
 
-  // Returns a { field: message } map — empty means valid. Each field is checked
+  // Returns a { field: message } map. Empty means valid. Each field is checked
   // on its own so the error names only what's actually missing.
   const validateAssignment = (form) => {
     const errors = {};
@@ -150,7 +150,7 @@ export default function ClassroomPage() {
         const oneYearOut = new Date();
         oneYearOut.setFullYear(oneYearOut.getFullYear() + 1);
         if (due.getTime() < Date.now()) {
-          // Always report under Due Date — that's the field people look at, even
+          // Always report under Due Date. That's the field people look at, even
           // when it's the time-of-day that pushed the deadline into the past.
           errors.dueDate = 'Due date is in the past.';
         } else if (due > oneYearOut) {
@@ -193,7 +193,7 @@ export default function ClassroomPage() {
       setToast({ show: true, message: 'Assignment created', type: 'success' });
       fetchAssignments();
     } catch {
-      setToast({ show: true, message: 'Network error — assignment not created.', type: 'error' });
+      setToast({ show: true, message: 'Network error. Assignment not created.', type: 'error' });
     } finally {
       setCreatingAssignment(false);
     }
@@ -222,9 +222,9 @@ export default function ClassroomPage() {
       setFormErrors(e => ({ ...e, kitId: undefined }));
       setInlineKit({ title: '', subject: '' });
       setShowInlineKit(false);
-      setToast({ show: true, message: 'Kit created and selected — add questions to it from Kits', type: 'success' });
+      setToast({ show: true, message: 'Kit created and selected. Add questions to it from Kits', type: 'success' });
     } catch {
-      setToast({ show: true, message: 'Network error — kit not created.', type: 'error' });
+      setToast({ show: true, message: 'Network error. Kit not created.', type: 'error' });
     } finally {
       setSavingKit(false);
     }
@@ -589,7 +589,7 @@ export default function ClassroomPage() {
                 <StyledSelect
                   value={assignmentForm.kitId}
                   onChange={v => { setAssignmentForm({ ...assignmentForm, kitId: v }); setFormErrors(e => ({ ...e, kitId: undefined })); }}
-                  placeholder={kits.length ? 'Select a kit...' : 'No kits yet — create one'}
+                  placeholder={kits.length ? 'Select a kit...' : 'No kits yet, create one'}
                   options={kits.map(k => ({ value: String(k.id), label: `${k.title} (${k.question_count} q)` }))}
                 />
                 {formErrors.kitId && <p className="text-xs text-red-600 font-semibold mt-1">{formErrors.kitId}</p>}

@@ -13,7 +13,7 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 // by game mode but the result was a kaleidoscope. Now the only thing that
 // changes is the mode label + icon shown in the header; the leaderboard,
 // background, medals, and live feed use a fixed gold/silver/bronze palette
-// the entire app over. Mode data still drives the live feed CONTENT — only
+// the entire app over. Mode data still drives the live feed CONTENT, only
 // the colors are unified.
 const MODE_THEME = {
   classic_timed:    { label: 'Classic Quiz',      icon: Trophy },
@@ -25,37 +25,37 @@ const MODE_THEME = {
   elemental_markets:{ label: 'Elemental Markets', icon: TrendingUp },
 };
 
-// Shared design tokens — the only colors anyone should reach for. Anything
+// Shared design tokens, the only colors anyone should reach for. Anything
 // mode-specific (regime, team color, stock tint) stays inside its own pill.
 // Blazes-themed medal palette: a flame trio instead of metallic gold/silver/
 // bronze. Reads as "fire" the second you walk into the room and matches the
 // red Flame logo + orange CTA buttons across the rest of the app. Constants
 // keep the old names so the rest of the file (and any future imports) doesn't
 // need to chase per-row tints.
-const GOLD   = '#dc2626'; // Blazes red — leader
-const SILVER = '#f97316'; // ember orange — 2nd
-const BRONZE = '#fbbf24'; // amber glow — 3rd
+const GOLD   = '#dc2626'; // Blazes red, leader
+const SILVER = '#f97316'; // ember orange, 2nd
+const BRONZE = '#fbbf24'; // amber glow, 3rd
 
 function modeTheme(mode) {
   return MODE_THEME[mode] || MODE_THEME.classic_timed;
 }
 
-// Background — solid deep navy, a thick gold rule at the very top edge of the
+// Background. Solid deep navy, a thick gold rule at the very top edge of the
 // screen, and a soft vignette that frames the leaderboard. No gradients, no
-// patterns, no per-mode tinting — just a clean, focused stage.
+// patterns, no per-mode tinting, just a clean, focused stage.
 function AnimatedBackground() {
   return (
     <>
       {/* Solid base */}
       <div className="fixed inset-0 -z-10" style={{ backgroundColor: '#0a1024' }} />
 
-      {/* Vignette — pure inset shadow, no color fade */}
+      {/* Vignette. Pure inset shadow, no color fade */}
       <div
         className="fixed inset-0 -z-10 pointer-events-none"
         style={{ boxShadow: 'inset 0 0 320px 80px rgba(0,0,0,0.6)' }}
       />
 
-      {/* Top + bottom gold rules — broadcast-graphic bars that frame the screen */}
+      {/* Top + bottom gold rules. Broadcast-graphic bars that frame the screen */}
       <div className="fixed inset-x-0 top-0 -z-10 pointer-events-none">
         <div className="h-1" style={{ backgroundColor: GOLD }} />
         <div className="h-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
@@ -157,7 +157,7 @@ export default function TeacherPresentView() {
         setGame(gData);
         setParticipants(gData.participants || []);
 
-        // Mode-specific fetch — used for live events panel + score overrides.
+        // Mode-specific fetch. Used for live events panel + score overrides.
         // Same defensive JSON handling so a missing endpoint can't crash the
         // page either.
         const mode = gData.game_mode;
@@ -255,7 +255,7 @@ export default function TeacherPresentView() {
   }, [ranked]);
 
   // Bump a score when it changes so the projector audience can see who just
-  // moved up. Same pass generates narrative events for the live feed — only
+  // moved up. Same pass generates narrative events for the live feed, only
   // the dramatic stuff: streaks, overtakes, comebacks, fall-offs.
   useEffect(() => {
     const nextScores = { ...prevScores.current };
@@ -294,12 +294,12 @@ export default function TeacherPresentView() {
             });
           }
         } else if (delta <= 0) {
-          // No score gain this tick — streak resets
+          // No score gain this tick, streak resets
           streakCount.current[p.user_id] = 0;
         }
       }
 
-      // Rank-movement events — fire only when we have a previous rank to
+      // Rank-movement events. Fire only when we have a previous rank to
       // compare against, and the player still appears in the ranked list.
       if (prevRank != null && newRank != null) {
         const gain = prevRank - newRank; // positive = moved up
@@ -470,14 +470,14 @@ export default function TeacherPresentView() {
     <div className="h-screen w-screen relative overflow-hidden text-white flex flex-col">
       <AnimatedBackground />
 
-      {/* Final-results podium — overlays everything once the game ends. Top 3
+      {/* Final-results podium. Overlays everything once the game ends. Top 3
           if ≤ 10 players, top 5 if more, so a big classroom still gets a fair
           shot at the spotlight. */}
       {game?.status === 'ended' && ranked.length > 0 && (
         <Podium ranked={ranked} mode={game?.game_mode} />
       )}
 
-      {/* Header bar — minimal, fixed height so the leaderboard gets the rest */}
+      {/* Header bar. Minimal, fixed height so the leaderboard gets the rest */}
       <header className="flex-shrink-0 px-8 sm:px-12 pt-6 pb-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div
@@ -519,13 +519,13 @@ export default function TeacherPresentView() {
         </div>
       </header>
 
-      {/* Mode-specific banner — e.g. market regime, sudden death, team scores */}
+      {/* Mode-specific banner. E.g. market regime, sudden death, team scores */}
       <ModeBanner game={game} modeData={modeData} />
 
-      {/* Body — leaderboard fixed on the left with internal scroll for >10
+      {/* Body. Leaderboard fixed on the left with internal scroll for >10
           players; live log fills the right side. Page itself never scrolls. */}
       <main className="flex-1 min-h-0 px-6 sm:px-10 pb-6 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Leaderboard — left column */}
+        {/* Leaderboard, left column */}
         <section
           className="lg:col-span-3 rounded-xl overflow-hidden flex flex-col min-h-0"
           style={{
@@ -542,7 +542,7 @@ export default function TeacherPresentView() {
           </div>
 
           {/* Team-mode games (elemental_clash) get a side-by-side scoreboard
-              showing Team 1 vs Team 2 instead of a flat ranked list — a
+              showing Team 1 vs Team 2 instead of a flat ranked list, a
               single ranked list misses the whole point of a team game. */}
           {game?.game_mode === 'elemental_clash' ? (
             <TeamLeaderboard ranked={ranked} modeData={modeData} />
@@ -572,7 +572,7 @@ export default function TeacherPresentView() {
                     <div className="flex-1 min-w-0">
                       <div className="h-3 w-32 bg-white/[0.04] rounded" />
                     </div>
-                    <div className="text-white/15 font-black text-2xl">—</div>
+                    <div className="text-white/15 font-black text-2xl">-</div>
                   </li>
                 );
               }
@@ -661,7 +661,7 @@ export default function TeacherPresentView() {
           )}
         </section>
 
-        {/* Live log — right column, vertical event list */}
+        {/* Live log. Right column, vertical event list */}
         <aside
           className="lg:col-span-2 rounded-xl overflow-hidden flex flex-col min-h-0"
           style={{
@@ -712,7 +712,7 @@ export default function TeacherPresentView() {
   );
 }
 
-// Compact stat pill used in the header — label on top, value below. Optional
+// Compact stat pill used in the header. Label on top, value below. Optional
 // icon + accent override for the time-running-out variant.
 function Stat({ label, value, icon: Icon, accent, pulse }) {
   return (
@@ -747,7 +747,7 @@ function TeamLeaderboard({ ranked, modeData }) {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col p-4 sm:p-6 gap-4 overflow-hidden">
-      {/* Score bar — Team 1 left, Team 2 right, proportional split */}
+      {/* Score bar. Team 1 left, Team 2 right, proportional split */}
       <div className="flex-shrink-0">
         <div className="flex items-center justify-between mb-2 text-xs font-black uppercase tracking-[0.22em]">
           <span className="text-red-300">Team 1</span>
@@ -907,7 +907,7 @@ function Podium({ ranked, mode }) {
     return '#94a3b8';
   };
 
-  // Neutral confetti palette — gold/silver/bronze + soft accent splash.
+  // Neutral confetti palette. Gold/silver/bronze + soft accent splash.
   const confetti = useMemo(() => {
     const palette = [GOLD, SILVER, BRONZE, '#a78bfa', '#86efac'];
     return Array.from({ length: 40 }).map((_, i) => ({
@@ -1021,7 +1021,7 @@ function Podium({ ranked, mode }) {
   );
 }
 
-// Tiny sub-label under each player's name on the leaderboard — different per
+// Tiny sub-label under each player's name on the leaderboard, different per
 // mode so the projector audience gets at-a-glance context (lives, floor, team).
 function ModeSubInfo({ p, mode }) {
   const sub = 'text-white/55';

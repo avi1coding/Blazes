@@ -23,13 +23,13 @@ class ErrorBoundary extends React.Component {
   }
   componentDidCatch(error, info) {
     console.error('[ErrorBoundary]', error, info);
-    // Silently recover from transient render errors — most are race conditions
+    // Silently recover from transient render errors, most are race conditions
     // during navigation. Bounce to the user's home so they can keep moving
     // instead of being stranded on a scary error screen.
     setTimeout(() => { window.location.href = homePathForUser(); }, 0);
   }
   render() {
-    // Render nothing while the redirect kicks in — better than the big red overlay.
+    // Render nothing while the redirect kicks in. Better than the big red overlay.
     if (this.state.error) return null;
     return this.props.children;
   }

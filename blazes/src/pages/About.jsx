@@ -34,7 +34,7 @@ export default function About() {
             <span className="text-sm font-bold uppercase tracking-wide">Our Story</span>
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black leading-tight mb-4 sm:mb-6">
-            We Set Learning<br/>on Fire
+            We Make Review Day<br/>Competitive
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-white/85 max-w-2xl mx-auto">
             Review day used to be the worst day of the week. We made it the best.
@@ -47,14 +47,14 @@ export default function About() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12">
 
-            {/* Left — The Problem */}
+            {/* Left, The Problem */}
             <div>
               <span className="text-red-600 font-bold uppercase tracking-widest text-sm">The Problem</span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mt-2 mb-4">
                 No student<br/><span className="text-red-600">wants</span> to study
               </h2>
               <p className="text-gray-600 mb-8">
-                The problem with studying isn't that students are lazy — it's that traditional review methods are genuinely boring. Flashcards, worksheets, and re-reading notes don't tap into what actually motivates people: competition, social connection, and the thrill of winning.
+                The problem with studying isn't that students are lazy. It's that traditional review methods are genuinely boring. Flashcards, worksheets, and re-reading notes do not use what actually motivates people: competition, social connection, and winning.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -89,14 +89,14 @@ export default function About() {
               </div>
             </div>
 
-            {/* Right — The Solution */}
+            {/* Right, The Solution */}
             <div>
               <span className="text-green-600 font-bold uppercase tracking-widest text-sm">The Solution</span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 mt-2 mb-4">
                 Make them <br/><span className="text-green-600">want </span> to study
               </h2>
               <p className="text-gray-600 mb-8">
-                Blazes wraps the content teachers need to cover inside a multiplayer game students actually want to play. Competition, rewards, and social energy do the motivating — the curriculum does the teaching.
+                Blazes wraps the content teachers need to cover inside a multiplayer game students actually want to play. Competition, rewards, and social energy do the motivating, the curriculum does the teaching.
               </p>
 
               <div className="space-y-4">
@@ -106,7 +106,7 @@ export default function About() {
                   </div>
                   <div>
                     <h4 className="font-black text-gray-900">Live multiplayer competition</h4>
-                    <p className="text-sm text-gray-600">Students race each other in real-time. Nobody wants to fall behind — so nobody switches off.</p>
+                    <p className="text-sm text-gray-600">Students compete against each other in real time. Nobody wants to place last, so everyone keeps answering.</p>
                   </div>
                 </div>
                 <div className="flex gap-4 p-4 bg-green-50 border-2 border-green-100 rounded-2xl">
@@ -179,7 +179,7 @@ export default function About() {
                 <CheckCircle className="w-6 h-6 text-orange-500" strokeWidth={2.5} />
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-3">Accessible to Everyone</h3>
-              <p className="text-gray-600">No app downloads, no expensive hardware, no barriers. Any student with a phone or browser can join a game in seconds — regardless of their school's budget.</p>
+              <p className="text-gray-600">No app downloads, no expensive hardware, no barriers. Any student with a phone or browser can join a game in seconds, regardless of their school's budget.</p>
             </div>
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function About() {
                   </div>
                   <div>
                     <h4 className="font-black text-gray-900">Active Recall</h4>
-                    <p className="text-gray-600 text-sm">Answering questions — not re-reading — is what makes memories stick. Every Blazes round is a recall session in disguise.</p>
+                    <p className="text-gray-600 text-sm">Answering questions, rather than re-reading, is what makes information easier to remember. Every Blazes round is a recall session.</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -274,13 +274,13 @@ export default function About() {
             </div>
             <div>
               <p className="text-lg text-gray-700 mb-5 leading-relaxed">
-                I'm a 13-year-old student who got tired of the same thing every review day — worksheets, re-reading notes, and staring at flashcards until my brain switched off. I knew there had to be a better way.
+                I'm a 13-year-old student who got tired of the same thing every review day. Worksheets, re-reading notes, and staring at flashcards until I stopped paying attention. I knew there had to be a better way.
               </p>
               <p className="text-lg text-gray-700 mb-5 leading-relaxed">
                 So I built Blazes. Not as a school project, not for a grade. I built it just because I genuinely believe students learn better when they're competing, laughing, and actually having fun. I've felt the boredom of regular studying firsthand. I know what would make students excited and what wouldn't.
               </p>
               <p className="text-lg text-gray-700 leading-relaxed">
-                I truly believe Blazes can change how students feel about studying. When you're having fun, you stop thinking of it as work — and that's when real learning happens. If even one student goes home and actually wants to review because of Blazes, that means everything to me. This is bigger than a game. It's a chance to make school feel worth showing up for.
+                I truly believe Blazes can change how students feel about studying. When you're having fun, you stop thinking of it as work, and that's when real learning happens. If even one student goes home and actually wants to review because of Blazes, that means everything to me. Blazes is more than a game to me. It is a chance to make school more engaging.
               </p>
             </div>
           </div>
@@ -294,10 +294,10 @@ export default function About() {
             <Flame className="w-8 h-8 sm:w-10 sm:h-10 text-red-600" strokeWidth={2.5} />
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 sm:mb-6">
-            Ready to Ignite<br/>Your Classroom?
+            Ready to Start<br/>With Your Class?
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-white/85 mb-8 sm:mb-10 max-w-2xl mx-auto">
-            Join thousands of teachers already using Blazes to make learning unforgettable. Free to start. No credit card. No setup headaches.
+            Join thousands of teachers already using Blazes to make review sessions more engaging. Free to start. No credit card. No setup required.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Link to="/signup" className="bg-white text-red-600 px-8 py-4 rounded-xl font-black text-lg hover:bg-red-50 transition-colors shadow-xl">

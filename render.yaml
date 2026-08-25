@@ -22,7 +22,7 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       # Signs auth tokens. Changing it signs everyone out, so leave it alone
-      # once set — Render generates it on first deploy and keeps it.
+      # once set. Render generates it on first deploy and keeps it.
       - key: JWT_SECRET
         generateValue: true
       - key: STRIPE_SECRET_KEY

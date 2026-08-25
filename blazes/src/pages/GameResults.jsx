@@ -75,7 +75,7 @@ export default function GameResults() {
         if (sorted.length > 0 && sorted[0].user_id === user?.id) {
           setHasWon(true);
         }
-        // Sync the "Your Score" stat to the server's tally — the value passed
+        // Sync the "Your Score" stat to the server's tally, the value passed
         // in via location.state is the client's local tally (off by a lot,
         // since the client doesn't replicate the server's speed-curve scoring).
         const me = (data.participants || []).find(p => p.user_id === user?.id);
@@ -173,7 +173,7 @@ export default function GameResults() {
       </nav>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        {/* Hero — winner gets a celebratory gradient card with the trophy, a
+        {/* Hero. Winner gets a celebratory gradient card with the trophy, a
             soft halo, and a placement chip. Losers get a quieter neutral
             treatment so the page doesn't feel like it's mocking them. */}
         <div className="relative mb-8">
@@ -207,7 +207,7 @@ export default function GameResults() {
           )}
         </div>
 
-        {/* Stat trio — refined with icon chips and consistent typography */}
+        {/* Stat trio. Refined with icon chips and consistent typography */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <StatCard
             icon={Trophy}
@@ -234,7 +234,7 @@ export default function GameResults() {
           />
         </div>
 
-        {/* Host-abandoned notice — replaces the leaderboard when the host left
+        {/* Host-abandoned notice. Replaces the leaderboard when the host left
             before a normal end. Players don't see placements because the game
             didn't actually finish. */}
         {abandoned && (
@@ -245,13 +245,13 @@ export default function GameResults() {
             <h2 className="text-2xl font-black text-gray-900 mb-2">Session ended early</h2>
             <p className="text-gray-600 max-w-sm mx-auto">
               Your teacher left this game before it finished, so there's no final
-              leaderboard. Your answers and BB are still saved — try a different
+              leaderboard. Your answers and BB are still saved, try a different
               game when one's running.
             </p>
           </div>
         )}
 
-        {/* Leaderboard — only shown for normally-ended games */}
+        {/* Leaderboard, only shown for normally-ended games */}
         {!abandoned && leaderboard.length > 0 && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-gray-200 mb-6">
             <div className="flex items-center gap-2 mb-6">

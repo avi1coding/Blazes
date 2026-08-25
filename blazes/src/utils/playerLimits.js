@@ -36,7 +36,7 @@ export function playerCountProblem(mode, count) {
   const { min, max } = playerLimitsFor(mode);
   if (count < min) {
     const need = min - count;
-    return `Needs at least ${min} players to start — waiting for ${need} more.`;
+    return `Needs at least ${min} players to start. Waiting for ${need} more.`;
   }
   if (count > max) {
     return `This mode supports up to ${max} players. ${count} have joined.`;

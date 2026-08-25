@@ -222,7 +222,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
       setBbPopup({ show: true, amount: bbEarned, xp: xpEarned });
       await new Promise(r => setTimeout(r, 2500));
     }
-    // GamePlay is the playing tab — always show student-style results here.
+    // GamePlay is the playing tab. Always show student-style results here.
     // (The teacher monitor tab shows teacher-results separately.)
     navigate(`/game/results/${gameCode}`, { state: { score: finalScore, correctCount: finalCorrect, questionsAnswered: finalAnswered, totalQuestions: totalQs, game: currentGame, bbEarned, xpEarned } });
   }, [gameCode, navigate]);
@@ -257,7 +257,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
 
       if (questionsMet && accuracyMet) {
         // Persist as soon as the requirements are met, not when the modal button is
-        // pressed — closing the tab on the completion screen used to discard the whole
+        // pressed. Closing the tab on the completion screen used to discard the whole
         // run (no completion, no notification, no season XP).
         if (!assignmentSubmittedRef.current) {
           assignmentSubmittedRef.current = true;
@@ -326,7 +326,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   });
 
   // Assignment runs have no timer and no host Finish button, so without this the
-  // only way out is meeting every requirement — a student who can't reach the
+  // only way out is meeting every requirement, a student who can't reach the
   // accuracy gate would otherwise be stuck in the quiz with no exit.
   const handleAssignmentExit = useCallback(async () => {
     if (!assignmentSubmittedRef.current) {
@@ -373,7 +373,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   };
 
   // answerOverride: the image_label buttons call this straight after setTypedAnswer(),
-  // and setState is async — reading typedAnswer here got the PREVIOUS click's value,
+  // and setState is async. Reading typedAnswer here got the PREVIOUS click's value,
   // so the first tap did nothing and the second graded the label tapped before it.
   const handleShortAnswer = async (answerOverride) => {
     if (isAnswered) return;
@@ -402,7 +402,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
         isCorrect = false;
       }
     } else {
-      // Short answer / fill blank — check exact first, then AI
+      // Short answer / fill blank. Check exact first, then AI
       const exactMatch = answer.trim().toLowerCase() === String(currentQ.correctAnswer).toLowerCase();
       if (exactMatch) {
         isCorrect = true;
@@ -422,7 +422,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     }
     setSelectedOption(answer.trim());
     // Keep the verdict we just computed. The banner used to re-derive it with an
-    // exact string compare, which disagreed with the real grading — math_equation
+    // exact string compare, which disagreed with the real grading, math_equation
     // uses a 1% tolerance, so "3.0" for "3" scored points but rendered "Wrong!".
     setLastCorrect(isCorrect);
     setIsAnswered(true);
@@ -471,7 +471,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
-      {/* Live leaderboard modal — opens from the header button so the player
+      {/* Live leaderboard modal. Opens from the header button so the player
           can see their current rank without leaving the game. Polls every 2s
           while open. */}
       {showLeaderboard && (
@@ -760,7 +760,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
                 </div>
               ))}
             </div>
-            {/* Label options — tap to match to next unmatched pin */}
+            {/* Label options. Tap to match to next unmatched pin */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {currentQuestion.options.map((label, i) => {
                 const isCorrectLabel = currentQuestion.correctAnswer.some(p => p.label === label);
@@ -768,7 +768,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
                   <button key={i} onClick={() => {
                     if (isAnswered) return;
                     setTypedAnswer(label);
-                    // Pass the label explicitly — the state update above has not landed yet.
+                    // Pass the label explicitly, the state update above has not landed yet.
                     handleShortAnswer(label);
                   }} disabled={isAnswered}
                     className={`p-4 rounded-xl text-left transition-all ${isAnswered
@@ -834,7 +834,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
           <div className="max-w-lg mx-auto">
             <p className="text-sm text-gray-500 font-semibold mb-3 text-center">Drag items from the right to match with the left</p>
             <div className="flex gap-4">
-              {/* Left column — drop targets */}
+              {/* Left column, drop targets */}
               <div className="flex-1 space-y-2">
                 {currentQuestion.correctAnswer.map((pair, i) => (
                   <div key={i}
@@ -868,7 +868,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
                 ))}
               </div>
 
-              {/* Right column — draggable items */}
+              {/* Right column. Draggable items */}
               <div className="flex-1 space-y-2">
                 {(currentQuestion.rightOptions || []).map((opt, j) => {
                   const isUsed = Object.values(matchSelections).includes(opt);
@@ -909,7 +909,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
             )}
           </div>
         ) : (currentQuestion.answerType === 'true_false' || currentQuestion.answer_type === 'true_false') ? (
-          // Dedicated True/False branch — renders the two buttons literally,
+          // Dedicated True/False branch. Renders the two buttons literally,
           // never depending on currentQuestion.options. Kits that store T/F
           // questions without filling option_a/b (the common case) used to fall
           // into the default MC branch and crash on options.map.
@@ -1103,7 +1103,7 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
 
   if (!survivalData) return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white font-bold">Loading...</div>;
 
-  // Countdown is handled in the lobby — skip if round hasn't started yet
+  // Countdown is handled in the lobby. Skip if round hasn't started yet
   if (survivalData.round_started_at) {
     const s = survivalData.round_started_at;
     const target = new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z').getTime();
@@ -1194,7 +1194,7 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
         <div className="max-w-4xl mx-auto mb-3">
           <div className="flex items-center justify-center gap-2 bg-red-950 border-2 border-red-700 rounded-xl px-4 py-2">
             <Skull className="w-5 h-5 text-red-500" strokeWidth={2.5} />
-            <span className="font-black text-red-400 text-sm tracking-wide">SUDDEN DEATH — One wrong answer eliminates you!</span>
+            <span className="font-black text-red-400 text-sm tracking-wide">SUDDEN DEATH, One wrong answer eliminates you!</span>
           </div>
         </div>
       )}
@@ -1246,11 +1246,11 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
         {/* Results phase banner */}
         {showResults && (
           <div className={`mb-4 p-3 rounded-xl text-center font-black text-lg flex items-center justify-center gap-2 ${roundIsCorrect ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
-            {!hasAnswered ? <><Clock className="w-5 h-5 inline" /> Time&apos;s up — no answer!</>
+            {!hasAnswered ? <><Clock className="w-5 h-5 inline" /> Time&apos;s up, no answer!</>
               : roundIsCorrect ? <><Check className="w-5 h-5 inline" /> Correct!</>
               : <><X className="w-5 h-5 inline" /> Wrong!</>}
             {!roundIsCorrect && livesLeft > 0 && <span className="ml-2 font-bold text-sm">({livesLeft} {livesLeft === 1 ? 'life' : 'lives'} left)</span>}
-            {!roundIsCorrect && livesLeft === 0 && <span className="ml-2 font-bold text-sm">— Eliminated next round</span>}
+            {!roundIsCorrect && livesLeft === 0 && <span className="ml-2 font-bold text-sm">- Eliminated next round</span>}
           </div>
         )}
 
@@ -1263,7 +1263,7 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
           {imgUrl && <img src={imgUrl} alt="" className="mt-4 max-h-48 mx-auto rounded-xl object-contain" />}
         </div>
 
-        {/* Waiting screen — shown after answering, hides the question so answers can't be shared */}
+        {/* Waiting screen. Shown after answering, hides the question so answers can't be shared */}
         {hasAnswered && roundStatus === 'answering' ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="relative mb-6">

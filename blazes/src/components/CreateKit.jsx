@@ -521,7 +521,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
               {currentQuestion.answerType === 'matching' && (
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Matching Pairs *</label>
-                  <p className="text-xs text-gray-400 mb-2">Enter pairs — left side matched to right side. Players see them shuffled.</p>
+                  <p className="text-xs text-gray-400 mb-2">Enter pairs. Left side matched to right side. Players see them shuffled.</p>
                   <div className="space-y-2">
                     {[0, 1, 2, 3, 4].map(idx => (
                       <div key={idx} className="flex items-center gap-2">
@@ -540,7 +540,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
                 </div>
               )}
 
-              {/* Image labeling (premium) — click to place pins */}
+              {/* Image labeling (premium). Click to place pins */}
               {currentQuestion.answerType === 'image_label' && (
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Place Labels on Image *</label>

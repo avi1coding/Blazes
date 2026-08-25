@@ -303,7 +303,7 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
             </button>
           </div>
         ) : (currentQ.answerType === 'true_false' || currentQ.answer_type === 'true_false') ? (
-          /* Dedicated True/False branch — renders the two buttons literally
+          /* Dedicated True/False branch. Renders the two buttons literally
              so kits without stored option_a/b still work. */
           <div className="grid grid-cols-2 gap-3">
             {[{ label: 'True', idx: 0 }, { label: 'False', idx: 1 }].map(({ label, idx }) => {

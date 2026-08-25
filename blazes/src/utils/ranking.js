@@ -1,7 +1,7 @@
 // Tie-breaking comparator for leaderboards.
 // Order: score → accuracy → total questions answered → joined-first → user_id
 // The final id-based tie-breaker guarantees a STRICT total ordering so two
-// players never share a rank — every leaderboard position is unique.
+// players never share a rank, every leaderboard position is unique.
 
 function getAccuracy(p) {
   const correct = p.correct_answers || p.correctCount || 0;
@@ -26,7 +26,7 @@ export function rankComparator(a, b) {
   const joinedA = a.joined_at || '';
   const joinedB = b.joined_at || '';
   if (joinedA !== joinedB) return joinedA < joinedB ? -1 : 1;
-  // 5. Final fallback — participant id, then user_id. Deterministic so ranks
+  // 5. Final fallback. Participant id, then user_id. Deterministic so ranks
   //    are stable across renders and never tie.
   const pidA = a.id || 0;
   const pidB = b.id || 0;
@@ -37,7 +37,7 @@ export function rankComparator(a, b) {
 export function rankParticipants(participants) {
   if (!Array.isArray(participants)) return [];
   const sorted = [...participants].sort(rankComparator);
-  // Strict ordering guaranteed by the comparator above — every player gets a
+  // Strict ordering guaranteed by the comparator above, every player gets a
   // unique rank, no `tied` flag.
   return sorted.map((p, i) => ({ ...p, rank: i + 1 }));
 }

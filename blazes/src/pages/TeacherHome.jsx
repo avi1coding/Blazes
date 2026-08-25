@@ -44,7 +44,7 @@ export default function TeacherHome() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { tab: urlTab } = useParams();
-  // URL is the source of truth for which section is shown — each tab has its
+  // URL is the source of truth for which section is shown, each tab has its
   // own page like /home/teacher/kits, /home/teacher/stats, etc. Falls back to
   // the legacy ?tab= query string for older links, then to 'dashboard'.
   const activeTab = urlTab || searchParams.get('tab') || 'dashboard';
@@ -100,8 +100,7 @@ export default function TeacherHome() {
   const [studentSkins, setStudentSkins] = useState({});
   const [studentTiers, setStudentTiers] = useState({});
   const [kits, setKits] = useState(() => readCached('kits', []));
-  // If we have a non-empty cached list we can skip the skeleton entirely —
-  // the fresh fetch will reconcile differences in the background.
+  // If we have a non-empty cached list we can skip the skeleton entirely,   // the fresh fetch will reconcile differences in the background.
   const [kitsLoading, setKitsLoading] = useState(() => readCached('kits', []).length === 0);
   const [editingKit, setEditingKit] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -134,7 +133,7 @@ export default function TeacherHome() {
   const [seasonProgress, setSeasonProgress] = useState(null);
   const [teacherTier, setTeacherTier] = useState('free');
   const [selectedGameCode, setSelectedGameCode] = useState(null);
-  // Analytics drill-down modal target — { type, id, label }. Cleared by close.
+  // Analytics drill-down modal target. { type, id, label }. Cleared by close.
   const [analyticsDetail, setAnalyticsDetail] = useState(null);
   const isProTeacher = ['teacher_pro', 'school'].includes(teacherTier);
   const [gameDetails, setGameDetails] = useState(null);
@@ -384,7 +383,7 @@ export default function TeacherHome() {
           <div className="flex items-center gap-2 flex-shrink-0">
             <NotificationDropdown userId={user?.id} />
 
-            {/* Hub button — opens the dedicated personal area (levels / skins / achievements / upgrade) */}
+            {/* Hub button. Opens the dedicated personal area (levels / skins / achievements / upgrade) */}
             <button onClick={() => navigate('/hub')}
               className="group flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all shadow-sm">
               <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
@@ -408,7 +407,7 @@ export default function TeacherHome() {
               </div>
             </button>
 
-            {/* Avatar — settings + log out */}
+            {/* Avatar. Settings + log out */}
             <div className="relative">
               <button onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors">
@@ -956,7 +955,7 @@ export default function TeacherHome() {
                         <h2 className="text-lg font-black text-gray-900">Question Difficulty Map</h2>
                         {!isProTeacher && <Lock className="w-3.5 h-3.5 text-purple-400" />}
                       </div>
-                      <p className="text-xs text-gray-400 mb-4">Questions your students struggle with most — click any to see who answered what</p>
+                      <p className="text-xs text-gray-400 mb-4">Questions your students struggle with most. Click any to see who answered what</p>
                       <div className="space-y-2 max-h-96 overflow-y-auto">
                         {analytics.questionDifficultyMap.map((q, i) => {
                           const acc = q.times_answered > 0 ? Math.round((q.correct / q.times_answered) * 100) : 0;
@@ -1345,7 +1344,7 @@ export default function TeacherHome() {
           })()
         )}
 
-        {/* Game Stats modal — shared with TeacherGameResults so clicking a
+        {/* Game Stats modal. Shared with TeacherGameResults so clicking a
             recent game shows exactly the same UI as the post-game View Stats. */}
         {selectedGameCode && (
           <GameStatsModal
@@ -1909,7 +1908,7 @@ export default function TeacherHome() {
                           .catch(error => {
                             console.error('Error deleting kit:', error);
                             setKits(kitsBefore);
-                            setToast({ show: true, message: 'Could not delete kit — restored.', type: 'error' });
+                            setToast({ show: true, message: 'Could not delete kit. Restored.', type: 'error' });
                           });
                       }}
                       className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors"
@@ -2013,7 +2012,7 @@ export default function TeacherHome() {
                       </div>
                     )}
 
-                    {/* Add Question Form (shared component — supports all 7 question types) */}
+                    {/* Add Question Form (shared component. Supports all 7 question types) */}
                     <div className="mt-6">
                       <AddQuestionForm
                         kit={selectedKit}
@@ -2258,7 +2257,7 @@ export default function TeacherHome() {
                           .catch(err => {
                             console.error('Error deleting question:', err);
                             setSelectedKit(before);
-                            setToast({ show: true, message: 'Could not delete question — restored.', type: 'error' });
+                            setToast({ show: true, message: 'Could not delete question. Restored.', type: 'error' });
                           });
                       }}
                       className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors"
@@ -2282,7 +2281,7 @@ export default function TeacherHome() {
         </div>
       </div>
 
-      {/* Join Game modal — teachers can join existing games as participants */}
+      {/* Join Game modal. Teachers can join existing games as participants */}
       {showJoinModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-5 sm:p-8 max-w-md w-full shadow-2xl">

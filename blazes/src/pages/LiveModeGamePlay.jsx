@@ -17,7 +17,7 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
  *
  * It owns the question queue, the answer round-trip and the standings poll.
  * Everything mode-specific is one panel plus a flash message, because the
- * server does all the scoring — the client only reports correct + milliseconds.
+ * server does all the scoring, the client only reports correct + milliseconds.
  */
 export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
   const navigate = useNavigate();
@@ -128,14 +128,14 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
       const r = await fetch(`${BASE}/api/games/${gameCode}/live/answer`, {
         method: 'POST', headers: authHeaders(),
         // `answer` lets the server re-grade rather than trust `correct`.
-        // userId is ignored now — identity comes from the token.
+        // userId is ignored now. Identity comes from the token.
         body: JSON.stringify({ questionId: q?.id ?? null, answer, correct, ms }),
       });
       if (handleUnauthorized(r)) return;
       const d = await r.json().catch(() => ({}));
       if (r.ok) {
         answeredRef.current += 1;
-        // Trust the server's verdict, not the client's — it re-grades.
+        // Trust the server's verdict, not the client's, it re-grades.
         if ((d.delta ?? 0) > 0) correctRef.current += 1;
         scoreRef.current = d.score ?? scoreRef.current;
         setFlash({ ...d, correct });
@@ -287,7 +287,7 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
             />
           </div>
 
-          {/* Live standings — everyone is playing at once, so this is the game. */}
+          {/* Live standings. Everyone is playing at once, so this is the game. */}
           <div className="bg-white rounded-2xl border-2 border-gray-100 p-4 shadow-sm">
             <div className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Live standings</div>
             <div className="space-y-2">
@@ -309,7 +309,7 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
               {!players.length && <div className="text-sm text-gray-400 font-semibold">Waiting for players...</div>}
             </div>
             <p className="text-[11px] text-gray-400 font-semibold mt-3 leading-snug">
-              Scores fade when you stop answering. There is no finish line — leave whenever you like.
+              Scores decrease when you stop answering. The game ends when your teacher ends it.
             </p>
           </div>
         </div>
@@ -321,11 +321,11 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
 function FlashLine({ flash, mode }) {
   const up = (flash.delta ?? 0) >= 0;
   const bits = [];
-  if (mode === 'vault' && flash.flash?.cracked) bits.push(`Cracked the vault for ${flash.flash.cracked}`);
-  if (mode === 'undertow') bits.push(flash.flash?.withCurrent ? 'Riding the current' : 'Against the current');
+  if (mode === 'vault' && flash.flash?.cracked) bits.push(`Took ${flash.flash.cracked} from the pot`);
+  if (mode === 'undertow') bits.push(flash.flash?.withCurrent ? 'With the current' : 'Against the current');
   if (mode === 'fracture' && flash.flash?.repaired) bits.push(`Repaired ${flash.flash.repaired} crack${flash.flash.repaired === 1 ? '' : 's'}`);
-  if (mode === 'fracture' && flash.flash?.crackedNear) bits.push('Your miss cracked the glass');
-  if (mode === 'eclipse' && flash.flash?.radius !== undefined) bits.push(`Glow radius ${flash.flash.radius}`);
+  if (mode === 'fracture' && flash.flash?.crackedNear) bits.push('Your wrong answer added a crack');
+  if (mode === 'eclipse' && flash.flash?.radius !== undefined) bits.push(`Area radius ${flash.flash.radius}`);
   return (
     <div className={`mb-4 px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 ${up ? 'bg-green-50 text-green-800 border-2 border-green-200' : 'bg-red-50 text-red-800 border-2 border-red-200'}`}>
       {up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -354,8 +354,8 @@ function ModePanel({ mode, state, me, user, myColor }) {
         </div>
         <p className="text-xs text-gray-500 font-semibold mt-2">
           {shared.lastCrack
-            ? `${shared.lastCrack.name} cracked it for ${shared.lastCrack.amount}`
-            : 'Filling — the next correct answer takes a share.'}
+            ? `${shared.lastCrack.name} took ${shared.lastCrack.amount}`
+            : 'Growing. The next correct answer takes part of it.'}
         </p>
       </Panel>
     );
@@ -370,11 +370,11 @@ function ModePanel({ mode, state, me, user, myColor }) {
           <div>
             <div className="text-sm font-black text-gray-700 mb-0.5">Current</div>
             <div className="text-xs font-semibold text-gray-500">
-              {holder ? `Flowing toward ${holder.name}` : 'Still — answer fast to take it'}
+              {holder ? `Moving toward ${holder.name}` : 'Even. Answer fast to take it'}
             </div>
           </div>
           <div className={`px-3 py-1.5 rounded-xl text-xs font-black ${riding ? 'bg-cyan-100 text-cyan-800' : 'bg-gray-100 text-gray-500'}`}>
-            {riding ? 'YOU HOLD IT' : 'CHASING'}
+            {riding ? 'YOU HAVE IT' : 'BEHIND'}
           </div>
         </div>
         <div className="mt-3 h-2 rounded-full bg-gradient-to-r from-cyan-200 via-cyan-500 to-cyan-200 opacity-70" />
@@ -411,7 +411,7 @@ function ModePanel({ mode, state, me, user, myColor }) {
     <Panel>
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-black text-gray-700">Territory</span>
-        <span className="text-xs font-semibold text-gray-500">Glow fades — keep answering to hold it</span>
+        <span className="text-xs font-semibold text-gray-500">Your area shrinks over time. Keep answering to keep it</span>
       </div>
       <div className="relative h-28 rounded-xl bg-gray-900 overflow-hidden flex items-center justify-center gap-6">
         {players.map((p, i) => {

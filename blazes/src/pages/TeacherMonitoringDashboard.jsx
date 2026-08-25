@@ -26,7 +26,7 @@ export default function TeacherMonitoringDashboard() {
   const [endGameConfirm, setEndGameConfirm] = useState(false);
   const gameAudioRef = useRef(null);
 
-  // Gameplay music — seamless loop, plays only on host's device
+  // Gameplay music. Seamless loop, plays only on host's device
   useEffect(() => {
     const s = JSON.parse(localStorage.getItem('blazes_settings') || '{}');
     const vol = (s.music_volume ?? 30) / 100;
@@ -112,7 +112,7 @@ export default function TeacherMonitoringDashboard() {
               if (infernoRes.ok) setClashData(await infernoRes.json()); // reuse clashData state
             } catch (_) { }
           }
-          // Fetch markets state — leaderboard portfolio values are the live "score"
+          // Fetch markets state. Leaderboard portfolio values are the live "score"
           if (data.game_mode === 'elemental_markets' && data.status === 'started') {
             try {
               const mRes = await fetch(`${baseUrl}/api/games/${gameCode}/markets/state`);
@@ -215,7 +215,7 @@ export default function TeacherMonitoringDashboard() {
 
   const handleLeave = () => {
     // If the game is still running, leaving the dashboard ends it for everyone
-    // — confirm first so the host doesn't accidentally torch a live session.
+    //. Confirm first so the host doesn't accidentally torch a live session.
     if (gameStatus === 'started') {
       setLeaveConfirm(true);
       return;
@@ -278,7 +278,7 @@ export default function TeacherMonitoringDashboard() {
         </div>
       )}
 
-      {/* Leave-while-running confirmation — abandons the game */}
+      {/* Leave-while-running confirmation. Abandons the game */}
       {leaveConfirm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border-2 border-orange-200 p-5 sm:p-8 max-w-md w-full shadow-xl">
@@ -397,7 +397,7 @@ export default function TeacherMonitoringDashboard() {
           const ghosts = players.filter(p => p.is_ghost);
           return (
             <div className="mb-8">
-              {/* Fullscreen button — routes to the unified Present view, which
+              {/* Fullscreen button. Routes to the unified Present view, which
                   has an inferno-themed background + fire-level banner. */}
               <button
                 onClick={() => window.open(`/game/present/${gameCode}`, '_blank', 'noopener')}
@@ -419,7 +419,7 @@ export default function TeacherMonitoringDashboard() {
                         <span className="text-xl font-black text-white tracking-wide">SUDDEN DEATH</span>
                         <Flame className="w-6 h-6 text-red-200 animate-pulse" />
                       </div>
-                      <p className="text-red-200 text-sm font-semibold mt-1">Fire is rising faster — next player down loses!</p>
+                      <p className="text-red-200 text-sm font-semibold mt-1">Fire is rising faster. Next player down loses!</p>
                     </div>
                   )}
                   {clashData.suddenDeath === 2 && (
@@ -666,7 +666,7 @@ export default function TeacherMonitoringDashboard() {
           );
         })()}
 
-        {/* Students — rendered for every mode now, including elemental_clash.
+        {/* Students. Rendered for every mode now, including elemental_clash.
             The teacher needs to be able to click a student and see what
             questions they answered, just like in classic mode. Team-mode
             games still get their battlefield/dashboard view above; this is

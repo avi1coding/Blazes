@@ -72,7 +72,7 @@ export default function StudentLobby() {
                         const s = data.round_started_at;
                         const target = new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z').getTime();
                         roundStartTimeRef.current = target;
-                        // Don't navigate yet — countdown effect will handle it
+                        // Don't navigate yet. Countdown effect will handle it
                     } else {
                         navigatedRef.current = true;
                         navigate(`/game/play/${gameCode}`, { state: { game: data, user } });
@@ -111,7 +111,7 @@ export default function StudentLobby() {
 
     // Refresh skins for all participants + host every poll, so changes propagate
     // to other players' screens without manual reload. fetchedSkinIds is kept
-    // for the very-first paint dedup (within the same render tick) only — the
+    // for the very-first paint dedup (within the same render tick) only, the
     // staleness timer below clears it every few seconds to force re-fetch.
     useEffect(() => {
         const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -153,7 +153,7 @@ export default function StudentLobby() {
         );
     }
 
-    // Countdown overlay — shown to ALL clients at the same time using absolute server timestamp
+    // Countdown overlay. Shown to ALL clients at the same time using absolute server timestamp
     if (countdown !== null && countdown > 0) {
         return (
             <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
@@ -259,7 +259,7 @@ export default function StudentLobby() {
                                     ? `${Math.floor(game.settings.timeLimit / 60)} min`
                                     : game.settings?.gameplayTime
                                         ? `${Math.floor(game.settings.gameplayTime / 60)} min`
-                                        : '—'}
+                                        : '-'}
                             </span>
                         </div>
                     </div>

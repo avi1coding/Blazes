@@ -87,8 +87,7 @@ function ProUpsell({ onClose, navigate }) {
       </h3>
       <p className="text-sm text-gray-600 mb-5 max-w-md mx-auto">
         Click any analytics card to see who answered what, time per attempt,
-        per-question accuracy across your roster, and a full student profile —
-        with Teacher Pro.
+        per-question accuracy across your roster, and a full student profile,         with Teacher Pro.
       </p>
       <div className="flex justify-center gap-2">
         <button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-800 font-black text-sm hover:bg-gray-200">
@@ -120,7 +119,7 @@ function QuestionDetail({ data }) {
   const acc = attempts.length > 0 ? Math.round((correct / attempts.length) * 100) : 0;
   const avgTime = attempts.length > 0
     ? (attempts.reduce((s, a) => s + (Number(a.time_taken) || 0), 0) / attempts.length).toFixed(1)
-    : '—';
+    : '-';
   return (
     <div className="p-5 space-y-5">
       <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4">
@@ -131,7 +130,7 @@ function QuestionDetail({ data }) {
           {question?.answer_type ? ` · ${question.answer_type}` : ''}
         </div>
         <div className="flex flex-wrap gap-2 mt-3">
-          <Pill label="Correct answer" value={question?.correct_answer || '—'} color="bg-emerald-50 text-emerald-700" />
+          <Pill label="Correct answer" value={question?.correct_answer || '-'} color="bg-emerald-50 text-emerald-700" />
           {attempts.length > 0 && <Pill label="Attempts" value={attempts.length} />}
           {attempts.length > 0 && (
             <Pill
@@ -140,7 +139,7 @@ function QuestionDetail({ data }) {
               color={acc >= 80 ? 'bg-emerald-50 text-emerald-700' : acc >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}
             />
           )}
-          {avgTime !== '—' && <Pill label="Avg time" value={`${avgTime}s`} color="bg-purple-50 text-purple-700" />}
+          {avgTime !== '-' && <Pill label="Avg time" value={`${avgTime}s`} color="bg-purple-50 text-purple-700" />}
         </div>
       </div>
 
@@ -161,7 +160,7 @@ function QuestionDetail({ data }) {
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-sm text-gray-900 truncate">{a.student_name}</div>
                   <div className="text-[11px] text-gray-500 font-medium">
-                    Answered <span className="font-bold text-gray-700">{a.answer ?? '—'}</span>
+                    Answered <span className="font-bold text-gray-700">{a.answer ?? '-'}</span>
                     {a.time_taken != null && <> · <Clock className="inline w-3 h-3 -mt-0.5" /> {Number(a.time_taken).toFixed(1)}s</>}
                     {a.game_code && <> · {a.game_code}</>}
                   </div>
@@ -182,7 +181,7 @@ function KitDetail({ data }) {
       <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4">
         <div className="text-base font-black text-gray-900">{kit?.title}</div>
         <div className="text-xs text-gray-500 font-semibold mt-0.5">
-          {kit?.subject || '—'}{kit?.grade_level ? ` · ${kit.grade_level}` : ''}
+          {kit?.subject || '-'}{kit?.grade_level ? ` · ${kit.grade_level}` : ''}
         </div>
         <div className="flex flex-wrap gap-2 mt-3">
           <Pill label="Games" value={games.length} />
@@ -233,7 +232,7 @@ function KitDetail({ data }) {
                   <tr key={p.id} className="border-b border-gray-100 last:border-b-0">
                     <td className="py-2.5 pr-3 font-bold text-gray-900 truncate">{p.name}</td>
                     <td className="py-2.5 px-3 text-right font-bold text-gray-700 tabular-nums">{p.correct}/{p.total}</td>
-                    <td className="py-2.5 px-3 text-right text-gray-600 tabular-nums">{p.avg_time != null ? `${Number(p.avg_time).toFixed(1)}s` : '—'}</td>
+                    <td className="py-2.5 px-3 text-right text-gray-600 tabular-nums">{p.avg_time != null ? `${Number(p.avg_time).toFixed(1)}s` : '-'}</td>
                     <td className="py-2.5 pl-3 text-right font-black tabular-nums" style={{ color: acc >= 80 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626' }}>{acc}%</td>
                   </tr>
                 );
@@ -310,7 +309,7 @@ function StudentDetail({ data }) {
       </Section>
 
       <Section title="Weakest questions" icon={Target}>
-        {weakest.length === 0 ? <Empty>No weak spots yet — they're hitting everything.</Empty> : (
+        {weakest.length === 0 ? <Empty>No weak areas yet. Every question has been answered correctly.</Empty> : (
           <ul className="space-y-1.5">
             {weakest.map(q => {
               const has = q.times_answered > 0; const acc = has ? Math.round((q.correct / q.times_answered) * 100) : 0;

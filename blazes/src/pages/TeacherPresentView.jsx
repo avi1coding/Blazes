@@ -1,28 +1,18 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  Flame, Trophy, Crown, Users, Clock, Zap, TrendingUp, TrendingDown,
-  Swords, Mountain, Droplets, Wind, Heart, Ghost, Newspaper, DollarSign,
-  BarChart3, Maximize2, Minimize2, Activity, Star, ArrowUp, Sparkles, Medal,
+  Flame, Trophy, Crown, Users, Clock, TrendingUp, TrendingDown,
+  Maximize2, Minimize2, Activity, ArrowUp, Sparkles,
 } from 'lucide-react';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
-// Single shared design across every mode. We used to vary the accent color
-// by game mode but the result was a kaleidoscope. Now the only thing that
-// changes is the mode label + icon shown in the header; the leaderboard,
-// background, medals, and live feed use a fixed gold/silver/bronze palette
-// the entire app over. Mode data still drives the live feed CONTENT, only
-// the colors are unified.
+// Single shared design across every mode. The leaderboard, background,
+// medals, and live feed use a fixed gold/silver/bronze palette the entire
+// app over; only the mode label + icon in the header change.
 const MODE_THEME = {
-  classic_timed:    { label: 'Classic Quiz',      icon: Trophy },
-  survival:         { label: 'Survival',          icon: Heart },
-  elemental_clash:  { label: 'Elemental Clash',   icon: Swords },
-  elemental_wager:  { label: 'Risk & Reward',     icon: TrendingUp },
-  arena:            { label: 'Arena',             icon: Swords },
-  inferno_tower:    { label: 'Inferno Tower',     icon: Flame },
-  elemental_markets:{ label: 'Elemental Markets', icon: TrendingUp },
+  classic_timed: { label: 'Classic Quiz', icon: Trophy },
 };
 
 // Shared design tokens, the only colors anyone should reach for. Anything
@@ -105,12 +95,7 @@ function AnimatedBackground() {
   );
 }
 
-// Format helper used by the leaderboard. Markets scores are dollar values,
-// every other mode is plain integer points.
-function formatScore(value, mode) {
-  if (mode === 'elemental_markets') {
-    return `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  }
+function formatScore(value) {
   return String(value || 0);
 }
 
@@ -119,20 +104,17 @@ export default function TeacherPresentView() {
   const [game, setGame] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [playerSkins, setPlayerSkins] = useState({});
-  const [modeData, setModeData] = useState(null); // mode-specific live state
   const [recentEvents, setRecentEvents] = useState([]); // generic event log
   const [error, setError] = useState('');
 
   const fetchedSkinIds = useRef(new Set());
-  const seenEventIds = useRef(new Set());
   const prevScores = useRef({}); // user_id → last score, used to bump on change
   const prevRanks = useRef({}); // user_id → last rank position, used to detect overtakes
   const streakCount = useRef({}); // user_id → consecutive score-up polls (proxy for answer streak)
   const eventCounter = useRef(0); // monotonic id for client-generated events
   const [bumped, setBumped] = useState({}); // user_id → timestamp of last bump
 
-  // Poll the game every 2s. For modes that have their own live-state endpoint,
-  // also poll that and merge a per-user score override into participants.
+  // Poll the game every 2s.
   useEffect(() => {
     let cancelled = false;
     // Defensive JSON parse: if the response isn't actually JSON (the SPA
@@ -156,26 +138,6 @@ export default function TeacherPresentView() {
         setError('');
         setGame(gData);
         setParticipants(gData.participants || []);
-
-        // Mode-specific fetch. Used for live events panel + score overrides.
-        // Same defensive JSON handling so a missing endpoint can't crash the
-        // page either.
-        const mode = gData.game_mode;
-        let extra = null;
-        try {
-          let r = null;
-          if (mode === 'elemental_markets' && gData.status === 'started') {
-            r = await fetch(`${BASE}/api/games/${gameCode}/markets/state`);
-          } else if (mode === 'elemental_clash' && gData.status === 'started') {
-            r = await fetch(`${BASE}/api/games/${gameCode}/elemental-state`);
-          } else if (mode === 'inferno_tower' && gData.status === 'started') {
-            r = await fetch(`${BASE}/api/games/${gameCode}/inferno-state`);
-          }
-          if (r && r.ok) {
-            try { extra = await parseJsonSafe(r); } catch (_) { extra = null; }
-          }
-        } catch (_) { /* mode endpoints are best-effort */ }
-        if (!cancelled) setModeData(extra);
       } catch (err) {
         if (!cancelled) setError(err.message);
       }
@@ -200,45 +162,17 @@ export default function TeacherPresentView() {
     });
   }, [participants]);
 
-  // Build the ranked list. For markets, use the live portfolio from modeData;
-  // for clash/inferno, use whatever the mode-state endpoint returned (which
-  // already includes the latest team/floor info); for everyone else, the
-  // participant score column is authoritative during play.
+  // The participant score column is authoritative during play.
   const ranked = useMemo(() => {
-    const gameMode = game?.game_mode;
-    let list = participants.map(p => ({
+    const list = participants.map(p => ({
       user_id: p.user_id,
       player_name: p.player_name || p.name || 'Player',
       score: p.score || 0,
       avatar: p.avatar_skin || playerSkins[p.user_id] || 'default',
-      eliminated: !!p.eliminated,
-      lives: p.lives,
       hasLeft: !!p.left_at,
-      // Mode-specific flair
-      team: p.team,
-      tower_floor: p.tower_floor,
-      is_ghost: p.is_ghost,
     }));
-
-    if (gameMode === 'elemental_markets' && modeData?.leaderboard) {
-      const byId = new Map(modeData.leaderboard.map(p => [p.user_id, p.portfolio]));
-      list = list.map(p => ({ ...p, score: byId.get(p.user_id) ?? p.score }));
-    } else if (gameMode === 'inferno_tower' && modeData?.participants) {
-      const byId = new Map(modeData.participants.map(p => [p.user_id, p]));
-      list = list.map(p => {
-        const m = byId.get(p.user_id);
-        return m ? { ...p, score: m.score || 0, tower_floor: m.tower_floor, is_ghost: m.is_ghost } : p;
-      });
-    } else if (gameMode === 'elemental_clash' && modeData?.participants) {
-      const byId = new Map(modeData.participants.map(p => [p.user_id, p]));
-      list = list.map(p => {
-        const m = byId.get(p.user_id);
-        return m ? { ...p, score: m.score || 0, energy_points: m.energy_points } : p;
-      });
-    }
-
     return list.sort((a, b) => (b.score || 0) - (a.score || 0));
-  }, [participants, modeData, game?.game_mode, playerSkins]);
+  }, [participants, playerSkins]);
 
   // Tie-aware placements: two players on the same score share a rank. The next
   // rank skips ahead by the number of tied players above (standard "1224"
@@ -351,43 +285,6 @@ export default function TeacherPresentView() {
     }
   }, [ranked]);
 
-  // Accumulate live events for the right-hand panel. Each mode populates
-  // a unified [{id, icon, color, text, ts}] feed for rendering.
-  useEffect(() => {
-    if (!modeData) return;
-    const mode = game?.game_mode;
-    const additions = [];
-    if (mode === 'elemental_markets' && Array.isArray(modeData.events)) {
-      for (const ev of modeData.events) {
-        if (seenEventIds.current.has(ev.id)) continue;
-        seenEventIds.current.add(ev.id);
-        additions.push({
-          id: `mkt-${ev.id}`,
-          icon: ev.kind === 'crash' ? TrendingDown : ev.kind === 'bull' ? TrendingUp : Newspaper,
-          color: ev.kind === 'crash' ? '#fca5a5' : ev.kind === 'bull' ? '#86efac' : ev.kind === 'bear' ? '#fcd34d' : '#cbd5e1',
-          text: ev.msg,
-          ts: Date.now(),
-        });
-      }
-    } else if (mode === 'elemental_clash' && Array.isArray(modeData.recentAttacks)) {
-      for (const atk of modeData.recentAttacks) {
-        const key = `clash-${atk.id}`;
-        if (seenEventIds.current.has(key)) continue;
-        seenEventIds.current.add(key);
-        const attacker = (modeData.participants || []).find(p => p.user_id === atk.attacker_user_id);
-        const iconByType = { earthquake: Mountain, tsunami: Droplets, hurricane: Wind, wildfire: Flame };
-        additions.push({
-          id: key,
-          icon: iconByType[atk.attack_type] || Swords,
-          color: atk.target_team === 1 ? '#93c5fd' : '#fca5a5',
-          text: `${attacker?.player_name || 'Player'} hit Team ${atk.target_team} for ${atk.damage}`,
-          ts: Date.now(),
-        });
-      }
-    }
-    if (additions.length) setRecentEvents(prev => [...additions.reverse(), ...prev].slice(0, 12));
-  }, [modeData, game?.game_mode]);
-
   // True fullscreen toggle. Tracks document.fullscreenElement so the button
   // can flip between enter / exit states and so we can hint the user how to
   // leave (Esc). Works on the standard requestFullscreen API plus the
@@ -419,14 +316,10 @@ export default function TeacherPresentView() {
 
   // Locally-ticking timer. The 2s poll only re-syncs the anchor; a 1s
   // interval drives the displayed digits so it never lags behind by a
-  // second-and-a-half between polls. Works for both mode-state games
-  // (markets/clash/inferno surface timeLeft on modeData) and plain timed
-  // games (classic_timed: started_at + settings.timeLimit).
+  // second-and-a-half between polls.
   const anchorRef = useRef({ remaining: null, at: 0 });
   useEffect(() => {
-    if (modeData?.timeLeft != null) {
-      anchorRef.current = { remaining: Math.max(0, Math.floor(modeData.timeLeft)), at: Date.now() };
-    } else if (game?.started_at && game?.settings) {
+    if (game?.started_at && game?.settings) {
       const settings = typeof game.settings === 'string' ? JSON.parse(game.settings) : game.settings;
       const totalSec = Number(settings?.timeLimit);
       if (totalSec > 0) {
@@ -439,7 +332,7 @@ export default function TeacherPresentView() {
         }
       }
     }
-  }, [modeData?.timeLeft, game?.started_at, game?.settings]);
+  }, [game?.started_at, game?.settings]);
 
   const [tickNow, setTickNow] = useState(Date.now());
   useEffect(() => {
@@ -474,7 +367,7 @@ export default function TeacherPresentView() {
           if ≤ 10 players, top 5 if more, so a big classroom still gets a fair
           shot at the spotlight. */}
       {game?.status === 'ended' && ranked.length > 0 && (
-        <Podium ranked={ranked} mode={game?.game_mode} />
+        <Podium ranked={ranked} />
       )}
 
       {/* Header bar. Minimal, fixed height so the leaderboard gets the rest */}
@@ -519,9 +412,6 @@ export default function TeacherPresentView() {
         </div>
       </header>
 
-      {/* Mode-specific banner. E.g. market regime, sudden death, team scores */}
-      <ModeBanner game={game} modeData={modeData} />
-
       {/* Body. Leaderboard fixed on the left with internal scroll for >10
           players; live log fills the right side. Page itself never scrolls. */}
       <main className="flex-1 min-h-0 px-6 sm:px-10 pb-6 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -541,12 +431,6 @@ export default function TeacherPresentView() {
             <div className="h-px" style={{ backgroundColor: GOLD, opacity: 0.65 }} />
           </div>
 
-          {/* Team-mode games (elemental_clash) get a side-by-side scoreboard
-              showing Team 1 vs Team 2 instead of a flat ranked list, a
-              single ranked list misses the whole point of a team game. */}
-          {game?.game_mode === 'elemental_clash' ? (
-            <TeamLeaderboard ranked={ranked} modeData={modeData} />
-          ) : (
           <ul className="flex-1 min-h-0 overflow-y-auto leaderboard-scroll">
             {Array.from({ length: Math.max(10, ranked.length) }).map((_, i) => {
               const p = ranked[i];
@@ -589,9 +473,7 @@ export default function TeacherPresentView() {
               return (
                 <li
                   key={p.user_id}
-                  className={`flex items-center gap-4 sm:gap-6 px-5 sm:px-7 border-b border-white/[0.04] last:border-b-0 ${
-                    p.eliminated || p.is_ghost ? 'opacity-40' : ''
-                  }`}
+                  className="flex items-center gap-4 sm:gap-6 px-5 sm:px-7 border-b border-white/[0.04] last:border-b-0"
                   style={{
                     background: rowBg,
                     animation: 'rowEnter 0.4s ease-out',
@@ -643,7 +525,7 @@ export default function TeacherPresentView() {
                     >
                       {p.player_name}
                     </div>
-                    <ModeSubInfo p={p} mode={game?.game_mode} />
+                    <ModeSubInfo p={p} />
                   </div>
 
                   <div
@@ -652,13 +534,12 @@ export default function TeacherPresentView() {
                     }`}
                     style={isBumped ? { animation: 'scoreBump 0.9s ease-out' } : { letterSpacing: '-0.02em' }}
                   >
-                    {formatScore(p.score, game?.game_mode)}
+                    {formatScore(p.score)}
                   </div>
                 </li>
               );
             })}
           </ul>
-          )}
         </section>
 
         {/* Live log. Right column, vertical event list */}
@@ -729,164 +610,10 @@ function Stat({ label, value, icon: Icon, accent, pulse }) {
   );
 }
 
-// Pill or row of mode-specific context shown right under the header. Keeps the
-// main leaderboard uncluttered while still surfacing the things that make each
-// mode feel different on the big screen.
-// Team-mode leaderboard for Elemental Clash. Two columns (Team 1 vs Team 2)
-// with a big team-total at the top of each, a Blazes-red vs Blazes-blue
-// theming, and individual players listed underneath their team banner sorted
-// by personal contribution. Distinct enough from the solo ranked list that
-// the room immediately understands "this is a team game".
-function TeamLeaderboard({ ranked, modeData }) {
-  const t1 = ranked.filter(p => p.team === 1).sort((a, b) => (b.score || 0) - (a.score || 0));
-  const t2 = ranked.filter(p => p.team === 2).sort((a, b) => (b.score || 0) - (a.score || 0));
-  const t1Total = Number(modeData?.team1Score ?? t1.reduce((s, p) => s + (p.score || 0), 0));
-  const t2Total = Number(modeData?.team2Score ?? t2.reduce((s, p) => s + (p.score || 0), 0));
-  const winning = t1Total === t2Total ? 0 : (t1Total > t2Total ? 1 : 2);
-  const total = Math.max(1, t1Total + t2Total);
-
-  return (
-    <div className="flex-1 min-h-0 flex flex-col p-4 sm:p-6 gap-4 overflow-hidden">
-      {/* Score bar. Team 1 left, Team 2 right, proportional split */}
-      <div className="flex-shrink-0">
-        <div className="flex items-center justify-between mb-2 text-xs font-black uppercase tracking-[0.22em]">
-          <span className="text-red-300">Team 1</span>
-          <span className="text-blue-300">Team 2</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className={`text-4xl sm:text-5xl font-black tabular-nums ${winning === 1 ? 'text-red-400' : 'text-white/85'}`}>
-            {t1Total}
-          </div>
-          <div className="flex-1 h-3 rounded-full overflow-hidden bg-white/5 flex">
-            <div className="h-full" style={{ width: `${(t1Total / total) * 100}%`, background: '#ef4444' }} />
-            <div className="h-full" style={{ width: `${(t2Total / total) * 100}%`, background: '#3b82f6' }} />
-          </div>
-          <div className={`text-4xl sm:text-5xl font-black tabular-nums ${winning === 2 ? 'text-blue-400' : 'text-white/85'}`}>
-            {t2Total}
-          </div>
-        </div>
-      </div>
-
-      {/* Two team columns */}
-      <div className="flex-1 min-h-0 grid grid-cols-2 gap-3">
-        <TeamColumn teamNum={1} players={t1} accent="#ef4444" winning={winning === 1} />
-        <TeamColumn teamNum={2} players={t2} accent="#3b82f6" winning={winning === 2} />
-      </div>
-    </div>
-  );
-}
-
-function TeamColumn({ teamNum, players, accent, winning }) {
-  return (
-    <div
-      className="rounded-xl flex flex-col min-h-0 overflow-hidden border"
-      style={{
-        borderColor: `${accent}55`,
-        background: winning ? `linear-gradient(180deg, ${accent}22, transparent 70%)` : 'rgba(255,255,255,0.02)',
-      }}
-    >
-      <div
-        className="px-4 py-2.5 flex items-center justify-between flex-shrink-0"
-        style={{ background: `${accent}1a`, borderBottom: `1px solid ${accent}33` }}
-      >
-        <span className="text-sm font-black uppercase tracking-widest" style={{ color: accent }}>Team {teamNum}</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">{players.length} player{players.length === 1 ? '' : 's'}</span>
-      </div>
-      <ul className="flex-1 min-h-0 overflow-y-auto leaderboard-scroll p-2 space-y-1.5">
-        {players.length === 0 ? (
-          <li className="text-center text-white/30 text-xs font-semibold py-8">No players</li>
-        ) : (
-          players.map((p, i) => (
-            <li
-              key={p.user_id}
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/[0.04]"
-            >
-              <span className="w-5 text-center font-black tabular-nums text-white/45 text-xs">{i + 1}</span>
-              <AvatarPreview
-                skinId={p.avatar}
-                initial={(p.player_name || '?')[0].toUpperCase()}
-                size={32}
-                userId={p.user_id}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="font-black truncate text-sm text-white">{p.player_name}</div>
-                {p.energy_points != null && (
-                  <div className="text-[10px] font-bold text-amber-300/80">⚡ {p.energy_points} energy</div>
-                )}
-              </div>
-              <div className="font-black tabular-nums text-base text-white">{p.score || 0}</div>
-            </li>
-          ))
-        )}
-      </ul>
-    </div>
-  );
-}
-
-function ModeBanner({ game, modeData }) {
-  const mode = game?.game_mode;
-  if (!modeData) return null;
-  const pill = 'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-black text-xs bg-white/[0.04] border border-white/10';
-
-  if (mode === 'elemental_markets') {
-    const regime = modeData.regime || 'normal';
-    const regimeColors = { normal: '#94a3b8', bull: '#34d399', bear: '#fbbf24', crash: '#f87171', recovery: '#22d3ee' };
-    return (
-      <div className="flex-shrink-0 px-8 sm:px-12 pb-3 flex flex-wrap items-center gap-2">
-        <span className={pill} style={{ color: regimeColors[regime], borderColor: `${regimeColors[regime]}55` }}>
-          <Activity className="w-3.5 h-3.5" /> {regime.toUpperCase()}
-        </span>
-        {(modeData.stocks || []).slice(0, 6).map(s => (
-          <span key={s.sym} className={pill}>
-            <span style={{ color: s.color }}>{s.sym}</span>
-            <span className="tabular-nums text-white/85">${s.price?.toFixed(2)}</span>
-            <span className={`tabular-nums ${s.changePct >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-              {s.changePct >= 0 ? '+' : ''}{s.changePct?.toFixed(1)}%
-            </span>
-          </span>
-        ))}
-      </div>
-    );
-  }
-
-  if (mode === 'elemental_clash') {
-    return (
-      <div className="px-8 sm:px-12 pb-4 flex items-center gap-2">
-        <span className={pill} style={{ borderColor: 'rgba(96,165,250,0.5)' }}>
-          <span className="text-blue-300">Team 1</span>
-          <span className="tabular-nums text-white">{modeData.team1Score || 0}</span>
-        </span>
-        <span className={pill} style={{ borderColor: 'rgba(248,113,113,0.5)' }}>
-          <span className="text-red-300">Team 2</span>
-          <span className="tabular-nums text-white">{modeData.team2Score || 0}</span>
-        </span>
-      </div>
-    );
-  }
-
-  if (mode === 'inferno_tower') {
-    return (
-      <div className="px-8 sm:px-12 pb-4 flex items-center gap-2">
-        <span className={pill} style={{ color: '#fb923c', borderColor: 'rgba(251,146,60,0.5)' }}>
-          <Flame className="w-3.5 h-3.5" /> Fire level {modeData.fireLevel || 0}
-        </span>
-        {modeData.suddenDeath === 1 && (
-          <span className={pill} style={{ color: '#fca5a5', borderColor: 'rgba(248,113,113,0.6)' }}>SUDDEN DEATH</span>
-        )}
-        {modeData.suddenDeath === 2 && (
-          <span className={pill} style={{ color: '#fcd34d', borderColor: 'rgba(252,211,77,0.6)' }}>TIEBREAKER</span>
-        )}
-      </div>
-    );
-  }
-
-  return null;
-}
-
 // End-of-game podium overlay. Slots are arranged 2 - 1 - 3 (with 4 - 2 - 1 - 3
 // - 5 for big classrooms) so #1 sits in the visual center on the tallest
 // pedestal. Each column rises in sequence so the room watches the reveal.
-function Podium({ ranked, mode }) {
+function Podium({ ranked }) {
   const showTop = ranked.length > 10 ? 5 : 3;
   const winners = ranked.slice(0, showTop);
   if (winners.length === 0) return null;
@@ -990,7 +717,7 @@ function Podium({ ranked, mode }) {
                 </div>
                 <div className="font-black tabular-nums opacity-90 text-white"
                      style={{ fontSize: place === 1 ? '2.25rem' : '1.5rem' }}>
-                  {formatScore(p.score, mode)}
+                  {formatScore(p.score)}
                 </div>
 
                 <div
@@ -1021,29 +748,8 @@ function Podium({ ranked, mode }) {
   );
 }
 
-// Tiny sub-label under each player's name on the leaderboard, different per
-// mode so the projector audience gets at-a-glance context (lives, floor, team).
-function ModeSubInfo({ p, mode }) {
-  const sub = 'text-white/55';
-  if (mode === 'survival') {
-    if (p.eliminated) return <span className={`text-xs font-bold ${sub}`}>Eliminated</span>;
-    if (p.lives != null) {
-      return (
-        <span className="inline-flex items-center gap-1">
-          {Array.from({ length: Math.max(0, p.lives) }).map((_, i) => (
-            <Heart key={i} className="w-3.5 h-3.5 fill-red-500 text-red-500" />
-          ))}
-        </span>
-      );
-    }
-  }
-  if (mode === 'inferno_tower') {
-    if (p.is_ghost) return <span className={`text-xs font-bold ${sub}`}>Ghost</span>;
-    return <span className={`text-xs font-black ${sub}`}>Floor {p.tower_floor || 0}</span>;
-  }
-  if (mode === 'elemental_clash' && p.team) {
-    return <span className={`text-xs font-bold ${p.team === 1 ? 'text-blue-300' : 'text-red-300'}`}>Team {p.team}</span>;
-  }
-  if (p.hasLeft) return <span className={`text-xs font-bold ${sub}`}>Left</span>;
+// Tiny sub-label under each player's name on the leaderboard.
+function ModeSubInfo({ p }) {
+  if (p.hasLeft) return <span className="text-xs font-bold text-white/55">Left</span>;
   return null;
 }

@@ -52,15 +52,10 @@ const GamePlay = lazy(() => import("./pages/GamePlay"));
 const GameStats = lazy(() => import("./pages/GameStats"));
 const GameResults = lazy(() => import("./pages/GameResults"));
 const ClassicTimedSetupPage = lazy(() => import("./pages/ClassicTimedSetupPage"));
-const RegularSetupPage = lazy(() => import("./pages/RegularSetupPage"));
 const TeacherMonitoringDashboard = lazy(() => import("./pages/TeacherMonitoringDashboard"));
 const TeacherPresentView = lazy(() => import("./pages/TeacherPresentView"));
 const StudentMonitor = lazy(() => import("./pages/StudentMonitor"));
 const TeacherGameResults = lazy(() => import("./pages/TeacherGameResults"));
-const ElementalClashSetupPage = lazy(() => import("./pages/ElementalClashSetupPage"));
-const ElementalWagerSetupPage = lazy(() => import("./pages/ElementalWagerSetupPage"));
-const ArenaSetupPage = lazy(() => import("./pages/ArenaSetupPage"));
-const ElementalMarketsSetupPage = lazy(() => import("./pages/ElementalMarketsSetupPage"));
 const LiveModeSetupPage = lazy(() => import("./pages/LiveModeSetupPage"));
 const HubPage = lazy(() => import("./pages/HubPage"));
 const About = lazy(() => import("./pages/About"));
@@ -140,11 +135,6 @@ function App() {
           <Route path="/game/teacher-results/:gameCode" element={<TeacherGameResults />} />
           <Route path="/game/mode-select" element={<GameModePage />} />
           <Route path="/game/classic-timed-setup" element={<ClassicTimedSetupPage />} />
-          <Route path="/game/regular-setup" element={<RegularSetupPage />} />
-          <Route path="/game/elemental-clash-setup" element={<ElementalClashSetupPage />} />
-          <Route path="/game/elemental-wager-setup" element={<ElementalWagerSetupPage />} />
-          <Route path="/game/arena-setup" element={<ArenaSetupPage />} />
-          <Route path="/game/elemental-markets-setup" element={<ElementalMarketsSetupPage />} />
           {/* One setup route for all four endless live modes */}
           <Route path="/game/live-setup/:mode" element={<LiveModeSetupPage />} />
           <Route path="/hub" element={<HubPage />} />

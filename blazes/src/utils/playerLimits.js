@@ -10,13 +10,6 @@
  */
 export const MODE_PLAYER_LIMITS = {
   classic_timed:     { min: 1, max: 30 },
-  regular:           { min: 1, max: 30 },
-  survival:          { min: 2, max: 50 },
-  elemental_clash:   { min: 2, max: 50 },
-  elemental_wager:   { min: 1, max: 50 },
-  elemental_markets: { min: 1, max: 50 },
-  arena:             { min: 2, max: 50 },
-  inferno_tower:     { min: 2, max: 50 },
   // The live modes are all built around a shared board, so one player alone
   // has nothing to contest.
   vault:             { min: 2, max: 50 },

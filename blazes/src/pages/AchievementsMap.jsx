@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Lock, Trophy, Star, Zap, Target, Calendar, TrendingUp, BookOpen, Clock, BarChart3, Award, Brain, Flame, Heart, Swords, Mountain, Crown, Ghost, Shirt, Users, Gamepad2 } from 'lucide-react';
+import { Lock, Trophy, Star, Zap, Target, Calendar, TrendingUp, BookOpen, Clock, BarChart3, Award, Brain, Flame, Crown, Shirt, Users, Gamepad2 } from 'lucide-react';
 
 const CATEGORIES = [
     {
@@ -58,56 +58,6 @@ const CATEGORIES = [
             { id: 'champion', bb: 80, name: 'Champion', desc: 'Win 10 multiplayer games', icon: Crown },
             { id: 'dominant', bb: 120, name: 'Dominant', desc: 'Win 25 multiplayer games', icon: Crown },
             { id: 'legend', bb: 200, name: 'Legend', desc: 'Win 50 multiplayer games', icon: Crown },
-        ]
-    },
-    {
-        id: 'survival', label: 'Survival', color: '#ef4444',
-        achievements: [
-            { id: 'survivor', bb: 30, name: 'Survivor', desc: 'Win a Survival game', icon: Heart },
-            { id: 'clutch', bb: 50, name: 'Clutch', desc: 'Win with 1 life left', icon: Heart },
-            { id: 'untouchable', bb: 80, name: 'Untouchable', desc: 'Win without losing a life', icon: Star },
-            { id: 'sudden_death_victor', bb: 60, name: 'Sudden Death Victor', desc: 'Win a sudden death', icon: Zap },
-            { id: 'tiebreaker_champion', bb: 80, name: 'Tiebreaker Champion', desc: 'Win a tiebreaker', icon: Trophy },
-            { id: 'endurance', bb: 40, name: 'Endurance', desc: 'Survive 15+ rounds', icon: Clock },
-            { id: 'iron_will', bb: 70, name: 'Iron Will', desc: 'Survive 25+ rounds', icon: Award },
-        ]
-    },
-    {
-        id: 'inferno', label: 'Inferno Tower', color: '#ea580c',
-        achievements: [
-            { id: 'floor_10', bb: 10, name: 'Floor 10', desc: 'Reach floor 10', icon: Flame },
-            { id: 'floor_25', bb: 20, name: 'Floor 25', desc: 'Reach floor 25', icon: Flame },
-            { id: 'floor_50', bb: 40, name: 'Floor 50', desc: 'Reach floor 50', icon: Flame },
-            { id: 'floor_100', bb: 80, name: 'Floor 100', desc: 'Reach floor 100', icon: Flame },
-            { id: 'skyscraper', bb: 150, name: 'Skyscraper', desc: 'Reach floor 200', icon: Mountain },
-            { id: 'tower_master', bb: 30, name: 'Tower Master', desc: 'Win Inferno Tower', icon: Trophy },
-            { id: 'ghost_hunter', bb: 20, name: 'Ghost Hunter', desc: 'Send 5 fireballs', icon: Ghost },
-            { id: 'phantom', bb: 50, name: 'Phantom', desc: 'Send 20 fireballs', icon: Ghost },
-            { id: 'fire_walker', bb: 40, name: 'Fire Walker', desc: 'Answer with fire 1 floor away', icon: Flame },
-        ]
-    },
-    {
-        id: 'clash', label: 'Elemental Clash', color: '#a855f7',
-        achievements: [
-            { id: 'team_player', bb: 30, name: 'Team Player', desc: 'Win Elemental Clash', icon: Swords },
-            { id: 'artillery', bb: 20, name: 'Artillery', desc: '5 attacks in one game', icon: Swords },
-            { id: 'bombardment', bb: 50, name: 'Bombardment', desc: '10 attacks in one game', icon: Swords },
-            { id: 'full_arsenal', bb: 40, name: 'Full Arsenal', desc: 'Use all 4 attack types', icon: Star },
-            { id: 'energy_hoarder', bb: 30, name: 'Energy Hoarder', desc: 'Have 20+ energy at once', icon: Zap },
-            { id: 'clash_mvp', bb: 60, name: 'Clash MVP', desc: 'Top scorer on winning team', icon: Crown },
-        ]
-    },
-    {
-        id: 'wager', label: 'Risk & Reward', color: '#d97706',
-        achievements: [
-            { id: 'tier_2', bb: 10, name: 'Tier 2', desc: 'Reach Tier 2', icon: TrendingUp },
-            { id: 'tier_3', bb: 30, name: 'Tier 3', desc: 'Reach Tier 3', icon: TrendingUp },
-            { id: 'tier_4', bb: 100, name: 'Tier 4', desc: 'Reach Tier 4', icon: Crown },
-            { id: 'high_roller', bb: 20, name: 'High Roller', desc: 'Score 500+', icon: Flame },
-            { id: 'jackpot', bb: 50, name: 'Jackpot', desc: 'Score 1,000+', icon: Flame },
-            { id: 'fortune', bb: 100, name: 'Fortune', desc: 'Score 2,500+', icon: Star },
-            { id: 'all_in', bb: 80, name: 'All In', desc: 'Pick Fire and get it right', icon: Flame },
-            { id: 'burned', bb: 10, name: 'Burned', desc: 'Pick Fire and get it wrong', icon: Flame },
         ]
     },
     {

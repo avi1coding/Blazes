@@ -2208,53 +2208,21 @@ app.post('/api/games/create', (req, res) => {
 });
 
 // Get game by code (includes questions from kit for gameplay)
-app.get('/api/games/:gameCode', (req, res) => {
-  const { gameCode } = req.params;
 
-  db.get('SELECT * FROM games WHERE game_code = ?', [gameCode], async (err, game) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!game) return res.status(404).json({ error: 'Game not found' });
-
-    // Parse settings if it's a string
-    if (typeof game.settings === 'string') {
-      game.settings = JSON.parse(game.settings);
-    }
-
-    // Auto-end game if time limit has passed
-    if (game.status === 'started' && game.settings?.timeLimit && game.started_at) {
-      const startedAt = new Date(game.started_at.replace(' ', 'T') + 'Z').getTime();
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      if (elapsed >= game.settings.timeLimit) {
-        await new Promise(resolve => db.run(
-          'UPDATE games SET status = ?, ended_at = CURRENT_TIMESTAMP WHERE id = ?',
-          ['ended', game.id], resolve
-        ));
-        game.status = 'ended';
-      }
-    }
-
-    // Attach the host's equipped avatar skin so clients can render the host's pfp
-    // without a separate fetch (and pick up changes on every poll).
-    const hostEq = await new Promise(resolve =>
-      db.get('SELECT avatar_skin FROM user_equipped WHERE user_id = ?', [game.host_id], (_, row) => resolve(row))
-    );
-    game.host_avatar_skin = hostEq?.avatar_skin || null;
-
-    // Get participants joined with their equipped avatar skin
-    db.all(
-      `SELECT gp.*, ue.avatar_skin
-       FROM game_participants gp
-       LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
-       WHERE gp.game_id = ?`,
-      [game.id],
-      (err, participants) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      // Get questions from the kit for gameplay
-      db.all('SELECT * FROM questions WHERE kit_id = ?', [game.kit_id], (err, rawQuestions) => {
-        if (err) return res.status(500).json({ error: err.message });
-
-        const questions = (rawQuestions || []).map((q) => {
+/**
+ * Normalises one stored question into the shape the gameplay components expect.
+ *
+ * This used to live inline in GET /api/games/:gameCode only. Elemental Clash,
+ * Wager, Survival and Inferno each had their own cut-down copy that kept only
+ * option_a..d and never emitted answerType, so a true/false, ordering, matching,
+ * short-answer or math question reached those modes with an empty options array
+ * and a correctAnswer of 0: no answer buttons at all, and the wrong answer key.
+ * Every mode now uses this one function.
+ *
+ * Returns null for a question that cannot be normalised, so one bad row cannot
+ * take down the whole fetch.
+ */
+function mapQuestionForPlay(q) {
           try {
           let opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
           const correctRaw = (q.correct_answer || '').trim();
@@ -2358,7 +2326,55 @@ app.get('/api/games/:gameCode', (req, res) => {
             console.error('[questions] normalization failed for id=', q?.id, qe);
             return null;
           }
-        }).filter(Boolean);
+}
+
+app.get('/api/games/:gameCode', (req, res) => {
+  const { gameCode } = req.params;
+
+  db.get('SELECT * FROM games WHERE game_code = ?', [gameCode], async (err, game) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+
+    // Parse settings if it's a string
+    if (typeof game.settings === 'string') {
+      game.settings = JSON.parse(game.settings);
+    }
+
+    // Auto-end game if time limit has passed
+    if (game.status === 'started' && game.settings?.timeLimit && game.started_at) {
+      const startedAt = new Date(game.started_at.replace(' ', 'T') + 'Z').getTime();
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      if (elapsed >= game.settings.timeLimit) {
+        await new Promise(resolve => db.run(
+          'UPDATE games SET status = ?, ended_at = CURRENT_TIMESTAMP WHERE id = ?',
+          ['ended', game.id], resolve
+        ));
+        game.status = 'ended';
+      }
+    }
+
+    // Attach the host's equipped avatar skin so clients can render the host's pfp
+    // without a separate fetch (and pick up changes on every poll).
+    const hostEq = await new Promise(resolve =>
+      db.get('SELECT avatar_skin FROM user_equipped WHERE user_id = ?', [game.host_id], (_, row) => resolve(row))
+    );
+    game.host_avatar_skin = hostEq?.avatar_skin || null;
+
+    // Get participants joined with their equipped avatar skin
+    db.all(
+      `SELECT gp.*, ue.avatar_skin
+       FROM game_participants gp
+       LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
+       WHERE gp.game_id = ?`,
+      [game.id],
+      (err, participants) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      // Get questions from the kit for gameplay
+      db.all('SELECT * FROM questions WHERE kit_id = ?', [game.kit_id], (err, rawQuestions) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const questions = (rawQuestions || []).map(mapQuestionForPlay).filter(Boolean);
 
         res.json({ ...game, participants: participants || [], questions });
       });
@@ -7502,12 +7518,12 @@ app.get('/api/games/:gameCode/elemental-state', async (req, res) => {
       }
     }
     const questions = await dbAll('SELECT * FROM questions WHERE kit_id = ?', [game.kit_id]);
-    const safeQuestions = questions.map(q => {
-      const opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
-      const correctRaw = (q.correct_answer || '').toUpperCase().trim();
-      const letter = correctRaw.match(/[A-D](?!.*[A-D])/);
-      return { id: q.id, text: q.question_text, options: opts, correctAnswer: letter ? ['A','B','C','D'].indexOf(letter[0]) : 0, imageUrl: q.image_url || null };
-    });
+    // Shared mapper. The cut-down copy that used to live here kept only
+    // option_a..d and never emitted answerType, so true/false, ordering,
+    // matching, short-answer and math questions arrived with no options
+    // and a correctAnswer of 0: zero answer buttons and a wrong key.
+    const safeQuestions = (questions || []).map(mapQuestionForPlay).filter(Boolean)
+      .map(q => ({ ...q, imageUrl: q.image_url || null }));   // these modes read imageUrl
     const participants = await dbAll('SELECT user_id, player_name, score, team, energy_points FROM game_participants WHERE game_id = ?', [game.id]);
     // Time left
     let timeLeft = null;
@@ -7562,12 +7578,12 @@ app.get('/api/games/:gameCode/wager-state', async (req, res) => {
       }
     }
     const questions = await dbAll('SELECT * FROM questions WHERE kit_id = ?', [game.kit_id]);
-    const safeQuestions = questions.map(q => {
-      const opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
-      const correctRaw = (q.correct_answer || '').toUpperCase().trim();
-      const letter = correctRaw.match(/[A-D](?!.*[A-D])/);
-      return { id: q.id, text: q.question_text, options: opts, correctAnswer: letter ? ['A','B','C','D'].indexOf(letter[0]) : 0, imageUrl: q.image_url || null };
-    });
+    // Shared mapper. The cut-down copy that used to live here kept only
+    // option_a..d and never emitted answerType, so true/false, ordering,
+    // matching, short-answer and math questions arrived with no options
+    // and a correctAnswer of 0: zero answer buttons and a wrong key.
+    const safeQuestions = (questions || []).map(mapQuestionForPlay).filter(Boolean)
+      .map(q => ({ ...q, imageUrl: q.image_url || null }));   // these modes read imageUrl
     const participants = await dbAll('SELECT user_id, player_name, score, wager_streak FROM game_participants WHERE game_id = ? ORDER BY score DESC', [game.id]);
     let timeLeft = null;
     if (game.status === 'started' && game.started_at && game.settings?.timeLimit) {
@@ -7684,12 +7700,12 @@ app.get('/api/games/:gameCode/inferno-state', async (req, res) => {
     if (typeof game.settings === 'string') game.settings = JSON.parse(game.settings);
 
     const questions = await dbAll('SELECT * FROM questions WHERE kit_id = ?', [game.kit_id]);
-    const safeQuestions = questions.map(q => {
-      const opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
-      const correctRaw = (q.correct_answer || '').toUpperCase().trim();
-      const letter = correctRaw.match(/[A-D](?!.*[A-D])/);
-      return { id: q.id, text: q.question_text, options: opts, correctAnswer: letter ? ['A','B','C','D'].indexOf(letter[0]) : 0, imageUrl: q.image_url || null };
-    });
+    // Shared mapper. The cut-down copy that used to live here kept only
+    // option_a..d and never emitted answerType, so true/false, ordering,
+    // matching, short-answer and math questions arrived with no options
+    // and a correctAnswer of 0: zero answer buttons and a wrong key.
+    const safeQuestions = (questions || []).map(mapQuestionForPlay).filter(Boolean)
+      .map(q => ({ ...q, imageUrl: q.image_url || null }));   // these modes read imageUrl
     const participants = await dbAll(
       'SELECT user_id, player_name, score, tower_floor, is_ghost, frozen_until FROM game_participants WHERE game_id = ?', [game.id]
     );
@@ -7816,12 +7832,12 @@ app.get('/api/games/:gameCode/survival-state', async (req, res) => {
     if (typeof game.settings === 'string') game.settings = JSON.parse(game.settings);
 
     const questions = await dbAll('SELECT * FROM questions WHERE kit_id = ?', [game.kit_id]);
-    const safeQuestions = questions.map(q => {
-      const opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
-      const correctRaw = (q.correct_answer || '').toUpperCase().trim();
-      const letter = correctRaw.match(/[A-D](?!.*[A-D])/);
-      return { id: q.id, text: q.question_text, options: opts, correctAnswer: letter ? ['A','B','C','D'].indexOf(letter[0]) : 0, imageUrl: q.image_url || null };
-    });
+    // Shared mapper. The cut-down copy that used to live here kept only
+    // option_a..d and never emitted answerType, so true/false, ordering,
+    // matching, short-answer and math questions arrived with no options
+    // and a correctAnswer of 0: zero answer buttons and a wrong key.
+    const safeQuestions = (questions || []).map(mapQuestionForPlay).filter(Boolean)
+      .map(q => ({ ...q, imageUrl: q.image_url || null }));   // these modes read imageUrl
 
     // Auto-transition round states
     if (game.status === 'started') {

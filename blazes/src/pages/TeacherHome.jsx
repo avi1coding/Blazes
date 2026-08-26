@@ -350,15 +350,18 @@ export default function TeacherHome() {
                 { id: 'dashboard', icon: Home, label: 'Home' },
                 { id: 'myKits', icon: BookOpen, label: 'Kits' },
                 { id: 'classrooms', icon: GraduationCap, label: 'Classes' },
+                { id: 'collection', icon: Award, label: 'Collection' },
                 { id: 'stats', icon: BarChart3, label: 'Stats' },
               ].map(t => {
                 const Icon = t.icon;
                 const isActive = t.id === 'myKits'
                   ? ['myKits', 'createKit'].includes(activeTab)
+                  : t.id === 'collection'
+                  ? ['skins', 'achievements'].includes(activeTab)
                   : activeTab === t.id;
                 return (
                   <button key={t.id}
-                    onClick={() => setActiveTab(t.id)}
+                    onClick={() => setActiveTab(t.id === 'collection' ? 'skins' : t.id)}
                     className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${isActive
                       ? 'bg-red-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
@@ -1647,7 +1650,7 @@ export default function TeacherHome() {
         )}
 
         {activeTab === 'achievements' && user && (
-          <AchievementsMap userId={user.id} />
+          <AchievementsMap userId={user.id} role={user.role} />
         )}
 
         {activeTab === 'myKits' && (

@@ -1489,7 +1489,7 @@ export default function StudentHome() {
           />
         )}
 
-        {activeTab === "achievements" && user && <div className="mt-6"><AchievementsMap userId={user.id} /></div>}
+        {activeTab === "achievements" && user && <div className="mt-6"><AchievementsMap userId={user.id} role={user.role} /></div>}
 
 
         {activeTab === 'classrooms' && (

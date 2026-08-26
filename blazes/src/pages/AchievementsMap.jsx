@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Lock, Trophy, Star, Zap, Target, Calendar, TrendingUp, BookOpen, Clock, BarChart3, Award, Brain, Flame, Crown, Shirt, Users, Gamepad2 } from 'lucide-react';
+import { Lock, Trophy, Star, Zap, Target, Calendar, TrendingUp, BookOpen, Clock, BarChart3, Award, Brain, Flame, Crown, Shirt, Users, Gamepad2, GraduationCap, ClipboardList, Layers, UserPlus } from 'lucide-react';
 
-const CATEGORIES = [
+const STUDENT_CATEGORIES = [
     {
         id: 'getting_started', label: 'Getting Started', color: '#f97316',
         achievements: [
@@ -137,7 +137,72 @@ const CATEGORIES = [
     },
 ];
 
-const ALL_ACHIEVEMENTS = CATEGORIES.flatMap(c => c.achievements);
+// A teacher never answers questions, so the student catalog above has
+// nothing to offer them. This one rewards the things a teacher actually
+// does: building kits, growing a classroom, hosting games, setting
+// assignments. IDs (server-side too) are prefixed t_ so they can never
+// collide with a student achievement id.
+const TEACHER_CATEGORIES = [
+    {
+        id: 'getting_started', label: 'Getting Started', color: '#f97316',
+        achievements: [
+            { id: 't_first_kit', bb: 10, name: 'First Kit', desc: 'Create your first question kit', icon: BookOpen },
+            { id: 't_first_classroom', bb: 15, name: 'Classroom Ready', desc: 'Create your first classroom', icon: GraduationCap },
+            { id: 't_first_host', bb: 15, name: 'Game Master', desc: 'Host your first game', icon: Gamepad2 },
+            { id: 't_first_assignment', bb: 15, name: 'Homework Time', desc: 'Create your first assignment', icon: ClipboardList },
+            { id: 't_dressed_up', bb: 20, name: 'Dressed Up', desc: 'Buy your first skin', icon: Shirt },
+            { id: 't_mode_explorer', bb: 60, name: 'Mode Explorer', desc: 'Host every game mode at least once', icon: Layers },
+        ]
+    },
+    {
+        id: 'kits', label: 'Kit Building', color: '#3b82f6',
+        achievements: [
+            { id: 't_kit_builder', bb: 30, name: 'Kit Builder', desc: 'Create 5 kits', icon: BookOpen },
+            { id: 't_kit_curator', bb: 70, name: 'Kit Curator', desc: 'Create 15 kits', icon: BookOpen },
+            { id: 't_kit_library', bb: 150, name: 'Kit Library', desc: 'Create 30 kits', icon: Trophy },
+        ]
+    },
+    {
+        id: 'classroom', label: 'Classroom', color: '#8b5cf6',
+        achievements: [
+            { id: 't_growing_class', bb: 30, name: 'Growing Class', desc: '10 students across your classrooms', icon: Users },
+            { id: 't_full_roster', bb: 70, name: 'Full Roster', desc: '30 students across your classrooms', icon: Users },
+            { id: 't_small_school', bb: 200, name: 'Small School', desc: '100 students across your classrooms', icon: Crown },
+            { id: 't_team_teaching', bb: 20, name: 'Team Teaching', desc: 'Add a co-teacher to a classroom', icon: UserPlus },
+        ]
+    },
+    {
+        id: 'hosting', label: 'Hosting', color: '#ef4444',
+        achievements: [
+            { id: 't_regular_host', bb: 40, name: 'Regular Host', desc: 'Host 10 games', icon: Gamepad2 },
+            { id: 't_veteran_host', bb: 100, name: 'Veteran Host', desc: 'Host 50 games', icon: Gamepad2 },
+            { id: 't_marathon_host', bb: 300, name: 'Marathon Host', desc: 'Host 200 games', icon: Crown },
+            { id: 't_big_crowd', bb: 40, name: 'Big Crowd', desc: 'Host a game with 15+ players', icon: Users },
+            { id: 't_packed_house', bb: 90, name: 'Packed House', desc: 'Host a game with 30+ players', icon: Users },
+        ]
+    },
+    {
+        id: 'assignments', label: 'Assignments', color: '#22c55e',
+        achievements: [
+            { id: 't_assignment_giver', bb: 50, name: 'Assignment Giver', desc: 'Create 10 assignments', icon: ClipboardList },
+            { id: 't_homework_hero', bb: 100, name: 'Homework Hero', desc: 'Create 25 assignments', icon: ClipboardList },
+            { id: 't_grading_grind', bb: 90, name: 'Grading Grind', desc: '50 completed submissions across your assignments', icon: Target },
+        ]
+    },
+    {
+        id: 'economy', label: 'BlazesBucks & Consistency', color: '#eab308',
+        achievements: [
+            { id: 't_first_hundred', bb: 10, name: 'First Hundred', desc: 'Earn 100 BB total', icon: BarChart3 },
+            { id: 't_thousand_club', bb: 40, name: 'Thousand Club', desc: 'Earn 1,000 BB total', icon: BarChart3 },
+            { id: 't_five_grand', bb: 100, name: 'Five Grand', desc: 'Earn 5,000 BB total', icon: Trophy },
+            { id: 't_two_weeks', bb: 60, name: 'Two Weeks', desc: '14-day streak', icon: Calendar },
+            { id: 't_one_month', bb: 120, name: 'One Month', desc: '30-day streak', icon: Calendar },
+        ]
+    },
+];
+
+const ALL_STUDENT_ACHIEVEMENTS = STUDENT_CATEGORIES.flatMap(c => c.achievements);
+const ALL_TEACHER_ACHIEVEMENTS = TEACHER_CATEGORIES.flatMap(c => c.achievements);
 
 function AchNode({ ach, isUnlocked, color, onHover, onLeave }) {
     const Icon = ach.icon;
@@ -172,7 +237,11 @@ function AchNode({ ach, isUnlocked, color, onHover, onLeave }) {
     );
 }
 
-export default function AchievementsMap({ userId }) {
+export default function AchievementsMap({ userId, role }) {
+    const isTeacher = role === 'teacher';
+    const CATEGORIES = isTeacher ? TEACHER_CATEGORIES : STUDENT_CATEGORIES;
+    const ALL_ACHIEVEMENTS = isTeacher ? ALL_TEACHER_ACHIEVEMENTS : ALL_STUDENT_ACHIEVEMENTS;
+
     const [unlocked, setUnlocked] = useState(new Set());
     const [toast, setToast] = useState(null);
     const [hover, setHover] = useState(null); // { ach, isUnlocked, x, y }
@@ -208,7 +277,10 @@ export default function AchievementsMap({ userId }) {
         return () => clearTimeout(t);
     }, [toast]);
 
-    const totalUnlocked = unlocked.size;
+    // Scoped to this catalog, not unlocked.size: a teacher who has ever
+    // hosted with "host plays" on also holds student achievement ids in the
+    // same account, and unlocked.size counts every id regardless of catalog.
+    const totalUnlocked = ALL_ACHIEVEMENTS.filter(a => unlocked.has(a.id)).length;
     const totalAchievements = ALL_ACHIEVEMENTS.length;
     const totalBBEarned = ALL_ACHIEVEMENTS.filter(a => unlocked.has(a.id)).reduce((s, a) => s + a.bb, 0);
 

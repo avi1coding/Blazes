@@ -3815,6 +3815,47 @@ const ACHIEVEMENTS = [
   { id: 'level_100',             bb: 1000, name: 'Godlike' },
 ];
 
+// Teachers don't answer questions, so the student catalog above (built
+// entirely around correct answers, streaks and accuracy) has nothing for
+// them to unlock. This catalog rewards the things a teacher actually does:
+// building kits, growing a classroom, hosting games, and setting
+// assignments. IDs are prefixed t_ so they can never collide with a student
+// achievement id in user_achievements.
+const TEACHER_ACHIEVEMENTS = [
+  // Getting Started
+  { id: 't_first_kit',        bb: 10,  name: 'First Kit' },
+  { id: 't_first_classroom',  bb: 15,  name: 'Classroom Ready' },
+  { id: 't_first_host',       bb: 15,  name: 'Game Master' },
+  { id: 't_first_assignment', bb: 15,  name: 'Homework Time' },
+  { id: 't_dressed_up',       bb: 20,  name: 'Dressed Up' },
+  { id: 't_mode_explorer',    bb: 60,  name: 'Mode Explorer' },
+  // Kit Building
+  { id: 't_kit_builder',      bb: 30,  name: 'Kit Builder' },
+  { id: 't_kit_curator',      bb: 70,  name: 'Kit Curator' },
+  { id: 't_kit_library',      bb: 150, name: 'Kit Library' },
+  // Classroom
+  { id: 't_growing_class',    bb: 30,  name: 'Growing Class' },
+  { id: 't_full_roster',      bb: 70,  name: 'Full Roster' },
+  { id: 't_small_school',     bb: 200, name: 'Small School' },
+  { id: 't_team_teaching',    bb: 20,  name: 'Team Teaching' },
+  // Hosting
+  { id: 't_regular_host',     bb: 40,  name: 'Regular Host' },
+  { id: 't_veteran_host',     bb: 100, name: 'Veteran Host' },
+  { id: 't_marathon_host',    bb: 300, name: 'Marathon Host' },
+  { id: 't_big_crowd',        bb: 40,  name: 'Big Crowd' },
+  { id: 't_packed_house',     bb: 90,  name: 'Packed House' },
+  // Assignments
+  { id: 't_assignment_giver', bb: 50,  name: 'Assignment Giver' },
+  { id: 't_homework_hero',    bb: 100, name: 'Homework Hero' },
+  { id: 't_grading_grind',    bb: 90,  name: 'Grading Grind' },
+  // BlazesBucks & Consistency
+  { id: 't_first_hundred',    bb: 10,  name: 'First Hundred' },
+  { id: 't_thousand_club',    bb: 40,  name: 'Thousand Club' },
+  { id: 't_five_grand',       bb: 100, name: 'Five Grand' },
+  { id: 't_two_weeks',        bb: 60,  name: 'Two Weeks' },
+  { id: 't_one_month',        bb: 120, name: 'One Month' },
+];
+
 // Get all unlocked achievements for a user
 app.get('/api/achievements/:userId', (req, res) => {
   const userId = parseInt(req.params.userId);
@@ -3837,10 +3878,105 @@ app.post('/api/achievements/review/:userId', async (req, res) => {
   res.json({ reviewCount: row?.review_count || 0 });
 });
 
+// Teacher side of achievement checking. Kept separate from the student flow
+// below rather than folded into one giant conditions object: the two run
+// completely different queries against completely different tables, and a
+// teacher account has none of the game_answers rows the student stats need.
+async function checkTeacherAchievements(userId) {
+  const unlocked = new Set((await dbAll('SELECT achievement_id FROM user_achievements WHERE user_id = ?', [userId])).map(r => r.achievement_id));
+
+  const kitsCreated = (await dbGet('SELECT COUNT(*) AS c FROM question_kits WHERE teacher_id = ?', [userId]))?.c || 0;
+  const classroomsCreated = (await dbGet('SELECT COUNT(*) AS c FROM classrooms WHERE teacher_id = ?', [userId]))?.c || 0;
+  const studentsTaught = (await dbGet(
+    `SELECT COUNT(DISTINCT cs.student_id) AS c FROM classroom_students cs
+     JOIN classrooms c ON c.id = cs.classroom_id
+     WHERE c.teacher_id = ? AND cs.status = 'accepted'`, [userId]))?.c || 0;
+  const coTeachersAdded = (await dbGet(
+    `SELECT COUNT(*) AS c FROM classroom_teachers ct
+     JOIN classrooms c ON c.id = ct.classroom_id
+     WHERE c.teacher_id = ?`, [userId]))?.c || 0;
+  const gamesHosted = (await dbGet(`SELECT COUNT(*) AS c FROM games WHERE host_id = ? AND status = 'ended'`, [userId]))?.c || 0;
+  const modesHosted = (await dbAll(`SELECT DISTINCT game_mode FROM games WHERE host_id = ? AND status = 'ended'`, [userId])).length;
+  const maxPlayers = (await dbGet(
+    `SELECT MAX(pcount) AS m FROM (
+       SELECT g.id, COUNT(*) AS pcount FROM games g
+       JOIN game_participants gp ON gp.game_id = g.id
+       WHERE g.host_id = ? AND g.status = 'ended' GROUP BY g.id
+     )`, [userId]))?.m || 0;
+  const assignmentsCreated = (await dbGet(
+    `SELECT COUNT(*) AS c FROM assignments a JOIN classrooms c ON c.id = a.classroom_id WHERE c.teacher_id = ?`, [userId]))?.c || 0;
+  const submissionsCompleted = (await dbGet(
+    `SELECT COUNT(*) AS c FROM assignment_submissions asub
+     JOIN assignments a ON a.id = asub.assignment_id
+     JOIN classrooms c ON c.id = a.classroom_id
+     WHERE c.teacher_id = ? AND asub.status = 'completed'`, [userId]))?.c || 0;
+  const skinsOwned = (await dbGet('SELECT COUNT(*) AS c FROM user_skins WHERE user_id = ?', [userId]))?.c || 0;
+  const totalBBEarned = (await dbGet('SELECT SUM(amount) AS s FROM blazes_bucks_log WHERE user_id = ? AND amount > 0', [userId]))?.s || 0;
+  const currentDayStreak = (await dbGet('SELECT current_streak FROM blazes_bucks WHERE user_id = ?', [userId]))?.current_streak || 0;
+
+  const conditions = {
+    t_first_kit:        kitsCreated >= 1,
+    t_first_classroom:  classroomsCreated >= 1,
+    t_first_host:       gamesHosted >= 1,
+    t_first_assignment: assignmentsCreated >= 1,
+    t_dressed_up:       skinsOwned >= 1,
+    t_mode_explorer:    modesHosted >= 5,
+    t_kit_builder:      kitsCreated >= 5,
+    t_kit_curator:      kitsCreated >= 15,
+    t_kit_library:      kitsCreated >= 30,
+    t_growing_class:    studentsTaught >= 10,
+    t_full_roster:      studentsTaught >= 30,
+    t_small_school:     studentsTaught >= 100,
+    t_team_teaching:    coTeachersAdded >= 1,
+    t_regular_host:     gamesHosted >= 10,
+    t_veteran_host:     gamesHosted >= 50,
+    t_marathon_host:    gamesHosted >= 200,
+    t_big_crowd:        maxPlayers >= 15,
+    t_packed_house:     maxPlayers >= 30,
+    t_assignment_giver: assignmentsCreated >= 10,
+    t_homework_hero:    assignmentsCreated >= 25,
+    t_grading_grind:    submissionsCompleted >= 50,
+    t_first_hundred:    totalBBEarned >= 100,
+    t_thousand_club:    totalBBEarned >= 1000,
+    t_five_grand:       totalBBEarned >= 5000,
+    t_two_weeks:        currentDayStreak >= 14,
+    t_one_month:        currentDayStreak >= 30,
+  };
+
+  const newlyUnlocked = [];
+  for (const ach of TEACHER_ACHIEVEMENTS) {
+    if (!unlocked.has(ach.id) && conditions[ach.id]) {
+      // INSERT OR IGNORE is the atomic gate. Two requests racing this route
+      // (dev-mode's double effect invoke does this reliably) both read the
+      // same pre-award `unlocked` snapshot and would otherwise both award
+      // the BB; only the request whose insert actually added a row does.
+      const inserted = await dbRun('INSERT OR IGNORE INTO user_achievements (user_id, achievement_id) VALUES (?, ?)', [userId, ach.id]);
+      if (!inserted) continue;
+      await awardBB(userId, ach.bb, 'achievement_' + ach.id, null);
+      newlyUnlocked.push({ id: ach.id, name: ach.name, bb: ach.bb });
+      if (await shouldNotify(userId, 'achievement')) {
+        await dbRun('INSERT INTO notifications (user_id, type, title, message) VALUES (?, ?, ?, ?)',
+          [userId, 'achievement', 'Achievement Unlocked!', `"${ach.name}". +${ach.bb} BlazesBucks`]);
+      }
+      console.log('[Achievement] Unlocked', ach.id, 'for teacher', userId, '(+' + ach.bb + ' BB)');
+    }
+  }
+  return newlyUnlocked;
+}
+
 // Check and award newly unlocked achievements
 app.post('/api/achievements/check/:userId', async (req, res) => {
   const userId = parseInt(req.params.userId);
   if (!userId) return res.status(400).json({ error: 'userId required' });
+
+  try {
+    const who = await dbGet('SELECT role FROM users WHERE id = ?', [userId]);
+    if (who?.role === 'teacher') {
+      return res.json({ newlyUnlocked: await checkTeacherAchievements(userId) });
+    }
+  } catch (err) {
+    console.error('[Achievement] role lookup error:', err);
+  }
 
   const q = (sql, params = []) => new Promise((resolve, reject) =>
     db.get(sql, params, (err, row) => err ? reject(err) : resolve(row))
@@ -4118,9 +4254,12 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
     const newlyUnlocked = [];
     for (const ach of ACHIEVEMENTS) {
       if (!unlocked.has(ach.id) && conditions[ach.id]) {
-        await new Promise(resolve =>
-          db.run('INSERT OR IGNORE INTO user_achievements (user_id, achievement_id) VALUES (?, ?)', [userId, ach.id], resolve)
-        );
+        // INSERT OR IGNORE is the atomic gate. Two requests racing this route
+        // (dev-mode's double effect invoke does this reliably) both read the
+        // same pre-award `unlocked` snapshot and would otherwise both award
+        // the BB; only the request whose insert actually added a row does.
+        const inserted = await dbRun('INSERT OR IGNORE INTO user_achievements (user_id, achievement_id) VALUES (?, ?)', [userId, ach.id]);
+        if (!inserted) continue;
         await awardBB(userId, ach.bb, 'achievement_' + ach.id, null);
         newlyUnlocked.push({ id: ach.id, name: ach.name, bb: ach.bb });
         // Send notification for achievement

@@ -111,7 +111,7 @@ export default function HubPage() {
             onSkinEquip={setEquippedSkinId}
           />
         )}
-        {tab === 'achievements' && <AchievementsMap userId={user.id} />}
+        {tab === 'achievements' && <AchievementsMap userId={user.id} role={user.role} />}
         {tab === 'upgrade' && <UpgradeCard navigate={navigate} role={user.role} />}
       </div>
     </div>

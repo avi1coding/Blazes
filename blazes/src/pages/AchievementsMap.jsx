@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Lock, Trophy, Star, Zap, Target, Calendar, TrendingUp, BookOpen, Clock, BarChart3, Award, Brain, Flame, Crown, Shirt, Users, Gamepad2, GraduationCap, ClipboardList, Layers, UserPlus } from 'lucide-react';
+import {
+  Lock, Trophy, Star, Zap, Target, Calendar, TrendingUp, BookOpen, Clock, BarChart3, Award, Brain, Flame, Crown, Shirt, Users, Gamepad2, GraduationCap, ClipboardList, Layers, UserPlus,
+  Vault, Waves, Sparkles, Sun, Moon, Puzzle, ListOrdered, MapPin, Music, Calculator, CheckSquare, ShoppingBag, Compass, Globe, Handshake,
+} from 'lucide-react';
 
 const STUDENT_CATEGORIES = [
     {
@@ -133,6 +136,156 @@ const STUDENT_CATEGORIES = [
             { id: 'half_way', bb: 100, name: 'Half Way', desc: 'Unlock 25 achievements', icon: Award },
             { id: 'completionist', bb: 200, name: 'Completionist', desc: 'Unlock 50 achievements', icon: Crown },
             { id: 'blazes_master', bb: 500, name: 'Blazes Master', desc: 'Unlock 75 achievements', icon: Flame },
+        ]
+    },
+    {
+        id: 'live_modes', label: 'Live Modes', color: '#dc2626',
+        achievements: [
+            { id: 'vault_first', bb: 10, name: 'Into the Vault', desc: 'Play a game of Vault', icon: Vault },
+            { id: 'vault_regular', bb: 30, name: 'Vault Regular', desc: 'Play Vault 25 times', icon: Vault },
+            { id: 'vault_master', bb: 70, name: 'Vault Master', desc: 'Play Vault 100 times', icon: Vault },
+            { id: 'vault_champion', bb: 40, name: 'Vault Champion', desc: 'Reach 300 points in Vault', icon: Trophy },
+            { id: 'vault_victor', bb: 50, name: 'Vault Victor', desc: 'Finish #1 in a Vault game', icon: Crown },
+            { id: 'undertow_first', bb: 10, name: 'Caught the Current', desc: 'Play a game of Undertow', icon: Waves },
+            { id: 'undertow_regular', bb: 30, name: 'Undertow Regular', desc: 'Play Undertow 25 times', icon: Waves },
+            { id: 'undertow_master', bb: 70, name: 'Undertow Master', desc: 'Play Undertow 100 times', icon: Waves },
+            { id: 'undertow_champion', bb: 40, name: 'Undertow Champion', desc: 'Reach 300 points in Undertow', icon: Trophy },
+            { id: 'undertow_victor', bb: 50, name: 'Undertow Victor', desc: 'Finish #1 in an Undertow game', icon: Crown },
+            { id: 'fracture_first', bb: 10, name: 'First Crack', desc: 'Play a game of Fracture', icon: Sparkles },
+            { id: 'fracture_regular', bb: 30, name: 'Fracture Regular', desc: 'Play Fracture 25 times', icon: Sparkles },
+            { id: 'fracture_master', bb: 70, name: 'Fracture Master', desc: 'Play Fracture 100 times', icon: Sparkles },
+            { id: 'fracture_champion', bb: 40, name: 'Fracture Champion', desc: 'Reach 300 points in Fracture', icon: Trophy },
+            { id: 'fracture_victor', bb: 50, name: 'Fracture Victor', desc: 'Finish #1 in a Fracture game', icon: Crown },
+            { id: 'eclipse_first', bb: 10, name: 'First Light', desc: 'Play a game of Eclipse', icon: Sun },
+            { id: 'eclipse_regular', bb: 30, name: 'Eclipse Regular', desc: 'Play Eclipse 25 times', icon: Sun },
+            { id: 'eclipse_master', bb: 70, name: 'Eclipse Master', desc: 'Play Eclipse 100 times', icon: Sun },
+            { id: 'eclipse_champion', bb: 40, name: 'Eclipse Champion', desc: 'Reach 50 points in Eclipse', icon: Trophy },
+            { id: 'eclipse_victor', bb: 50, name: 'Eclipse Victor', desc: 'Finish #1 in an Eclipse game', icon: Crown },
+            { id: 'endless_explorer', bb: 50, name: 'Endless Explorer', desc: 'Play all 4 live modes', icon: Compass },
+            { id: 'endless_veteran', bb: 150, name: 'Endless Veteran', desc: '250 live mode games total', icon: Crown },
+        ]
+    },
+    {
+        id: 'question_types', label: 'Question Type Mastery', color: '#3b82f6',
+        achievements: [
+            { id: 'sa_novice', bb: 15, name: 'Short Answer Novice', desc: '10 short answer correct', icon: BookOpen },
+            { id: 'sa_expert', bb: 35, name: 'Short Answer Expert', desc: '50 short answer correct', icon: BookOpen },
+            { id: 'sa_master', bb: 70, name: 'Short Answer Master', desc: '100 short answer correct', icon: BookOpen },
+            { id: 'fb_novice', bb: 15, name: 'Fill in the Blank Novice', desc: '10 fill-in-the-blank correct', icon: Target },
+            { id: 'fb_expert', bb: 35, name: 'Fill in the Blank Expert', desc: '50 fill-in-the-blank correct', icon: Target },
+            { id: 'fb_master', bb: 70, name: 'Fill in the Blank Master', desc: '100 fill-in-the-blank correct', icon: Target },
+            { id: 'match_novice', bb: 15, name: 'Matching Novice', desc: '10 matching questions correct', icon: Puzzle },
+            { id: 'match_expert', bb: 35, name: 'Matching Expert', desc: '50 matching questions correct', icon: Puzzle },
+            { id: 'match_master', bb: 70, name: 'Matching Master', desc: '100 matching questions correct', icon: Puzzle },
+            { id: 'order_novice', bb: 15, name: 'Ordering Novice', desc: '10 ordering questions correct', icon: ListOrdered },
+            { id: 'order_expert', bb: 35, name: 'Ordering Expert', desc: '50 ordering questions correct', icon: ListOrdered },
+            { id: 'order_master', bb: 70, name: 'Ordering Master', desc: '100 ordering questions correct', icon: ListOrdered },
+            { id: 'label_novice', bb: 15, name: 'Image Labeling Novice', desc: '10 image labels correct', icon: MapPin },
+            { id: 'label_expert', bb: 35, name: 'Image Labeling Expert', desc: '50 image labels correct', icon: MapPin },
+            { id: 'label_master', bb: 70, name: 'Image Labeling Master', desc: '100 image labels correct', icon: MapPin },
+            { id: 'audio_novice', bb: 15, name: 'Audio Novice', desc: '10 audio questions correct', icon: Music },
+            { id: 'audio_expert', bb: 35, name: 'Audio Expert', desc: '50 audio questions correct', icon: Music },
+            { id: 'audio_master', bb: 70, name: 'Audio Master', desc: '100 audio questions correct', icon: Music },
+            { id: 'math_novice', bb: 15, name: 'Equation Novice', desc: '10 math equations correct', icon: Calculator },
+            { id: 'math_expert', bb: 35, name: 'Equation Expert', desc: '50 math equations correct', icon: Calculator },
+            { id: 'math_master', bb: 70, name: 'Equation Master', desc: '100 math equations correct', icon: Calculator },
+            { id: 'multi_novice', bb: 15, name: 'Multi-Select Novice', desc: '10 multi-select correct', icon: CheckSquare },
+            { id: 'multi_expert', bb: 35, name: 'Multi-Select Expert', desc: '50 multi-select correct', icon: CheckSquare },
+            { id: 'multi_master', bb: 70, name: 'Multi-Select Master', desc: '100 multi-select correct', icon: CheckSquare },
+        ]
+    },
+    {
+        id: 'time_rhythm', label: 'Time & Rhythm', color: '#f59e0b',
+        achievements: [
+            { id: 'early_bird', bb: 20, name: 'Early Bird', desc: 'Answer correctly before 7am', icon: Sun },
+            { id: 'night_owl', bb: 20, name: 'Night Owl', desc: 'Answer correctly after 11pm', icon: Moon },
+            { id: 'weekend_learner', bb: 20, name: 'Weekend Learner', desc: 'Play on both Saturday and Sunday', icon: Calendar },
+            { id: 'monday_motivation', bb: 15, name: 'Monday Motivation', desc: 'Play on a Monday', icon: Calendar },
+        ]
+    },
+    {
+        id: 'kits_subjects', label: 'Kit & Subject Variety', color: '#22c55e',
+        achievements: [
+            { id: 'kit_explorer_5', bb: 20, name: 'Kit Explorer', desc: 'Play 5 different kits', icon: Compass },
+            { id: 'kit_explorer_10', bb: 40, name: 'Kit Wanderer', desc: 'Play 10 different kits', icon: Compass },
+            { id: 'kit_explorer_20', bb: 80, name: 'Kit Nomad', desc: 'Play 20 different kits', icon: Compass },
+            { id: 'kit_explorer_30', bb: 130, name: 'Kit Cartographer', desc: 'Play 30 different kits', icon: Globe },
+            { id: 'subject_connoisseur', bb: 50, name: 'Subject Connoisseur', desc: '5 different subjects', icon: BookOpen },
+            { id: 'subject_polymath', bb: 90, name: 'Subject Polymath', desc: '8 different subjects', icon: Brain },
+            { id: 'polyglot', bb: 150, name: 'Polyglot', desc: '10 different subjects', icon: Globe },
+        ]
+    },
+    {
+        id: 'skin_tiers', label: 'Skin Tiers', color: '#a855f7',
+        achievements: [
+            { id: 'own_uncommon', bb: 15, name: 'Stepping Up', desc: 'Own an Uncommon+ skin', icon: Shirt },
+            { id: 'own_rare', bb: 30, name: 'Rare Find', desc: 'Own a Rare+ skin', icon: Shirt },
+            { id: 'own_epic', bb: 60, name: 'Epic Taste', desc: 'Own an Epic+ skin', icon: Shirt },
+            { id: 'own_legendary', bb: 100, name: 'Legendary Status', desc: 'Own a Legendary+ skin', icon: Crown },
+            { id: 'own_mythic', bb: 200, name: 'Mythic', desc: 'Own a Mythic skin', icon: Crown },
+        ]
+    },
+    {
+        id: 'deep_ladders', label: 'Records', color: '#ef4444',
+        achievements: [
+            { id: 'club_25000', bb: 400, name: '25K', desc: '25,000 correct answers', icon: Trophy },
+            { id: 'club_50000', bb: 600, name: '50K', desc: '50,000 correct answers', icon: Trophy },
+            { id: 'club_100000', bb: 1000, name: '100K', desc: '100,000 correct answers', icon: Crown },
+            { id: 'streak_75', bb: 200, name: '75 in a Row', desc: '75 correct in a row', icon: Flame },
+            { id: 'streak_100', bb: 350, name: '100 in a Row', desc: '100 correct in a row', icon: Crown },
+            { id: 'flawless_10', bb: 120, name: 'Flawless x10', desc: '10 games with 100% accuracy', icon: Star },
+            { id: 'flawless_20', bb: 250, name: 'Flawless x20', desc: '20 games with 100% accuracy', icon: Crown },
+            { id: 'accuracy_untouchable', bb: 150, name: 'Untouchable Accuracy', desc: '95%+ accuracy (100+ answers)', icon: Target },
+            { id: 'marathoner_500', bb: 250, name: 'Marathoner', desc: '500 games played (3+ min)', icon: Gamepad2 },
+            { id: 'marathoner_1000', bb: 500, name: 'Ultramarathoner', desc: '1,000 games played (3+ min)', icon: Crown },
+            { id: 'fortune_100k', bb: 300, name: 'Fortune: 100K', desc: 'Earn 100,000 BB total', icon: BarChart3 },
+            { id: 'fortune_250k', bb: 600, name: 'Fortune: 250K', desc: 'Earn 250,000 BB total', icon: Crown },
+            { id: 'streak_180', bb: 400, name: 'Half Year Streak', desc: '180-day play streak', icon: Calendar },
+            { id: 'streak_365', bb: 800, name: 'Full Year Streak', desc: '365-day play streak', icon: Crown },
+            { id: 'unrivaled', bb: 250, name: 'Unrivaled', desc: 'Win 75 multiplayer games', icon: Crown },
+            { id: 'centurion', bb: 400, name: 'Centurion', desc: 'Win 100 multiplayer games', icon: Crown },
+            { id: 'dedicated_60days', bb: 80, name: '60 Days In', desc: 'Play on 60 different days', icon: Calendar },
+            { id: 'dedicated_180days', bb: 200, name: '180 Days In', desc: 'Play on 180 different days', icon: Calendar },
+            { id: 'season_grinder', bb: 60, name: 'Season Grinder', desc: 'Earn 5,000 lifetime season XP', icon: Zap },
+        ]
+    },
+    {
+        id: 'spending', label: 'Spending', color: '#eab308',
+        achievements: [
+            { id: 'first_purchase', bb: 10, name: 'First Purchase', desc: 'Spend BlazesBucks for the first time', icon: ShoppingBag },
+            { id: 'big_spender', bb: 40, name: 'Big Spender', desc: 'Spend 1,000 BB total', icon: ShoppingBag },
+            { id: 'shopaholic', bb: 90, name: 'Shopaholic', desc: 'Spend 5,000 BB total', icon: ShoppingBag },
+        ]
+    },
+    {
+        id: 'assignments_classroom', label: 'Assignments & Classroom', color: '#8b5cf6',
+        achievements: [
+            { id: 'homework_starter', bb: 15, name: 'Homework Starter', desc: 'Complete your first assignment', icon: ClipboardList },
+            { id: 'homework_regular', bb: 50, name: 'Homework Regular', desc: 'Complete 10 assignments', icon: ClipboardList },
+            { id: 'homework_champion', bb: 100, name: 'Homework Champion', desc: 'Complete 25 assignments', icon: ClipboardList },
+            { id: 'joined_classroom', bb: 10, name: 'Enrolled', desc: 'Join a classroom', icon: GraduationCap },
+            { id: 'joined_multiple_classrooms', bb: 30, name: 'Multi-Classroom', desc: 'Join 3 classrooms', icon: GraduationCap },
+        ]
+    },
+    {
+        id: 'social', label: 'Social', color: '#06b6d4',
+        achievements: [
+            { id: 'met_5_players', bb: 20, name: 'Making Friends', desc: 'Play with 5 different classmates', icon: Handshake },
+            { id: 'met_20_players', bb: 50, name: 'Well Connected', desc: 'Play with 20 different classmates', icon: Users },
+            { id: 'met_50_players', bb: 100, name: 'Class Celebrity', desc: 'Play with 50 different classmates', icon: Crown },
+            { id: 'versatile_player', bb: 40, name: 'Versatile Player', desc: 'Play a 2-player and a 20+ player game', icon: Layers },
+            { id: 'renaissance_learner', bb: 100, name: 'Renaissance Learner', desc: 'Answer every question type correctly', icon: Brain },
+            { id: 'small_group_champion', bb: 30, name: 'Small Group Champion', desc: 'Win a 2-4 player game', icon: Trophy },
+            { id: 'small_group_king', bb: 70, name: 'Small Group King', desc: 'Win 5 small-group games', icon: Crown },
+        ]
+    },
+    {
+        id: 'misc', label: 'Misc', color: '#64748b',
+        achievements: [
+            { id: 'ultra_fast', bb: 60, name: 'Ultra Fast', desc: 'Correct in under 0.5 seconds', icon: Zap },
+            { id: 'consistent_10', bb: 100, name: 'Ten in a Row', desc: '10 games in a row 90%+', icon: TrendingUp },
+            { id: 'error_analyst_master', bb: 90, name: 'Error Analyst Master', desc: 'Review missed questions 50x', icon: BarChart3 },
+            { id: 'mode_master', bb: 60, name: 'Mode Master', desc: 'Play every game mode', icon: Layers },
         ]
     },
 ];

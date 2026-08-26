@@ -20,7 +20,6 @@ export default function LiveModeSetupPage() {
   const [allowCustomPlayerNames, setAllowCustomPlayerNames] = useState(false);
   const [hostPlays, setHostPlays] = useState(true);
   const [minutes, setMinutes] = useState('15');
-  const [noLimit, setNoLimit] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -55,7 +54,7 @@ export default function LiveModeSetupPage() {
           settings: {
             gameName, hostName: user.name, allowCustomPlayerNames, hostPlays,
             endless: true, allowLateJoin: true,
-            timeLimit: noLimit ? 0 : Math.round(Number(minutes) * 60),
+            timeLimit: Math.round(Number(minutes) * 60),
           },
         }),
       });
@@ -104,18 +103,12 @@ export default function LiveModeSetupPage() {
               <input
                 type="number" min="1" max="300" step="1" inputMode="numeric"
                 value={minutes}
-                disabled={noLimit}
                 onChange={(e) => setMinutes(e.target.value)}
-                className="w-32 px-4 py-3 border-2 border-gray-200 rounded-xl font-semibold text-center focus:border-red-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                className="w-32 px-4 py-3 border-2 border-gray-200 rounded-xl font-semibold text-center focus:border-red-500 focus:outline-none"
               />
-              <span className={`text-sm font-bold ${noLimit ? 'text-gray-400' : 'text-gray-600'}`}>minutes</span>
+              <span className="text-sm font-bold text-gray-600">minutes</span>
             </div>
-            <label className="flex items-center gap-3 mt-3 cursor-pointer">
-              <input type="checkbox" checked={noLimit} onChange={(e) => setNoLimit(e.target.checked)}
-                className="w-5 h-5 rounded accent-red-600" />
-              <span className="text-sm font-semibold text-gray-700">No time limit , I&rsquo;ll end it myself</span>
-            </label>
-            {!noLimit && !minutesValid && (
+            {!minutesValid && (
               <p className="text-xs text-red-600 font-bold mt-2">Enter a length between 1 and 300 minutes.</p>
             )}
             <p className="text-xs text-gray-500 font-semibold mt-2">
@@ -134,7 +127,7 @@ export default function LiveModeSetupPage() {
 
           {error && <p className="text-sm font-bold text-red-600 mt-4">{error}</p>}
 
-          <button onClick={handleCreateGame} disabled={loading || (!noLimit && !minutesValid)}
+          <button onClick={handleCreateGame} disabled={loading || !minutesValid}
             className="w-full mt-6 py-4 bg-red-600 text-white font-black rounded-xl hover:bg-red-700 disabled:opacity-60 flex items-center justify-center gap-2">
             <Play className="w-5 h-5" /> {loading ? 'Creating...' : 'Create Game'}
           </button>

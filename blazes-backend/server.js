@@ -3813,6 +3813,116 @@ const ACHIEVEMENTS = [
   { id: 'level_75',              bb: 300, name: 'Diamond Player' },
   { id: 'level_85',              bb: 400, name: 'Mythic' },
   { id: 'level_100',             bb: 1000, name: 'Godlike' },
+  // Live Modes
+  { id: 'vault_first',           bb: 10,   name: 'Into the Vault' },
+  { id: 'vault_regular',         bb: 30,   name: 'Vault Regular' },
+  { id: 'vault_master',          bb: 70,   name: 'Vault Master' },
+  { id: 'undertow_first',        bb: 10,   name: 'Caught the Current' },
+  { id: 'undertow_regular',      bb: 30,   name: 'Undertow Regular' },
+  { id: 'undertow_master',       bb: 70,   name: 'Undertow Master' },
+  { id: 'fracture_first',        bb: 10,   name: 'First Crack' },
+  { id: 'fracture_regular',      bb: 30,   name: 'Fracture Regular' },
+  { id: 'fracture_master',       bb: 70,   name: 'Fracture Master' },
+  { id: 'eclipse_first',         bb: 10,   name: 'First Light' },
+  { id: 'eclipse_regular',       bb: 30,   name: 'Eclipse Regular' },
+  { id: 'eclipse_master',        bb: 70,   name: 'Eclipse Master' },
+  { id: 'vault_champion',        bb: 40,   name: 'Vault Champion' },
+  { id: 'undertow_champion',     bb: 40,   name: 'Undertow Champion' },
+  { id: 'fracture_champion',     bb: 40,   name: 'Fracture Champion' },
+  { id: 'eclipse_champion',      bb: 40,   name: 'Eclipse Champion' },
+  { id: 'endless_explorer',      bb: 50,   name: 'Endless Explorer' },
+  { id: 'endless_veteran',       bb: 150,  name: 'Endless Veteran' },
+  { id: 'vault_victor',          bb: 50,   name: 'Vault Victor' },
+  { id: 'undertow_victor',       bb: 50,   name: 'Undertow Victor' },
+  { id: 'fracture_victor',       bb: 50,   name: 'Fracture Victor' },
+  { id: 'eclipse_victor',        bb: 50,   name: 'Eclipse Victor' },
+  // Question Type Mastery
+  { id: 'sa_novice',             bb: 15,   name: 'Short Answer Novice' },
+  { id: 'sa_expert',             bb: 35,   name: 'Short Answer Expert' },
+  { id: 'sa_master',             bb: 70,   name: 'Short Answer Master' },
+  { id: 'fb_novice',             bb: 15,   name: 'Fill in the Blank Novice' },
+  { id: 'fb_expert',             bb: 35,   name: 'Fill in the Blank Expert' },
+  { id: 'fb_master',             bb: 70,   name: 'Fill in the Blank Master' },
+  { id: 'match_novice',          bb: 15,   name: 'Matching Novice' },
+  { id: 'match_expert',          bb: 35,   name: 'Matching Expert' },
+  { id: 'match_master',          bb: 70,   name: 'Matching Master' },
+  { id: 'order_novice',          bb: 15,   name: 'Ordering Novice' },
+  { id: 'order_expert',          bb: 35,   name: 'Ordering Expert' },
+  { id: 'order_master',          bb: 70,   name: 'Ordering Master' },
+  { id: 'label_novice',          bb: 15,   name: 'Image Labeling Novice' },
+  { id: 'label_expert',          bb: 35,   name: 'Image Labeling Expert' },
+  { id: 'label_master',          bb: 70,   name: 'Image Labeling Master' },
+  { id: 'audio_novice',          bb: 15,   name: 'Audio Novice' },
+  { id: 'audio_expert',          bb: 35,   name: 'Audio Expert' },
+  { id: 'audio_master',          bb: 70,   name: 'Audio Master' },
+  { id: 'math_novice',           bb: 15,   name: 'Equation Novice' },
+  { id: 'math_expert',           bb: 35,   name: 'Equation Expert' },
+  { id: 'math_master',           bb: 70,   name: 'Equation Master' },
+  { id: 'multi_novice',          bb: 15,   name: 'Multi-Select Novice' },
+  { id: 'multi_expert',          bb: 35,   name: 'Multi-Select Expert' },
+  { id: 'multi_master',          bb: 70,   name: 'Multi-Select Master' },
+  // Time & Rhythm
+  { id: 'early_bird',            bb: 20,   name: 'Early Bird' },
+  { id: 'night_owl',             bb: 20,   name: 'Night Owl' },
+  { id: 'weekend_learner',       bb: 20,   name: 'Weekend Learner' },
+  { id: 'monday_motivation',     bb: 15,   name: 'Monday Motivation' },
+  // Kit & Subject Variety
+  { id: 'kit_explorer_5',        bb: 20,   name: 'Kit Explorer' },
+  { id: 'kit_explorer_10',       bb: 40,   name: 'Kit Wanderer' },
+  { id: 'kit_explorer_20',       bb: 80,   name: 'Kit Nomad' },
+  { id: 'kit_explorer_30',       bb: 130,  name: 'Kit Cartographer' },
+  { id: 'subject_connoisseur',   bb: 50,   name: 'Subject Connoisseur' },
+  { id: 'subject_polymath',      bb: 90,   name: 'Subject Polymath' },
+  { id: 'polyglot',              bb: 150,  name: 'Polyglot' },
+  // Skin Tiers
+  { id: 'own_uncommon',          bb: 15,   name: 'Stepping Up' },
+  { id: 'own_rare',              bb: 30,   name: 'Rare Find' },
+  { id: 'own_epic',              bb: 60,   name: 'Epic Taste' },
+  { id: 'own_legendary',         bb: 100,  name: 'Legendary Status' },
+  { id: 'own_mythic',            bb: 200,  name: 'Mythic' },
+  // Deep Ladders
+  { id: 'club_25000',            bb: 400,  name: '25K' },
+  { id: 'club_50000',            bb: 600,  name: '50K' },
+  { id: 'club_100000',           bb: 1000, name: '100K' },
+  { id: 'streak_75',             bb: 200,  name: '75 in a Row' },
+  { id: 'streak_100',            bb: 350,  name: '100 in a Row' },
+  { id: 'flawless_10',           bb: 120,  name: 'Flawless x10' },
+  { id: 'flawless_20',           bb: 250,  name: 'Flawless x20' },
+  { id: 'accuracy_untouchable',  bb: 150,  name: 'Untouchable Accuracy' },
+  { id: 'marathoner_500',        bb: 250,  name: 'Marathoner' },
+  { id: 'marathoner_1000',       bb: 500,  name: 'Ultramarathoner' },
+  { id: 'fortune_100k',          bb: 300,  name: 'Fortune: 100K' },
+  { id: 'fortune_250k',          bb: 600,  name: 'Fortune: 250K' },
+  { id: 'streak_180',            bb: 400,  name: 'Half Year Streak' },
+  { id: 'streak_365',            bb: 800,  name: 'Full Year Streak' },
+  { id: 'unrivaled',             bb: 250,  name: 'Unrivaled' },
+  { id: 'centurion',             bb: 400,  name: 'Centurion' },
+  { id: 'dedicated_60days',      bb: 80,   name: '60 Days In' },
+  { id: 'dedicated_180days',     bb: 200,  name: '180 Days In' },
+  { id: 'season_grinder',        bb: 60,   name: 'Season Grinder' },
+  // Spending
+  { id: 'first_purchase',        bb: 10,   name: 'First Purchase' },
+  { id: 'big_spender',           bb: 40,   name: 'Big Spender' },
+  { id: 'shopaholic',            bb: 90,   name: 'Shopaholic' },
+  // Assignments & Classroom
+  { id: 'homework_starter',      bb: 15,   name: 'Homework Starter' },
+  { id: 'homework_regular',      bb: 50,   name: 'Homework Regular' },
+  { id: 'homework_champion',     bb: 100,  name: 'Homework Champion' },
+  { id: 'joined_classroom',      bb: 10,   name: 'Enrolled' },
+  { id: 'joined_multiple_classrooms', bb: 30, name: 'Multi-Classroom' },
+  // Social
+  { id: 'met_5_players',         bb: 20,   name: 'Making Friends' },
+  { id: 'met_20_players',        bb: 50,   name: 'Well Connected' },
+  { id: 'met_50_players',        bb: 100,  name: 'Class Celebrity' },
+  { id: 'versatile_player',      bb: 40,   name: 'Versatile Player' },
+  { id: 'renaissance_learner',   bb: 100,  name: 'Renaissance Learner' },
+  { id: 'small_group_champion',  bb: 30,   name: 'Small Group Champion' },
+  { id: 'small_group_king',      bb: 70,   name: 'Small Group King' },
+  // Misc
+  { id: 'ultra_fast',            bb: 60,   name: 'Ultra Fast' },
+  { id: 'consistent_10',         bb: 100,  name: 'Ten in a Row' },
+  { id: 'error_analyst_master',  bb: 90,   name: 'Error Analyst Master' },
+  { id: 'mode_master',           bb: 60,   name: 'Mode Master' },
 ];
 
 // Teachers don't answer questions, so the student catalog above (built
@@ -4159,6 +4269,91 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
     // Season level
     const seasonLevel = (await q('SELECT level FROM season_progress sp JOIN seasons s ON sp.season_id = s.id WHERE sp.user_id = ? ORDER BY s.season_number DESC LIMIT 1', [userId]))?.level || 0;
 
+    // --- Stats for the second, larger achievement pass below ---
+
+    // Per live mode: plays, peak score, and first-place finishes. Mirrors the
+    // multiWins loop above (per-game top-scorer check), just scoped to one
+    // mode's games instead of every 5+ player game.
+    const liveModeStats = {};
+    for (const mode of ['vault', 'undertow', 'fracture', 'eclipse']) {
+      const rows = await qAll(
+        `SELECT g.id, gp.score FROM games g JOIN game_participants gp ON gp.game_id = g.id
+         WHERE gp.user_id = ? AND g.game_mode = ? AND g.status = 'ended'`, [userId, mode]);
+      let wins = 0;
+      for (const r of rows) {
+        const top = await q('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score DESC LIMIT 1', [r.id]);
+        if (top?.user_id === userId) wins++;
+      }
+      liveModeStats[mode] = {
+        plays: rows.length,
+        peak: rows.reduce((m, r) => Math.max(m, r.score || 0), 0),
+        wins,
+      };
+    }
+    const liveModesPlayed = Object.values(liveModeStats).filter(s => s.plays > 0).length;
+    const liveModesTotalPlays = Object.values(liveModeStats).reduce((s, m) => s + m.plays, 0);
+
+    // Correct answers by question type. One achievement type can go unused
+    // by every kit on the platform and that's fine, same as any other
+    // threshold nobody has reached yet.
+    const typeCorrect = {};
+    for (const r of await qAll(
+      `SELECT q.answer_type AS type, COUNT(*) AS c FROM game_answers ga
+       JOIN questions q ON q.id = ga.question_id
+       WHERE ga.user_id = ? AND ga.is_correct = 1 GROUP BY q.answer_type`, [userId]
+    )) { typeCorrect[r.type] = r.c; }
+    const tc = (t) => typeCorrect[t] || 0;
+    const renaissanceLearner = ['short_answer', 'fill_blank', 'matching', 'ordering', 'image_label', 'audio', 'math_equation', 'multi_select']
+      .every(t => tc(t) >= 1);
+
+    // Time of day / day of week the answer was given
+    const earlyBird = await q(`SELECT id FROM game_answers WHERE user_id = ? AND is_correct = 1 AND CAST(strftime('%H', answered_at) AS INTEGER) < 7 LIMIT 1`, [userId]);
+    const nightOwl = await q(`SELECT id FROM game_answers WHERE user_id = ? AND is_correct = 1 AND CAST(strftime('%H', answered_at) AS INTEGER) >= 23 LIMIT 1`, [userId]);
+    const weekendDaysSeen = (await qAll(`SELECT DISTINCT strftime('%w', answered_at) AS dow FROM game_answers WHERE user_id = ? AND strftime('%w', answered_at) IN ('0','6')`, [userId])).length;
+    const mondayPlay = await q(`SELECT id FROM game_answers WHERE user_id = ? AND strftime('%w', answered_at) = '1' LIMIT 1`, [userId]);
+
+    // Kit variety
+    const kitsPlayed = (await q('SELECT COUNT(DISTINCT g.kit_id) AS c FROM games g JOIN game_participants gp ON gp.game_id = g.id WHERE gp.user_id = ?', [userId]))?.c || 0;
+
+    // Skin tiers owned. skinTierOf is the same function the live modes use
+    // to scale their scoring, so "own an Epic skin" means the same Epic a
+    // teammate sees on the leaderboard.
+    const ownedSkinTiers = new Set(
+      (await qAll('SELECT skin_id FROM user_skins WHERE user_id = ?', [userId])).map(r => skinTierOf(r.skin_id))
+    );
+
+    // BlazesBucks spent (negative log entries), separate from BB earned above
+    const totalSpent = (await q('SELECT SUM(-amount) AS s FROM blazes_bucks_log WHERE user_id = ? AND amount < 0', [userId]))?.s || 0;
+
+    // Lifetime season XP, not today's xp_earned_today (that resets nightly,
+    // so a threshold on it would only be earnable by chance, on the check
+    // that happens to run the same day the cap was hit).
+    const lifetimeSeasonXP = (await q('SELECT SUM(xp) AS s FROM season_progress WHERE user_id = ?', [userId]))?.s || 0;
+
+    // Assignments completed and classrooms joined, student side
+    const assignmentsCompleted = (await q(`SELECT COUNT(*) AS c FROM assignment_submissions WHERE student_id = ? AND status = 'completed'`, [userId]))?.c || 0;
+    const classroomsJoined = (await q(`SELECT COUNT(*) AS c FROM classroom_students WHERE student_id = ? AND status = 'accepted'`, [userId]))?.c || 0;
+
+    // Distinct opponents ever shared a game with
+    const distinctOpponents = (await q(
+      `SELECT COUNT(DISTINCT gp2.user_id) AS c FROM game_participants gp1
+       JOIN game_participants gp2 ON gp1.game_id = gp2.game_id AND gp2.user_id != gp1.user_id
+       WHERE gp1.user_id = ?`, [userId]))?.c || 0;
+
+    // Versatility: played both an intimate game and a big one
+    const playerCounts = multiplayerGames.map(g => g.pcount);
+    const smallestGame = playerCounts.length ? Math.min(...playerCounts) : 0;
+    const biggestGame = playerCounts.length ? Math.max(...playerCounts) : 0;
+
+    // First place in a small (2-4 player) game. multiWins above only looks
+    // at 5+ player games, so an intimate win needs its own count.
+    const smallGames = multiplayerGames.filter(g => g.pcount >= 2 && g.pcount < 5);
+    let smallGroupWins = 0;
+    for (const g of smallGames) {
+      const top = await q('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score DESC LIMIT 1', [g.id]);
+      if (top?.user_id === userId) smallGroupWins++;
+    }
+
     // --- Determine newly unlocked ---
     const conditions = {
       // Existing
@@ -4241,6 +4436,126 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
       level_75:            seasonLevel >= 75,
       level_85:            seasonLevel >= 85,
       level_100:           seasonLevel >= 100,
+
+      // Live Modes
+      vault_first:         liveModeStats.vault.plays >= 1,
+      vault_regular:       liveModeStats.vault.plays >= 25,
+      vault_master:        liveModeStats.vault.plays >= 100,
+      undertow_first:      liveModeStats.undertow.plays >= 1,
+      undertow_regular:    liveModeStats.undertow.plays >= 25,
+      undertow_master:     liveModeStats.undertow.plays >= 100,
+      fracture_first:      liveModeStats.fracture.plays >= 1,
+      fracture_regular:    liveModeStats.fracture.plays >= 25,
+      fracture_master:     liveModeStats.fracture.plays >= 100,
+      eclipse_first:       liveModeStats.eclipse.plays >= 1,
+      eclipse_regular:     liveModeStats.eclipse.plays >= 25,
+      eclipse_master:      liveModeStats.eclipse.plays >= 100,
+      vault_champion:      liveModeStats.vault.peak >= 300,
+      undertow_champion:   liveModeStats.undertow.peak >= 300,
+      fracture_champion:   liveModeStats.fracture.peak >= 300,
+      eclipse_champion:    liveModeStats.eclipse.peak >= 50,
+      endless_explorer:    liveModesPlayed >= 4,
+      endless_veteran:     liveModesTotalPlays >= 250,
+      vault_victor:        liveModeStats.vault.wins >= 1,
+      undertow_victor:     liveModeStats.undertow.wins >= 1,
+      fracture_victor:     liveModeStats.fracture.wins >= 1,
+      eclipse_victor:      liveModeStats.eclipse.wins >= 1,
+
+      // Question Type Mastery
+      sa_novice:           tc('short_answer') >= 10,
+      sa_expert:           tc('short_answer') >= 50,
+      sa_master:           tc('short_answer') >= 100,
+      fb_novice:           tc('fill_blank') >= 10,
+      fb_expert:           tc('fill_blank') >= 50,
+      fb_master:           tc('fill_blank') >= 100,
+      match_novice:        tc('matching') >= 10,
+      match_expert:        tc('matching') >= 50,
+      match_master:        tc('matching') >= 100,
+      order_novice:        tc('ordering') >= 10,
+      order_expert:        tc('ordering') >= 50,
+      order_master:        tc('ordering') >= 100,
+      label_novice:        tc('image_label') >= 10,
+      label_expert:        tc('image_label') >= 50,
+      label_master:        tc('image_label') >= 100,
+      audio_novice:        tc('audio') >= 10,
+      audio_expert:        tc('audio') >= 50,
+      audio_master:        tc('audio') >= 100,
+      math_novice:         tc('math_equation') >= 10,
+      math_expert:         tc('math_equation') >= 50,
+      math_master:         tc('math_equation') >= 100,
+      multi_novice:        tc('multi_select') >= 10,
+      multi_expert:        tc('multi_select') >= 50,
+      multi_master:        tc('multi_select') >= 100,
+
+      // Time & Rhythm
+      early_bird:          !!earlyBird,
+      night_owl:           !!nightOwl,
+      weekend_learner:     weekendDaysSeen >= 2,
+      monday_motivation:   !!mondayPlay,
+
+      // Kit & Subject Variety
+      kit_explorer_5:      kitsPlayed >= 5,
+      kit_explorer_10:     kitsPlayed >= 10,
+      kit_explorer_20:     kitsPlayed >= 20,
+      kit_explorer_30:     kitsPlayed >= 30,
+      subject_connoisseur: subjects.length >= 5,
+      subject_polymath:    subjects.length >= 8,
+      polyglot:            subjects.length >= 10,
+
+      // Skin Tiers
+      own_uncommon:        ownedSkinTiers.has('Uncommon') || ownedSkinTiers.has('Rare') || ownedSkinTiers.has('Epic') || ownedSkinTiers.has('Legendary') || ownedSkinTiers.has('Mythic'),
+      own_rare:            ownedSkinTiers.has('Rare') || ownedSkinTiers.has('Epic') || ownedSkinTiers.has('Legendary') || ownedSkinTiers.has('Mythic'),
+      own_epic:             ownedSkinTiers.has('Epic') || ownedSkinTiers.has('Legendary') || ownedSkinTiers.has('Mythic'),
+      own_legendary:       ownedSkinTiers.has('Legendary') || ownedSkinTiers.has('Mythic'),
+      own_mythic:          ownedSkinTiers.has('Mythic'),
+
+      // Deep ladders
+      club_25000:          correctAnswers >= 25000,
+      club_50000:          correctAnswers >= 50000,
+      club_100000:         correctAnswers >= 100000,
+      streak_75:           maxStreak >= 75,
+      streak_100:          maxStreak >= 100,
+      flawless_10:         games100 >= 10,
+      flawless_20:         games100 >= 20,
+      accuracy_untouchable: totalAnswers >= 100 && accuracy >= 0.95,
+      marathoner_500:      gamesPlayed3min >= 500,
+      marathoner_1000:     gamesPlayed3min >= 1000,
+      fortune_100k:        totalBBEarned >= 100000,
+      fortune_250k:        totalBBEarned >= 250000,
+      streak_180:          currentDayStreak >= 180,
+      streak_365:          currentDayStreak >= 365,
+      unrivaled:           multiWins >= 75,
+      centurion:           multiWins >= 100,
+      dedicated_60days:    playDates.length >= 60,
+      dedicated_180days:   playDates.length >= 180,
+      season_grinder:      lifetimeSeasonXP >= 5000,
+
+      // Spending
+      first_purchase:      totalSpent >= 1,
+      big_spender:         totalSpent >= 1000,
+      shopaholic:          totalSpent >= 5000,
+
+      // Assignments & Classroom (student side)
+      homework_starter:    assignmentsCompleted >= 1,
+      homework_regular:    assignmentsCompleted >= 10,
+      homework_champion:   assignmentsCompleted >= 25,
+      joined_classroom:    classroomsJoined >= 1,
+      joined_multiple_classrooms: classroomsJoined >= 3,
+
+      // Social
+      met_5_players:       distinctOpponents >= 5,
+      met_20_players:      distinctOpponents >= 20,
+      met_50_players:      distinctOpponents >= 50,
+      versatile_player:    smallestGame > 0 && smallestGame <= 2 && biggestGame >= 20,
+      renaissance_learner: renaissanceLearner,
+      small_group_champion: smallGroupWins >= 1,
+      small_group_king:    smallGroupWins >= 5,
+
+      // Misc
+      ultra_fast:          !!(await q('SELECT id FROM game_answers WHERE user_id = ? AND is_correct = 1 AND time_taken <= 0.5 AND time_taken > 0 LIMIT 1', [userId])),
+      consistent_10:       maxConsecutive90 >= 10,
+      error_analyst_master: (reviewRow?.review_count || 0) >= 50,
+      mode_master:         modesPlayed >= 5,
     };
 
     // Master achievements: count how many are unlocked

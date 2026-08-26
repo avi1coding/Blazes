@@ -128,15 +128,21 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
       const r = await fetch(`${BASE}/api/games/${gameCode}/live/answer`, {
         method: 'POST', headers: authHeaders(),
         // `answer` lets the server re-grade rather than trust `correct`.
-        // userId is ignored now. Identity comes from the token.
-        body: JSON.stringify({ questionId: q?.id ?? null, answer, correct, ms }),
+        // A signed-in player is identified by their token and this userId is
+        // ignored. It is read only for a guest, who has no token, and only
+        // when it matches a seat already held in this game.
+        body: JSON.stringify({ userId: user.id, questionId: q?.id ?? null, answer, correct, ms }),
       });
-      if (handleUnauthorized(r)) return;
+      // A guest has no session to expire, so bouncing them to the login page
+      // would just eject them from a game they legitimately joined.
+      if (user.role !== 'guest' && handleUnauthorized(r)) return;
       const d = await r.json().catch(() => ({}));
       if (r.ok) {
         answeredRef.current += 1;
-        // Trust the server's verdict, not the client's, it re-grades.
-        if ((d.delta ?? 0) > 0) correctRef.current += 1;
+        // The server re-grades and reports its own verdict. Inferring it from
+        // `delta > 0` under-counted every mode whose delta can be 0 on a
+        // correct answer, which cost the student their BlazesBucks.
+        if (d.isCorrect ?? ((d.delta ?? 0) > 0)) correctRef.current += 1;
         scoreRef.current = d.score ?? scoreRef.current;
         setFlash({ ...d, correct });
         clearTimeout(flashTimer.current);
@@ -197,9 +203,19 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
           <p className="text-sm text-gray-500 mb-4">
             {me ? `You finished with ${Math.round(me.score)} at rank #${me.rank}.` : 'Thanks for playing.'}
           </p>
-          <button onClick={() => navigate(homePath)} className="px-5 py-2.5 bg-gray-900 text-white rounded-xl font-bold">
-            Back to home
-          </button>
+          {/* Final scores are settled when the game ends, but nothing used to
+              take anyone to them, so the class never saw where they placed. */}
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => navigate(isHost ? `/game/teacher-results/${gameCode}` : `/game/results/${gameCode}`)}
+              className="px-5 py-2.5 bg-gray-900 text-white rounded-xl font-bold"
+            >
+              See full results
+            </button>
+            <button onClick={() => navigate(homePath)} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold">
+              Back to home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -383,12 +399,20 @@ function ModePanel({ mode, state, me, user, myColor }) {
   }
 
   if (mode === 'fracture') {
-    const mine = (shared.cracks || []).filter(c => c.near === user.id).length;
+    // The drawn pane holds the most recent cracks only, so counting what is
+    // drawn understated how many are actually scoring against you. The server
+    // sends the real count and the multiplier it works out to.
+    const mine = shared.myCracks ?? (shared.cracks || []).filter(c => c.near === user.id).length;
+    const dim = shared.dim ?? Math.max(0.3, 1 - mine * 0.08);
     return (
       <Panel>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-black text-gray-700">Cracks near you</span>
           <span className={`text-2xl font-black tabular-nums ${mine ? 'text-purple-600' : 'text-gray-400'}`}>{mine}</span>
+        </div>
+        <div className="flex items-center justify-between mb-2 text-xs font-bold">
+          <span className="text-gray-500">Your points multiplier</span>
+          <span className={dim < 1 ? 'text-purple-600' : 'text-gray-400'}>{dim.toFixed(2)}x</span>
         </div>
         <div className="relative h-16 rounded-xl bg-gray-900 overflow-hidden">
           {(shared.cracks || []).map((c, i) => (

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AvatarPreview, isBlazesPlusCached } from './SkinsPage';
 import { Trophy, Check, X, Zap, Clock, ShoppingBag, Flame, Droplets, Wind, Mountain } from 'lucide-react';
 
+import { authHeaders } from '../utils/auth';
 const ATTACKS = [
   { id: 'earthquake', name: 'Earthquake', cost: 5, damage: 30, icon: Mountain, color: 'from-amber-600 to-yellow-700', bg: 'bg-amber-900', text: 'text-amber-300' },
   { id: 'tsunami', name: 'Tsunami', cost: 8, damage: 50, icon: Droplets, color: 'from-blue-500 to-cyan-600', bg: 'bg-blue-900', text: 'text-blue-300' },
@@ -138,7 +139,7 @@ export default function ElementalClashGamePlay({ gameCode, user, equippedSkinId 
     // Record answer
     try {
       await fetch(`${base}/api/games/${gameCode}/answer`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: authHeaders(),
         body: JSON.stringify({ userId: user.id, questionId: currentQ.id, selectedAnswer: String(optionIndex), isCorrect, timeTaken: 0 })
       });
     } catch (_) { }

@@ -4,6 +4,7 @@ import { Shield, Zap, Flame, ShoppingBag, Sparkles, Clock, Trophy, X, Crown, Tar
 import { AvatarPreview, isBlazesPlusCached } from './SkinsPage';
 import { rankParticipants } from '../utils/ranking';
 
+import { authHeaders } from '../utils/auth';
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
 const ITEMS = [
@@ -223,7 +224,7 @@ export default function ArenaGamePlay({ gameCode: propCode, user: propUser }) {
     // Fire the answer submission in the background
     fetch(`${BASE}/api/games/${gameCode}/answer`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ userId: user.id, questionId: q.id, selectedAnswer: answer || '', isCorrect, timeTaken }),
     })
       .then(r => r.json())

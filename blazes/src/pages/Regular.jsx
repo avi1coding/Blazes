@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Flame, Clock, CheckCircle, XCircle } from 'lucide-react';
 
+import { authHeaders } from '../utils/auth';
 export default function Regular() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -133,7 +134,7 @@ export default function Regular() {
     try {
       await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000'}/api/games/${gameCode}/answer`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           userId: user.id,
           questionId: currentQuestion.id,

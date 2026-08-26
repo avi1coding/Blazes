@@ -9,6 +9,7 @@ import ElementalMarketsGamePlay from './ElementalMarketsGamePlay';
 import LiveModeGamePlay from './LiveModeGamePlay';
 import { LIVE_MODE_META } from '../utils/liveModes';
 
+import { authHeaders } from '../utils/auth';
 function getFullImageUrl(url) {
   if (!url) return null;
   if (url.startsWith('http') || url.startsWith('data:')) return url;
@@ -358,7 +359,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
       try {
         const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
         const res = await fetch(`${base}/api/games/${gameCode}/answer`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: authHeaders(),
           body: JSON.stringify({ userId: user.id, questionId: currentQuestion.id, selectedAnswer: String(optionIndex), isCorrect, timeTaken })
         });
         const data = await res.json().catch(() => ({}));
@@ -435,7 +436,7 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
       const timeTaken = parseFloat(((Date.now() - questionStartTimeRef.current) / 1000).toFixed(1));
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       fetch(`${base}/api/games/${gameCode}/answer`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: authHeaders(),
         body: JSON.stringify({ userId: user.id, questionId: currentQ.id, selectedAnswer: answer.trim(), isCorrect, timeTaken })
       })
         .then(r => r.json().catch(() => ({})))
@@ -1095,7 +1096,7 @@ function SurvivalGamePlay({ gameCode, user, equippedSkinId }) {
     const timeTaken = 0;
     try {
       await fetch(`${base}/api/games/${gameCode}/answer`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: authHeaders(),
         body: JSON.stringify({ userId: user.id, questionId: currentQ.id, selectedAnswer: String(optionIndex), isCorrect, timeTaken })
       });
     } catch (_) { }

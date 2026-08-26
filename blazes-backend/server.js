@@ -1164,7 +1164,10 @@ async function endRound(game, questions, caller = 'unknown') {
         return; // Don't end the game
       }
     }
-    await dbRun(`UPDATE games SET status = 'ended', ended_at = CURRENT_TIMESTAMP WHERE id = ?`, [game.id]);
+    // Last player standing. Ending here used to skip the payout that the
+    // host's End button gives, so a survival game that ran to its natural
+    // finish paid nobody.
+    await finishGame(game.game_code);
   }
 }
 
@@ -2340,15 +2343,15 @@ app.get('/api/games/:gameCode', (req, res) => {
       game.settings = JSON.parse(game.settings);
     }
 
-    // Auto-end game if time limit has passed
+    // Auto-end game if time limit has passed. Every client polls this read
+    // endpoint, so whoever polled first used to decide how the game ended. It
+    // now runs the same finishGame the End button does, which settles live
+    // scores and pays out rather than only flipping the status column.
     if (game.status === 'started' && game.settings?.timeLimit && game.started_at) {
       const startedAt = new Date(game.started_at.replace(' ', 'T') + 'Z').getTime();
       const elapsed = Math.floor((Date.now() - startedAt) / 1000);
       if (elapsed >= game.settings.timeLimit) {
-        await new Promise(resolve => db.run(
-          'UPDATE games SET status = ?, ended_at = CURRENT_TIMESTAMP WHERE id = ?',
-          ['ended', game.id], resolve
-        ));
+        await finishGame(game.game_code);
         game.status = 'ended';
       }
     }
@@ -2397,13 +2400,9 @@ app.get('/api/games/:gameCode/state', (req, res) => {
 
     // Check for game end conditions
     if (game.status === 'started' && settings?.timeLimit && gameTimeElapsed >= settings.timeLimit) {
-      // Game ends due to time limit
-      await new Promise((resolve, reject) => {
-        db.run('UPDATE games SET status = ?, ended_at = CURRENT_TIMESTAMP WHERE id = ?', ['ended', game.id], (err) => {
-          if (err) reject(err);
-          resolve();
-        });
-      });
+      // Game ends due to time limit. The same finishGame the End button runs,
+      // so a game that simply runs out of clock settles and pays out too.
+      await finishGame(gameCode);
       const updatedGame = await new Promise((resolve, reject) => db.get('SELECT * FROM games WHERE game_code = ?', [gameCode], (err, row) => { if (err) reject(err); resolve(row); }));
       game = updatedGame;
     }
@@ -2435,7 +2434,24 @@ app.post('/api/check-answer', (req, res) => {
 // Student submits answer
 app.post('/api/games/:gameCode/answer', async (req, res) => {
   const { gameCode } = req.params;
-  const { userId, questionId, selectedAnswer, isCorrect, timeTaken } = req.body;
+  const { questionId, selectedAnswer, isCorrect, timeTaken } = req.body;
+
+  // Identity, the same way the live modes do it: a signed-in player is whoever
+  // their token says, and a guest is accepted only for a seat they already
+  // hold in this game. Reading the id straight from the body let anyone post
+  // answers as another student, onto the leaderboard the room is watching.
+  const bodyId = Number(req.body?.userId);
+  const guestId = Number.isInteger(bodyId) && bodyId < 0 ? bodyId : null;
+  let userId = actingUserId(req);
+  if (!userId && guestId !== null) {
+    const seat = await dbGet(
+      `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
+       WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
+    if (seat) userId = guestId;
+  }
+  if (!userId) {
+    return res.status(401).json({ error: 'unauthenticated', message: 'Please sign in again.' });
+  }
 
   try {
     // Get game details
@@ -2464,24 +2480,37 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
     // speed curve with a 30s default budget so the score actually reflects
     // how fast the player answered.
     // Wrong answer: 0
+    //
+    // Grade on the server. This route used to award points from the isCorrect
+    // flag in the request body, so a hundred points could be posted straight
+    // onto the leaderboard without answering anything. The client's verdict is
+    // kept only for shapes the server cannot rebuild (ordering, matching,
+    // image labelling), where there is nothing else to go on.
+    const graded = gradeSubmission(question, selectedAnswer);
+    const correct = graded === null ? !!isCorrect : graded;
+
     let pointsEarned = 0;
-    if (isCorrect) {
+    if (correct) {
       if (game.game_mode === 'arena') {
         pointsEarned = 10;
       } else {
         const questionTimeLimit = question.time_limit || 30;
-        const t = typeof timeTaken === 'number' && timeTaken >= 0 ? timeTaken : questionTimeLimit;
+        // A submitted time was taken at face value, so claiming 0 seconds paid
+        // full marks every time. Clamp it into the question's own window.
+        const t = typeof timeTaken === 'number' && timeTaken >= 0
+          ? Math.min(timeTaken, questionTimeLimit)
+          : questionTimeLimit;
         const ratio = Math.min(1, t / questionTimeLimit);
         pointsEarned = Math.round(50 + 50 * (1 - ratio));
       }
     }
-    console.log(`[scoring] mode=${game.game_mode} q.time_limit=${question.time_limit} timeTaken=${timeTaken} isCorrect=${isCorrect} → pointsEarned=${pointsEarned}`);
+    console.log(`[scoring] mode=${game.game_mode} q.time_limit=${question.time_limit} timeTaken=${timeTaken} client=${isCorrect} server=${graded} → pointsEarned=${pointsEarned}`);
 
     // Record the answer (with time_taken)
     await new Promise((resolve, reject) => {
       db.run(
         'INSERT INTO game_answers (game_id, user_id, question_id, answer, is_correct, points_earned, time_taken) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [game.id, userId, questionId, selectedAnswer, isCorrect ? 1 : 0, pointsEarned, timeTaken || null],
+        [game.id, userId, questionId, selectedAnswer, correct ? 1 : 0, pointsEarned, timeTaken || null],
         function (err) {
           if (err) reject(err);
           resolve(this.lastID);
@@ -2499,7 +2528,7 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
       const doubleDown = p?.arena_double_down || 0;
       const permBonus = p?.arena_perm_bonus || 0;
 
-      if (isCorrect) {
+      if (correct) {
         combo += 1;
         if (combo > maxCombo) maxCombo = combo;
         pointsEarned += permBonus;
@@ -2588,7 +2617,7 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
       }
     }
 
-    res.json({ success: true, isCorrect, pointsEarned, arenaInfo });
+    res.json({ success: true, isCorrect: correct, pointsEarned, arenaInfo });
   } catch (err) {
     console.error('Error processing answer:', err);
     res.status(500).json({ error: err.message });
@@ -2765,7 +2794,7 @@ app.put('/api/games/:gameCode/start', (req, res) => {
 
   // Verify the requesting user is the host of this game AND is a teacher
   db.get(
-    `SELECT g.host_id, g.game_mode, u.role, u.email FROM games g
+    `SELECT g.host_id, g.game_mode, g.settings, u.role, u.email FROM games g
      JOIN users u ON g.host_id = u.id
      WHERE g.game_code = ?`,
     [gameCode],
@@ -2781,9 +2810,25 @@ app.put('/api/games/:gameCode/start', (req, res) => {
 
       // Too few players and the mode does not work; too many and it degrades.
       const limits = playerLimitsFor(row.game_mode);
-      const counted = await new Promise(resolve => db.get(
+      const joined = await new Promise(resolve => db.get(
         `SELECT COUNT(*) AS n FROM game_participants gp JOIN games g ON g.id = gp.game_id WHERE g.game_code = ?`,
         [gameCode], (_, r) => resolve(r?.n || 0)));
+      // The host is inserted as a player only after this route returns ok, so
+      // a host who is playing is not in game_participants yet. The lobby does
+      // count them, and it has to agree with what is enforced here, otherwise
+      // a teacher playing alongside one student sees an enabled Start button
+      // and then a flat refusal.
+      const hostIsPlaying = (() => {
+        try {
+          const st = typeof row.settings === 'string' ? JSON.parse(row.settings) : (row.settings || {});
+          return !!st.hostPlays;
+        } catch { return false; }
+      })();
+      const hostAlreadyJoined = hostIsPlaying && await new Promise(resolve => db.get(
+        `SELECT 1 AS n FROM game_participants gp JOIN games g ON g.id = gp.game_id
+         WHERE g.game_code = ? AND gp.user_id = ?`,
+        [gameCode, row.host_id], (_, r) => resolve(!!r)));
+      const counted = joined + (hostIsPlaying && !hostAlreadyJoined ? 1 : 0);
       if (counted < limits.min) {
         return res.status(409).json({
           error: 'too_few_players',
@@ -2849,71 +2894,86 @@ app.put("/api/games/:gameCode/cancel", (req, res) => {
   );
 });
 
-// End a game. Awards placement BB if 10+ participants
-app.put('/api/games/:gameCode/end', (req, res) => {
-  const { gameCode } = req.params;
+/**
+ * The one way a game ends. Marks it ended, freezes live scores, pays the host
+ * and placement BlazesBucks.
+ *
+ * Three separate places used to end a game and only this one paid out: the
+ * host's End button went through here, but a game that simply ran out of clock
+ * was ended by whichever 2s poller noticed first, which skipped the payout
+ * entirely and, in the live modes, skipped settling too, so the results page
+ * ranked by raw undecayed scores. Since running out of clock is the ordinary
+ * way a lesson ends, that was the common case, and which behaviour you got was
+ * a race between pollers. Every path now calls this.
+ *
+ * Safe to call more than once. Each award is written once per game, checked
+ * against blazes_bucks_log.
+ */
+async function finishGame(gameCode) {
+  const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
+  if (!game) return false;
 
-  db.run('UPDATE games SET status = ?, ended_at = CURRENT_TIMESTAMP WHERE game_code = ?',
-    ['ended', gameCode],
-    async (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      // For Elemental Markets games, lock in portfolio values as final scores
-      try { await app.locals.settleMarketsScores?.(gameCode); } catch (_) {}
-      try { await app.locals.settleLiveScores?.(gameCode); } catch (_) {}
+  await dbRun(
+    `UPDATE games SET status = 'ended', ended_at = CURRENT_TIMESTAMP
+      WHERE game_code = ? AND status != 'ended'`, [gameCode]);
 
-      // Placement BB: 10+ participants, game >= 5 min
-      db.get('SELECT * FROM games WHERE game_code = ?', [gameCode], (err, game) => {
-        if (err || !game) return;
-        const gameDuration = game.started_at ? (Date.now() - new Date(game.started_at.includes('T') ? game.started_at : game.started_at.replace(' ', 'T') + 'Z').getTime()) / 1000 : 0;
-        if (gameDuration < 300) return; // under 5 min = no BB
+  try { await app.locals.settleMarketsScores?.(gameCode); } catch (e) { console.error('[finishGame] markets settle:', e.message); }
+  try { await app.locals.settleLiveScores?.(gameCode); } catch (e) { console.error('[finishGame] live settle:', e.message); }
 
-        db.all(
-          `SELECT user_id, score FROM game_participants WHERE game_id = ? ORDER BY score DESC`,
-          [game.id],
-          async (err, participants) => {
-            if (err || !participants) return;
+  const paidAlready = async (userId, reason) => !!await dbGet(
+    `SELECT id FROM blazes_bucks_log WHERE user_id = ? AND game_code = ? AND reason = ? LIMIT 1`,
+    [userId, gameCode, reason]);
 
-            // Host BB: any host (teacher or student) gets BB for running a game ≥ 5 min with at least one non-host player
-            try {
-              const hostId = game.host_id;
-              if (hostId) {
-                const alreadyAwarded = await dbGet(
-                  `SELECT id FROM blazes_bucks_log WHERE user_id = ? AND game_code = ? AND reason = 'host_game' LIMIT 1`,
-                  [hostId, gameCode]
-                );
-                if (!alreadyAwarded) {
-                  const nonHostCount = participants.filter(p => p.user_id !== hostId).length;
-                  if (nonHostCount >= 1) {
-                    // 15 BB base + 3 per non-host player, capped at 60 BB per game
-                    const hostBB = Math.min(60, 15 + nonHostCount * 3);
-                    await awardBBWithCap(hostId, hostBB, 'host_game', gameCode);
-                    console.log(`[BB] Host bonus: +${hostBB} BB to user ${hostId} (${nonHostCount} players, game ${gameCode})`);
-                  }
-                }
-              }
-            } catch (hbErr) { console.error('[BB] host bonus error:', hbErr); }
+  try {
+    const startedMs = game.started_at
+      ? new Date(game.started_at.includes('T') ? game.started_at : game.started_at.replace(' ', 'T') + 'Z').getTime()
+      : 0;
+    const ranFor = startedMs ? (Date.now() - startedMs) / 1000 : 0;
+    if (ranFor < 300) return true;   // under 5 minutes pays nothing
 
-            if (participants.length < 10) return;
-            const prizes = [50, 30, 20];
-            const reasons = ['placement_1st', 'placement_2nd', 'placement_3rd'];
-            for (let i = 0; i < Math.min(3, participants.length); i++) {
-              const earned = await getBBEarnedToday(participants[i].user_id);
-              if (earned >= 1000) continue; // daily cap
-              await awardBBWithCap(participants[i].user_id, prizes[i], reasons[i], gameCode);
-            }
-            // 4th+ get 10 BB
-            for (let i = 3; i < participants.length; i++) {
-              const earned = await getBBEarnedToday(participants[i].user_id);
-              if (earned >= 1000) continue;
-              await awardBBWithCap(participants[i].user_id, 10, 'placement_other', gameCode);
-            }
-          }
-        );
-      });
+    const participants = await dbAll(
+      'SELECT user_id, score FROM game_participants WHERE game_id = ? ORDER BY score DESC', [game.id]);
+    if (!participants?.length) return true;
 
-      res.json({ message: 'Game ended' });
+    if (game.host_id && !await paidAlready(game.host_id, 'host_game')) {
+      const nonHostCount = participants.filter(p => p.user_id !== game.host_id).length;
+      if (nonHostCount >= 1) {
+        const hostBB = Math.min(60, 15 + nonHostCount * 3);
+        await awardBBWithCap(game.host_id, hostBB, 'host_game', gameCode);
+        console.log(`[BB] Host bonus: +${hostBB} BB to user ${game.host_id} (${nonHostCount} players, game ${gameCode})`);
+      }
     }
-  );
+
+    if (participants.length < 10) return true;
+    const prizes = [50, 30, 20];
+    const reasons = ['placement_1st', 'placement_2nd', 'placement_3rd'];
+    for (let i = 0; i < participants.length; i++) {
+      const reason = i < 3 ? reasons[i] : 'placement_other';
+      const amount = i < 3 ? prizes[i] : 10;
+      const uid = participants[i].user_id;
+      if (await paidAlready(uid, reason)) continue;
+      if (await getBBEarnedToday(uid) >= 1000) continue;
+      await awardBBWithCap(uid, amount, reason, gameCode);
+    }
+  } catch (err) {
+    console.error('[finishGame] payout:', err);
+  }
+  return true;
+}
+app.locals.finishGame = finishGame;
+
+// End a game the host asked to end. Everything a game end means lives in
+// finishGame, so the End button, the clock running out and a poller noticing
+// expiry all do the same thing.
+app.put('/api/games/:gameCode/end', async (req, res) => {
+  try {
+    const ok = await finishGame(req.params.gameCode);
+    if (!ok) return res.status(404).json({ error: 'Game not found' });
+    res.json({ message: 'Game ended' });
+  } catch (err) {
+    console.error('[end]', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Host bailed out mid-game. Marks status='ended' and abandoned=1 so the results
@@ -7513,7 +7573,7 @@ app.get('/api/games/:gameCode/elemental-state', async (req, res) => {
     if (game.status === 'started' && game.started_at && game.settings?.timeLimit) {
       const elapsed = (Date.now() - new Date(game.started_at.includes('T') ? game.started_at : game.started_at.replace(' ', 'T') + 'Z').getTime()) / 1000;
       if (elapsed >= game.settings.timeLimit) {
-        await dbRun(`UPDATE games SET status = 'ended', ended_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'started'`, [game.id]);
+        await finishGame(game.game_code);
         game.status = 'ended';
       }
     }
@@ -7573,7 +7633,7 @@ app.get('/api/games/:gameCode/wager-state', async (req, res) => {
     if (game.status === 'started' && game.started_at && game.settings?.timeLimit) {
       const elapsed = (Date.now() - new Date(game.started_at.includes('T') ? game.started_at : game.started_at.replace(' ', 'T') + 'Z').getTime()) / 1000;
       if (elapsed >= game.settings.timeLimit) {
-        await dbRun(`UPDATE games SET status = 'ended', ended_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'started'`, [game.id]);
+        await finishGame(game.game_code);
         game.status = 'ended';
       }
     }
@@ -8430,6 +8490,17 @@ function gradeLiveAnswer(q, answer) {
   if (type === 'multiple_choice' || type === 'true_false' || !type) {
     const opts = [q.option_a, q.option_b, q.option_c, q.option_d];
     const raw = String(correctRaw).trim();
+    // True/false questions usually store no options at all, so the two labels
+    // are generated. Accept the index as well as the word: only these two
+    // options are ever in play, so 0/1 cannot be confused with option text
+    // the way it could in a multiple choice whose options are numbers.
+    if (type === 'true_false' && !opts.some(Boolean)) {
+      const want = raw.toLowerCase() === 'false' || raw === '1';
+      const g = given.toLowerCase();
+      if (g === 'true' || g === '0') return want === false;
+      if (g === 'false' || g === '1') return want === true;
+      return null;
+    }
     // Kits store multiple choice as a LETTER ('A'..'D'); the API converts it to
     // an index for the client, so the raw column and the client's answer text
     // are in different alphabets. Handle letter, index and literal text.
@@ -8450,6 +8521,31 @@ function gradeLiveAnswer(q, answer) {
   // ordering / matching / image_label / audio: the client sends a derived
   // string we cannot reconstruct here, so its verdict stands.
   return null;
+}
+
+/**
+ * Grades what the classic answer route receives, which is the option INDEX the
+ * player clicked rather than the option text the live modes send.
+ *
+ * Grading against mapQuestionForPlay rather than the raw column means the
+ * server checks the answer against exactly the question the client was given,
+ * so the two can never disagree about what option 2 was.
+ *
+ * Returns null for shapes that cannot be rebuilt here (ordering, matching,
+ * image labelling), where the client's own verdict is all there is.
+ */
+function gradeSubmission(q, selectedAnswer) {
+  const given = String(selectedAnswer ?? '').trim();
+  if (given === '') return null;
+  const m = mapQuestionForPlay(q);
+  if (!m) return null;
+
+  // Anything with buttons: the client sends which button it pressed.
+  if (Array.isArray(m.options) && m.options.length && Number.isInteger(m.correctAnswer)) {
+    if (/^\d+$/.test(given)) return Number(given) === m.correctAnswer;
+    return given.toLowerCase() === String(m.options[m.correctAnswer] ?? '').toLowerCase();
+  }
+  return gradeLiveAnswer(q, given);
 }
 
 
@@ -8485,8 +8581,9 @@ async function endLiveGameIfExpired(game) {
   if (!game || game.status !== 'started') return false;
   const left = liveSecondsLeft(game);
   if (left === null || left > 0) return false;
-  await app.locals.settleLiveScores?.(game.game_code);
-  await dbRun("UPDATE games SET status = 'ended', ended_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'started'", [game.id]);
+  // Running out of clock is the ordinary way a lesson ends, so it has to pay
+  // out exactly like the host pressing End does.
+  await finishGame(game.game_code);
   return true;
 }
 
@@ -8547,7 +8644,16 @@ app.get('/api/games/:gameCode/live/state', async (req, res) => {
         pot: mode === 'vault' ? Math.round(vaultPot(shared)) : undefined,
         lastCrack: mode === 'vault' ? shared.lastCrack : undefined,
         current: mode === 'undertow' ? shared.current : undefined,
+        // The pane is drawn from the last 40 cracks to keep the payload small,
+        // but scoring counts every crack against you, up to 120. Send the real
+        // count and the multiplier it produces as well, otherwise a player can
+        // be scoring at 0.3x while their screen shows an intact pane.
         cracks: mode === 'fracture' ? shared.cracks.slice(-40) : undefined,
+        myCracks: mode === 'fracture' && userId != null
+          ? shared.cracks.filter(c => c.near === userId).length : undefined,
+        dim: mode === 'fracture' && userId != null
+          ? Math.max(0.3, 1 - shared.cracks.filter(c => c.near === userId).length * 0.08)
+          : undefined,
       },
     });
   } catch (err) {
@@ -8557,13 +8663,32 @@ app.get('/api/games/:gameCode/live/state', async (req, res) => {
 });
 
 // ── POST answer ────────────────────────────────────────────────────────────
-app.post('/api/games/:gameCode/live/answer', requireAuth, async (req, res) => {
+app.post('/api/games/:gameCode/live/answer', async (req, res) => {
   try {
     const { gameCode } = req.params;
     // Identity from the token. Taking userId from the body let anyone inflate
     // their own standing, or post `correct: false` as a rival to drive that
     // rival's score to zero, and the score column feeds placement BlazesBucks.
-    const userId = actingUserId(req);
+    //
+    // The one exception is a guest. Students who join a room by code without
+    // signing in get a negative transient id and no token, so requiring one
+    // here threw every guest in the class out to the login page on their very
+    // first answer. A negative id is accepted only when that exact id already
+    // holds a seat in this game: it can never name a real account, because
+    // real ids are positive, and it is the same level of trust the classic
+    // answer route already runs at.
+    const bodyId = Number(req.body?.userId);
+    const guestId = Number.isInteger(bodyId) && bodyId < 0 ? bodyId : null;
+    let userId = actingUserId(req);
+    if (!userId && guestId !== null) {
+      const seat = await dbGet(
+        `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
+         WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
+      if (seat) userId = guestId;
+    }
+    if (!userId) {
+      return res.status(401).json({ error: 'unauthenticated', message: 'Please sign in again.' });
+    }
     const { questionId, answer, correct, ms } = req.body;
 
     const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
@@ -8639,8 +8764,16 @@ app.post('/api/games/:gameCode/live/answer', requireAuth, async (req, res) => {
       // One shared current flows toward whoever has been fastest lately. Riding
       // it multiplies your points; fighting it divides them. Heavy skins resist
       // the pull, light skins get swung hardest, in both directions.
-      shared.recent.push({ userId, ms: answerMs, at: now });
-      if (shared.recent.length > 6) shared.recent.shift();
+      // Only a correct answer moves the current. Timing alone used to set it,
+      // so a student clicking through wrong answers in 200ms owned the current
+      // for the whole lesson and put everyone answering properly on the
+      // fighting-it penalty. Entries also age out, so a current cannot be held
+      // by someone who stopped answering.
+      if (isCorrect) {
+        shared.recent.push({ userId, ms: answerMs, at: now });
+      }
+      shared.recent = shared.recent.filter(r => now - r.at < 60000);
+      if (shared.recent.length > 6) shared.recent = shared.recent.slice(-6);
       const fastest = shared.recent.reduce((a, b) => (a && a.ms <= b.ms ? a : b), null);
       shared.current = fastest ? { userId: fastest.userId, ms: fastest.ms } : null;
 
@@ -8694,18 +8827,30 @@ app.post('/api/games/:gameCode/live/answer', requireAuth, async (req, res) => {
         : Math.max(0, radius - 2.2);
       st.radius = radius;
 
+      // How contested your ground is, measured as a share of your own area
+      // rather than a sum over the room. Charging a fixed penalty per rival
+      // grew with class size while lit area did not, so in a class of 30 every
+      // score sat at exactly 0 and placement BlazesBucks then paid whoever had
+      // answered least. Averaging makes it a property of the contest itself,
+      // so the same overlap costs the same in a group of 3 and a group of 40.
       const rivals = (await liveParticipants(game.id)).filter(p => p.user_id !== userId);
-      let contested = 0;
+      let overlapSum = 0;
+      let activeRivals = 0;
       for (const rv of rivals) {
         let rst = {}; try { rst = JSON.parse(rv.live_state || '{}'); } catch { rst = {}; }
         const rvSince = rv.live_answered_at ? now - new Date(rv.live_answered_at).getTime() : Infinity;
         const rvRadius = decayed(rst.radius || 0, rvSince, ECLIPSE_HALFLIFE);
-        // Whoever answered most recently owns the overlap.
-        if (rvSince < 0 || rvRadius <= 0) continue;
-        contested += Math.min(radius, rvRadius) * 0.12;
+        if (rvRadius <= 0) continue;
+        activeRivals++;
+        // A rival only shares the ground you both cover.
+        overlapSum += Math.min(radius, rvRadius) / Math.max(radius, 0.001);
       }
+      const contested = activeRivals > 0 ? overlapSum / activeRivals : 0;
       const area = Math.PI * radius * radius;
-      const effective = Math.max(0, area - contested * 10);
+      // Lose at most half your area to overlap. Whoever is out in front is
+      // overlapped proportionally less, and answering more always still beats
+      // answering less, which is what keeps the standings separating.
+      const effective = area * (1 - Math.min(0.5, contested * 0.5));
       // Score IS the lit area, scaled. Floor the delta at 0 on a correct answer so
       // rejoining after a break can never read as a penalty for answering well.
       delta = (effective / 12) - score;
@@ -8735,6 +8880,11 @@ app.post('/api/games/:gameCode/live/answer', requireAuth, async (req, res) => {
     }
 
     res.json({
+      // The server's own verdict, not the client's. Callers used to infer it
+      // from `delta > 0`, which is wrong for any mode whose delta can be zero
+      // or negative on a correct answer (eclipse floors it at 0), so a student
+      // could answer forty right and post a correct count of nought.
+      isCorrect,
       delta: Math.round(delta * 100) / 100,
       score: Math.round(score * 100) / 100,
       streak,

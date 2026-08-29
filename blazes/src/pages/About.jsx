@@ -324,6 +324,8 @@ export default function About() {
             <Link to="/about" className="hover:text-red-600">About</Link>
             <Link to="/contact" className="hover:text-red-600">Contact</Link>
             <Link to="/pricing" className="hover:text-red-600">Pricing</Link>
+            <Link to="/terms" className="hover:text-red-600">Terms</Link>
+            <Link to="/privacy" className="hover:text-red-600">Privacy</Link>
           </div>
         </div>
         <div className="mt-8 text-center text-sm text-gray-500">© 2026 Blazes. All rights reserved.</div>

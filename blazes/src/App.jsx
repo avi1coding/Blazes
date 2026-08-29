@@ -60,6 +60,8 @@ const LiveModeSetupPage = lazy(() => import("./pages/LiveModeSetupPage"));
 const HubPage = lazy(() => import("./pages/HubPage"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ClassroomPage = lazy(() => import("./pages/ClassroomPage"));
@@ -113,6 +115,8 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/upgrade" element={<Upgrade />} />

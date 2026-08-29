@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Flame, Users, Crown, LogOut, X, Shirt } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AvatarPreview, getNameColor, isBlazesPlusCached } from './SkinsPage';
+import { AvatarPreview, getNameColor, isBlazesPlusCached, cacheTier } from './SkinsPage';
 import SkinsPage from './SkinsPage';
 
 export default function StudentLobby() {
@@ -126,6 +126,11 @@ export default function StudentLobby() {
                     if (d.equipped?.avatar_skin) {
                         setPlayerSkins(prev => ({ ...prev, [uid]: d.equipped.avatar_skin }));
                     }
+                    // AvatarPreview auto-detects the premium ring from this
+                    // cache when given a userId. Without it, the teacher's
+                    // avatar (and every classmate's) could never show a ring
+                    // regardless of their plan.
+                    if (d.tier) cacheTier(uid, d.tier);
                 })
                 .catch(() => {});
         });
@@ -312,7 +317,8 @@ export default function StudentLobby() {
                                         skinId={player.user_id === user.id ? equippedSkinId : (player.avatar_skin || playerSkins[player.user_id] || 'default')}
                                         initial={player.player_name?.[0]?.toUpperCase() || 'P'}
                                         size={48}
-                                        isPlus={player.user_id === user.id && isBlazesPlusCached()}
+                                        userId={player.user_id}
+                                        isPlus={player.user_id === user.id ? isBlazesPlusCached() : undefined}
                                     />
                                     <div className="flex-1">
                                         <div className="font-bold" style={{ color: getNameColor(player.user_id === user.id ? equippedSkinId : (player.avatar_skin || playerSkins[player.user_id] || 'default')) }}>

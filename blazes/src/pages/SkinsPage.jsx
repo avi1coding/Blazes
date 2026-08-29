@@ -270,8 +270,15 @@ const _tierCache = {};
 export function cacheTier(userId, tier) { _tierCache[userId] = tier; }
 export function getCachedTier(userId) { return _tierCache[userId] || null; }
 
+// Every tier that earns the premium ring. blazes_plus is the student plan;
+// a teacher's equivalent is teacher_pro, and school covers the institutional
+// plan, both were being silently excluded everywhere this checked for the
+// literal string 'blazes_plus', so a Teacher Pro subscriber never got their
+// ring no matter where their avatar was shown.
+const PREMIUM_TIERS = ['blazes_plus', 'teacher_pro', 'school'];
+
 export function isBlazesPlusCached() {
-    try { return localStorage.getItem('blazes_tier') === 'blazes_plus'; } catch { return false; }
+    try { return PREMIUM_TIERS.includes(localStorage.getItem('blazes_tier')); } catch { return false; }
 }
 
 // Equipped-skin cache, persisted to localStorage so we can render the
@@ -304,7 +311,7 @@ export function AvatarPreview({ skinId, initial, size = 40, showFrame = true, is
         if (cached) skinId = cached;
     }
     // Auto-detect from cache if userId provided and isPlus not explicitly set
-    if (!isPlus && userId && getCachedTier(userId) === 'blazes_plus') isPlus = true;
+    if (!isPlus && userId && PREMIUM_TIERS.includes(getCachedTier(userId))) isPlus = true;
     const skin = SKIN_BY_ID[skinId];
     const bg = skin ? skin.bg : 'linear-gradient(135deg,#ef4444,#f97316)';
     const glow = skin ? skin.glow : '#f97316';

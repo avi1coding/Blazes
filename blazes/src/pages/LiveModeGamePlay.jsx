@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Flame, ArrowLeft, TrendingUp, TrendingDown, Clock, Plus, Square } from 'lucide-react';
 import QuestionView from '../components/QuestionView';
-import { AvatarPreview, getSkinColor } from './SkinsPage';
+import { AvatarPreview, getSkinColor, isBlazesPlusCached } from './SkinsPage';
 import { LIVE_MODE_META } from '../utils/liveModes';
 import { authHeaders, handleUnauthorized } from '../utils/auth';
 
@@ -233,7 +233,7 @@ export default function LiveModeGamePlay({ gameCode, user, equippedSkinId, initi
             <button onClick={() => navigate(homePath)} className="p-2 rounded-lg hover:bg-gray-200" aria-label="Leave">
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
-            <AvatarPreview skinId={equippedSkinId} initial={user?.name?.[0] || '?'} size={38} />
+            <AvatarPreview skinId={equippedSkinId} initial={user?.name?.[0] || '?'} size={38} isPlus={isBlazesPlusCached()} />
             <div className="min-w-0">
               <div className="font-black text-gray-900 leading-tight truncate">{user?.name || 'Player'}</div>
               <div className="text-[11px] font-bold flex items-center gap-1" style={{ color: meta.accent }}>

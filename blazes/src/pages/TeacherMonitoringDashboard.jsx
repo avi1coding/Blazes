@@ -349,7 +349,7 @@ export default function TeacherMonitoringDashboard() {
                       </div>
                     )}
                     <div className="flex items-start justify-between mb-4">
-                      <AvatarPreview skinId={player.avatar_skin || playerSkins[player.user_id] || 'default'} initial={player.player_name?.[0]?.toUpperCase() || 'S'} size={56} />
+                      <AvatarPreview skinId={player.avatar_skin || playerSkins[player.user_id] || 'default'} initial={player.player_name?.[0]?.toUpperCase() || 'S'} size={56} userId={player.user_id} />
                       <Eye className="w-5 h-5 text-blue-600" />
                     </div>
                     <h3 className="font-bold text-gray-900 text-lg mb-1">

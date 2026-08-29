@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AvatarPreview, getNameColor, isBlazesPlusCached } from './SkinsPage';
+import { AvatarPreview, getNameColor, isBlazesPlusCached, cacheTier } from './SkinsPage';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Clock, Trophy, Check, X, Heart, Skull, Lock, Users, Flame, BarChart3, Crown, Medal, Maximize2 } from 'lucide-react';
 import LiveModeGamePlay from './LiveModeGamePlay';
@@ -99,6 +99,23 @@ function ClassicGamePlay({ gameCode, user, equippedSkinId, initialGame }) {
     const id = setInterval(fetchLb, 2000);
     return () => clearInterval(id);
   }, [showLeaderboard, gameCode]);
+
+  // The leaderboard poll above gives skins, not subscription tier (the
+  // game state endpoint never returns it), so AvatarPreview's premium-ring
+  // auto-detect had nothing to detect from for any player but yourself.
+  const fetchedTierIds = useRef(new Set());
+  useEffect(() => {
+    if (!liveLeaderboard.length) return;
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+    liveLeaderboard.forEach(p => {
+      if (!p.user_id || fetchedTierIds.current.has(p.user_id)) return;
+      fetchedTierIds.current.add(p.user_id);
+      fetch(`${base}/api/skins/${p.user_id}`)
+        .then(r => r.json())
+        .then(d => { if (d.tier) cacheTier(p.user_id, d.tier); })
+        .catch(() => {});
+    });
+  }, [liveLeaderboard]);
 
   const scoreRef = useRef(0);
   const correctCountRef = useRef(0);

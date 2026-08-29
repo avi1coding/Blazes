@@ -177,10 +177,13 @@ export default function TeacherHome() {
       .then(setSeasonProgress)
       .catch(() => {});
 
-    // Load subscription tier
+    // Load subscription tier. Also cache it the same way StudentHome does,
+    // isBlazesPlusCached() reads this key for the "is this my own premium
+    // avatar" check, and a teacher's session never wrote it before, so a
+    // Teacher Pro subscriber's own avatar never got its ring.
     fetch(`${base}/api/subscription/${parsedUser.id}`)
       .then(r => r.json())
-      .then(d => setTeacherTier(d.tier || 'free'))
+      .then(d => { setTeacherTier(d.tier || 'free'); localStorage.setItem('blazes_tier', d.tier || 'free'); })
       .catch(() => {});
 
     if (parsedUser.role === 'student') {

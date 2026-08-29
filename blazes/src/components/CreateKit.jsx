@@ -1,9 +1,60 @@
 import { useState, useEffect, useRef } from 'react';
 import { authHeaders } from '../utils/auth';
-import { Plus, BookOpen, X, Trash2, ImagePlus, Pencil, Zap, Lock, ChevronDown } from 'lucide-react';
+import {
+  Plus, BookOpen, X, Trash2, ImagePlus, Pencil, Zap, Lock, ChevronDown,
+  Clipboard, Lightbulb, FileText, FileSpreadsheet, Presentation, File,
+  Globe, Link2, BookMarked, Library, Target, Loader2,
+} from 'lucide-react';
 import Toast from '../components/Toast';
 import SubjectPicker, { GradePicker } from './SubjectPicker';
 import ImagePicker from './ImagePicker';
+
+// Every way a teacher can hand the AI generator something to work from.
+// `kind` maps straight to the extractor on /api/ai/extract-file; `accept`
+// is the file-picker filter for that kind. Grouped so the modal can lay
+// them out by category instead of one long list.
+const AI_IMPORT_GROUPS = [
+  {
+    label: 'Type or Paste', icon: Clipboard,
+    options: [
+      { id: 'paste', label: 'Paste Notes', icon: Clipboard },
+      { id: 'topic', label: 'Just a Topic', icon: Lightbulb },
+    ],
+  },
+  {
+    label: 'Upload a File', icon: FileText,
+    options: [
+      { id: 'file', kind: 'pdf', accept: '.pdf', label: 'PDF', icon: FileText },
+      { id: 'file', kind: 'docx', accept: '.docx', label: 'Word (.docx)', icon: FileText },
+      { id: 'file', kind: 'pptx', accept: '.pptx', label: 'PowerPoint', icon: Presentation },
+      { id: 'file', kind: 'xlsx', accept: '.xlsx', label: 'Excel', icon: FileSpreadsheet },
+      { id: 'file', kind: 'csv', accept: '.csv', label: 'CSV', icon: FileSpreadsheet },
+      { id: 'file', kind: 'txt', accept: '.txt', label: 'Plain Text', icon: File },
+      { id: 'file', kind: 'md', accept: '.md,.markdown', label: 'Markdown', icon: File },
+      { id: 'file', kind: 'rtf', accept: '.rtf', label: 'Rich Text', icon: File },
+      { id: 'file', kind: 'html', accept: '.html,.htm', label: 'Webpage File', icon: Globe },
+      { id: 'file', kind: 'epub', accept: '.epub', label: 'EPUB', icon: BookMarked },
+      { id: 'file', kind: 'odt', accept: '.odt', label: 'OpenDocument', icon: FileText },
+      { id: 'file', kind: 'json', accept: '.json', label: 'JSON Notes', icon: File },
+      { id: 'file', kind: 'srt', accept: '.srt,.vtt', label: 'Subtitles / Transcript', icon: File },
+    ],
+  },
+  {
+    label: 'From the Web', icon: Globe,
+    options: [
+      { id: 'url', label: 'A Webpage', icon: Link2 },
+      { id: 'wikipedia', label: 'Wikipedia', icon: Globe },
+      { id: 'googledocs', label: 'Google Docs (published link)', icon: FileText },
+    ],
+  },
+  {
+    label: 'From Your Classes', icon: Library,
+    options: [
+      { id: 'existing_kit', label: 'An Existing Kit', icon: Library },
+      { id: 'weak_spots', label: "Class's Weak Spots", icon: Target },
+    ],
+  },
+];
 
 export default function CreateKit({ user, onBack, onKitCreated }) {
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -36,6 +87,135 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
   const [diffOpen, setDiffOpen] = useState(false);
   const countRef = useRef(null);
   const diffRef = useRef(null);
+
+  // Which of the 20 import options is active, and whatever small extra
+  // input that source needs (a URL, a topic name, which kit/classroom).
+  // aiNotes stays the one shared destination every source but weak_spots
+  // fills, so Questions/Difficulty/Types/Generate below never need to
+  // know which source produced the text.
+  const [aiSource, setAiSource] = useState('paste');
+  const [aiSourceLabel, setAiSourceLabel] = useState('');
+  const [aiExtracting, setAiExtracting] = useState(false);
+  const [aiUrlInput, setAiUrlInput] = useState('');
+  const [aiTopicInput, setAiTopicInput] = useState('');
+  const [aiWikiInput, setAiWikiInput] = useState('');
+  const [aiExistingKits, setAiExistingKits] = useState(null);
+  const [aiSelectedKitId, setAiSelectedKitId] = useState('');
+  const [aiClassrooms, setAiClassrooms] = useState(null);
+  const [aiSelectedClassroomId, setAiSelectedClassroomId] = useState('');
+  const aiFileInputRef = useRef(null);
+  const [aiPendingFileKind, setAiPendingFileKind] = useState('');
+
+  // Resets everything about the import source, not the question
+  // count/difficulty/types below it, those are independent of where the
+  // text came from.
+  const resetAiSource = () => {
+    setAiSource('paste'); setAiSourceLabel(''); setAiNotes(''); setAiError('');
+    setAiUrlInput(''); setAiTopicInput(''); setAiWikiInput('');
+    setAiSelectedKitId(''); setAiSelectedClassroomId('');
+  };
+
+  const pickAiOption = (opt) => {
+    setAiError('');
+    if (opt.id === 'file') {
+      setAiPendingFileKind(opt.kind);
+      if (aiFileInputRef.current) {
+        aiFileInputRef.current.accept = opt.accept;
+        aiFileInputRef.current.click();
+      }
+      return;
+    }
+    setAiSource(opt.id);
+    setAiNotes('');
+    setAiSourceLabel('');
+    if (opt.id === 'existing_kit' && aiExistingKits === null) {
+      fetch(`${base}/api/kits/teacher/${user.id}`).then(r => r.json()).then(setAiExistingKits).catch(() => setAiExistingKits([]));
+    }
+    if (opt.id === 'weak_spots' && aiClassrooms === null) {
+      fetch(`${base}/api/classrooms/teacher/${user.id}`).then(r => r.json()).then(setAiClassrooms).catch(() => setAiClassrooms([]));
+    }
+  };
+
+  const handleAiFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setAiSource('file');
+    setAiError('');
+    setAiExtracting(true);
+    setAiNotes('');
+    try {
+      const buf = await file.arrayBuffer();
+      const res = await fetch(`${base}/api/ai/extract-file?kind=${aiPendingFileKind}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: buf,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not read that file');
+      setAiNotes(data.text);
+      setAiSourceLabel(`Uploaded: ${file.name}`);
+    } catch (err) {
+      setAiError(err.message || 'Could not read that file');
+    }
+    setAiExtracting(false);
+  };
+
+  const handleAiFetchUrl = async () => {
+    if (!aiUrlInput.trim()) return;
+    setAiError(''); setAiExtracting(true); setAiNotes('');
+    try {
+      const res = await fetch(`${base}/api/ai/extract-url`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: aiUrlInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not read that page');
+      setAiNotes(data.text);
+      setAiSourceLabel(`From: ${aiUrlInput.trim()}`);
+    } catch (err) {
+      setAiError(err.message || 'Could not read that page');
+    }
+    setAiExtracting(false);
+  };
+
+  const handleAiFetchWikipedia = async () => {
+    if (!aiWikiInput.trim()) return;
+    setAiError(''); setAiExtracting(true); setAiNotes('');
+    try {
+      const res = await fetch(`${base}/api/ai/extract-wikipedia`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: aiWikiInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not find that article');
+      setAiNotes(data.text);
+      setAiSourceLabel(`Wikipedia: ${data.title}`);
+    } catch (err) {
+      setAiError(err.message || 'Could not find that article');
+    }
+    setAiExtracting(false);
+  };
+
+  const handleAiLoadExistingKit = async (kitId) => {
+    setAiSelectedKitId(kitId);
+    if (!kitId) { setAiNotes(''); setAiSourceLabel(''); return; }
+    setAiError(''); setAiExtracting(true); setAiNotes('');
+    try {
+      const res = await fetch(`${base}/api/kits/${kitId}`);
+      const data = await res.json();
+      const text = (data.questions || []).map(q => {
+        let ans = q.correct_answer || '';
+        if (q.answer_type === 'multiple_choice' && /^[A-D]$/i.test(ans)) {
+          const opts = [q.option_a, q.option_b, q.option_c, q.option_d];
+          ans = opts['ABCD'.indexOf(ans.toUpperCase())] || ans;
+        }
+        return `${q.question_text} (${ans})`;
+      }).join('\n');
+      if (!text.trim()) throw new Error('That kit has no questions to work from');
+      setAiNotes(text);
+      setAiSourceLabel(`From kit: ${data.title || 'Untitled'}`);
+    } catch (err) {
+      setAiError(err.message || 'Could not load that kit');
+    }
+    setAiExtracting(false);
+  };
 
   const handleAddQuestion = () => {
     if (!currentQuestion.questionText) { setToast({ show: true, message: 'Please fill in the question text', type: 'error' }); return; }
@@ -186,7 +366,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
           </div>
           <div className="flex gap-2">
             {hasAI ? (
-              <button onClick={() => setShowAIModal(true)}
+              <button onClick={() => { resetAiSource(); setShowAIModal(true); }}
                 className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-purple-700 transition-colors">
                 <Zap className="w-4 h-4" /> AI Generate
               </button>
@@ -709,7 +889,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !aiLoading && setShowAIModal(false)}>
           <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-black text-gray-900 mb-2">AI Quiz Generator</h2>
-            <p className="text-gray-500 text-sm mb-6">Paste your notes and AI will create questions automatically</p>
+            <p className="text-gray-500 text-sm mb-6">Pick where to pull material from, or paste your own notes</p>
 
             {aiError && (
               <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm font-semibold">
@@ -717,18 +897,134 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
               </div>
             )}
 
+            <input ref={aiFileInputRef} type="file" className="hidden" onChange={handleAiFileSelected} />
+
             <div className="space-y-4">
+              {/* Import from: the 20 sources, grouped */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Your Notes *</label>
-                <textarea
-                  value={aiNotes}
-                  onChange={e => setAiNotes(e.target.value)}
-                  placeholder="Paste your class notes, textbook content, or study material here..."
-                  rows={8}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-500 focus:outline-none resize-none"
-                />
-                <p className="text-xs text-gray-400 mt-1">{aiNotes.length} characters</p>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Import From</label>
+                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1 border-2 border-gray-100 rounded-xl p-2.5">
+                  {AI_IMPORT_GROUPS.map(group => (
+                    <div key={group.label}>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1 px-0.5">{group.label}</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {group.options.map((opt, i) => {
+                          const OptIcon = opt.icon;
+                          const active = opt.id === 'file' ? (aiSource === 'file' && aiPendingFileKind === opt.kind) : aiSource === opt.id;
+                          return (
+                            <button key={opt.kind || opt.id + i} type="button" onClick={() => pickAiOption(opt)}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors border ${
+                                active ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-purple-50 hover:border-purple-200'
+                              }`}>
+                              <OptIcon className="w-3.5 h-3.5" /> {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* Source-specific small input, only for sources that need one */}
+              {aiSource === 'topic' && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Topic</label>
+                  <input type="text" value={aiTopicInput}
+                    onChange={e => { setAiTopicInput(e.target.value); setAiNotes(e.target.value.trim() ? `Topic: ${e.target.value.trim()}. Generate quiz questions testing understanding of this topic.` : ''); setAiSourceLabel(e.target.value.trim() ? `Topic: ${e.target.value.trim()}` : ''); }}
+                    placeholder="e.g. The causes and effects of World War 1"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-500 focus:outline-none" />
+                </div>
+              )}
+              {aiSource === 'url' && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Webpage URL</label>
+                  <div className="flex gap-2">
+                    <input type="text" value={aiUrlInput} onChange={e => setAiUrlInput(e.target.value)}
+                      placeholder="https://..."
+                      className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-500 focus:outline-none" />
+                    <button type="button" onClick={handleAiFetchUrl} disabled={aiExtracting || !aiUrlInput.trim()}
+                      className="px-4 py-3 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700 disabled:opacity-50">
+                      Fetch
+                    </button>
+                  </div>
+                </div>
+              )}
+              {aiSource === 'googledocs' && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Google Docs Link</label>
+                  <p className="text-xs text-gray-400 mb-1.5">File → Share → Publish to web, then paste that link here.</p>
+                  <div className="flex gap-2">
+                    <input type="text" value={aiUrlInput} onChange={e => setAiUrlInput(e.target.value)}
+                      placeholder="https://docs.google.com/document/d/.../pub"
+                      className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-500 focus:outline-none" />
+                    <button type="button" onClick={handleAiFetchUrl} disabled={aiExtracting || !aiUrlInput.trim()}
+                      className="px-4 py-3 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700 disabled:opacity-50">
+                      Fetch
+                    </button>
+                  </div>
+                </div>
+              )}
+              {aiSource === 'wikipedia' && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Wikipedia Topic</label>
+                  <div className="flex gap-2">
+                    <input type="text" value={aiWikiInput} onChange={e => setAiWikiInput(e.target.value)}
+                      placeholder="e.g. Photosynthesis"
+                      className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-500 focus:outline-none" />
+                    <button type="button" onClick={handleAiFetchWikipedia} disabled={aiExtracting || !aiWikiInput.trim()}
+                      className="px-4 py-3 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700 disabled:opacity-50">
+                      Fetch
+                    </button>
+                  </div>
+                </div>
+              )}
+              {aiSource === 'existing_kit' && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Which Kit?</label>
+                  <select value={aiSelectedKitId} onChange={e => handleAiLoadExistingKit(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold focus:border-purple-500 focus:outline-none bg-white">
+                    <option value="">Select a kit...</option>
+                    {(aiExistingKits || []).map(k => <option key={k.id} value={k.id}>{k.title} ({k.question_count} questions)</option>)}
+                  </select>
+                  {aiExistingKits?.length === 0 && <p className="text-xs text-gray-400 mt-1">You don't have any other kits yet.</p>}
+                </div>
+              )}
+              {aiSource === 'weak_spots' && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Which Class?</label>
+                  <select value={aiSelectedClassroomId} onChange={e => setAiSelectedClassroomId(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold focus:border-purple-500 focus:outline-none bg-white">
+                    <option value="">Select a classroom...</option>
+                    {(aiClassrooms || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">Generates fresh practice questions covering whatever this class has gotten wrong most.</p>
+                </div>
+              )}
+
+              {aiExtracting && (
+                <div className="flex items-center gap-2 text-sm font-semibold text-purple-600">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Reading...
+                </div>
+              )}
+
+              {/* The shared destination every source but weak_spots fills */}
+              {aiSource !== 'weak_spots' && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-bold text-gray-700">Your Notes *</label>
+                    {aiSourceLabel && <span className="text-xs font-semibold text-purple-600 truncate max-w-[60%]">{aiSourceLabel}</span>}
+                  </div>
+                  <textarea
+                    value={aiNotes}
+                    onChange={e => setAiNotes(e.target.value)}
+                    placeholder="Paste your class notes, textbook content, or study material here, or pick a source above..."
+                    rows={8}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-500 focus:outline-none resize-none"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">{aiNotes.length} characters</p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div ref={countRef} className="relative">
@@ -795,44 +1091,6 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
                 {aiTypes.length === 0 && <p className="text-xs text-red-500 mt-1 font-semibold">Select at least one type</p>}
               </div>
 
-              {/* PDF upload option */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Or upload a PDF</label>
-                <input type="file" accept=".pdf,.txt" onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  if (file.name.endsWith('.txt')) {
-                    const text = await file.text();
-                    setAiNotes(text);
-                  } else if (file.name.endsWith('.pdf')) {
-                    setAiError('');
-                    setAiLoading(true);
-                    try {
-                      const reader = new FileReader();
-                      reader.onload = async () => {
-                        try {
-                          const res = await fetch(`${base}/api/ai/extract-pdf`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/pdf' },
-                            body: reader.result
-                          });
-                          const data = await res.json();
-                          if (data.text) {
-                            setAiNotes(data.text);
-                          } else {
-                            setAiError('Could not extract text from PDF');
-                          }
-                        } catch { setAiError('Failed to read PDF'); }
-                        setAiLoading(false);
-                      };
-                      reader.readAsArrayBuffer(file);
-                    } catch { setAiError('Failed to read file'); setAiLoading(false); }
-                  }
-                  e.target.value = '';
-                }}
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
-                />
-              </div>
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -843,14 +1101,22 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
               </button>
               <button
                 onClick={async () => {
-                  if (aiNotes.trim().length < 20) { setAiError('Please provide at least 20 characters of notes'); return; }
+                  const isWeakSpots = aiSource === 'weak_spots';
+                  if (isWeakSpots) {
+                    if (!aiSelectedClassroomId) { setAiError('Pick a classroom first'); return; }
+                  } else if (aiNotes.trim().length < 20) {
+                    setAiError('Please provide at least 20 characters of notes');
+                    return;
+                  }
                   setAiLoading(true);
                   setAiError('');
                   try {
-                    const res = await fetch(`${base}/api/ai/generate-from-notes`, {
+                    const res = await fetch(`${base}/api/ai/${isWeakSpots ? 'generate-from-weak-spots' : 'generate-from-notes'}`, {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ notes: aiNotes, questionCount: aiCount, difficulty: aiDifficulty, questionTypes: aiTypes, userId: user.id })
+                      headers: authHeaders(),
+                      body: JSON.stringify(isWeakSpots
+                        ? { classroomId: aiSelectedClassroomId, questionCount: aiCount, difficulty: aiDifficulty, questionTypes: aiTypes }
+                        : { notes: aiNotes, questionCount: aiCount, difficulty: aiDifficulty, questionTypes: aiTypes })
                     });
                     const data = await res.json();
                     if (!res.ok) {
@@ -870,15 +1136,14 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
                     }));
                     setQuestions(prev => [...prev, ...newQuestions]);
                     setShowAIModal(false);
-                    setAiNotes('');
-                    setAiError('');
+                    resetAiSource();
                     setToast({ show: true, message: `AI generated ${newQuestions.length} questions!`, type: 'success' });
                   } catch (err) {
                     setAiError(err.message || 'Failed to generate questions');
                   }
                   setAiLoading(false);
                 }}
-                disabled={aiLoading || aiNotes.trim().length < 20 || aiTypes.length === 0}
+                disabled={aiLoading || aiExtracting || (aiSource === 'weak_spots' ? !aiSelectedClassroomId : aiNotes.trim().length < 20) || aiTypes.length === 0}
                 className="flex-1 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {aiLoading ? (

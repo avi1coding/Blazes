@@ -3419,7 +3419,7 @@ app.get('/api/games/:gameCode/ai-overview/:userId', async (req, res) => {
     }).join('\n');
 
     const result = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       messages: [
         {
           role: 'system',
@@ -3435,7 +3435,7 @@ Keep the entire response under 150 words. No markdown headers, just plain text w
         },
         {
           role: 'user',
-          content: `Student scored ${correct}/${total} (${accuracy}%). Here are their answers:\n\n${summary}`
+          content: `Student scored ${correct}/${total} (${accuracy}%). Here are their answers:\n\n${summary.slice(0, 4000)}`
         }
       ],
       temperature: 0.5,
@@ -6109,7 +6109,7 @@ app.get('/api/flashcards/:kitId', async (req, res) => {
 
     try {
       const result = await groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         messages: [
           {
             role: 'system',
@@ -6129,17 +6129,19 @@ Important rules:
           },
           {
             role: 'user',
-            content: `Source material (${questions.length} quiz questions about "${kit?.title || ''}"):\n${qSummaries}\n\nGenerate exactly ${requestedCount} flashcards as JSON: [{"front":"...","back":"..."},...]`
+            content: `Source material (${questions.length} quiz questions about "${kit?.title || ''}"):\n${qSummaries.slice(0, 4000)}\n\nGenerate exactly ${requestedCount} flashcards as JSON: [{"front":"...","back":"..."},...]`
           }
         ],
         temperature: 0.4,
-        max_tokens: 6000,
+        // Same TPM budgeting as generateQuiz: scale to what was actually
+        // asked for rather than reserving the same 6000 tokens whether 5
+        // cards or 50 were requested.
+        max_tokens: Math.min(5500, 100 * requestedCount + 500),
       });
 
       const text = result.choices[0]?.message?.content?.trim();
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const flashcards = JSON.parse(jsonMatch[0]);
+      try {
+        const flashcards = parseGeneratedQuestions(text);
         const cards = flashcards.slice(0, requestedCount).map((fc, i) => ({
           id: i + 1,
           front: fc.front,
@@ -6147,8 +6149,9 @@ Important rules:
         }));
         if (userId) await trackAiUsage(parseInt(userId), 'flashcards');
         return res.json({ cards, total: questions.length });
+      } catch {
+        return res.json({ cards: questions.slice(0, requestedCount).map((q, i) => ({ id: i + 1, front: q.question_text, back: q.correct_answer })), total: questions.length });
       }
-      return res.json({ cards: questions.slice(0, requestedCount).map((q, i) => ({ id: i + 1, front: q.question_text, back: q.correct_answer })), total: questions.length });
     } catch (aiErr) {
       console.error('[Flashcards AI] Error:', aiErr.message);
       return res.json({ cards: questions.slice(0, requestedCount).map((q, i) => ({ id: i + 1, front: q.question_text, back: q.correct_answer })), total: questions.length });
@@ -6740,17 +6743,57 @@ app.get('/api/export/teacher/:teacherId/student/:studentId', async (req, res) =>
 
 // =========== AI QUIZ GENERATION ===========
 
+/**
+ * Parses the model's JSON array response, tolerating a response cut off by
+ * max_tokens mid-object. Groq's own JSON-truncation is a known failure mode
+ * for verbose question types (ordering/matching answers run long), and a
+ * teacher losing every question in the batch because the LAST one didn't
+ * quite fit is worse than getting back the ones that did.
+ */
+function parseGeneratedQuestions(text) {
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const start = cleaned.indexOf('[');
+  if (start === -1) throw new Error('AI response was not a JSON array');
+  const body = cleaned.slice(start);
+
+  try {
+    return JSON.parse(body);
+  } catch {
+    // Cut back to the last complete "},ock" boundary and close the array
+    // ourselves. Whatever came after that point was mid-write when the
+    // token budget ran out.
+    const lastComplete = body.lastIndexOf('},');
+    if (lastComplete === -1) throw new Error('AI response was cut off before any complete question');
+    return JSON.parse(body.slice(0, lastComplete + 1) + ']');
+  }
+}
+
 async function generateQuiz(sourceText, questionCount, difficulty, questionTypes) {
   if (!groq) throw new Error('AI not configured');
+
+  // This account's Groq tier caps every general-purpose model at 8,000
+  // tokens per minute, input and output combined. A fixed 6000-token output
+  // budget reserved on every call, regardless of how many questions were
+  // actually asked for, left almost nothing for the source text and tipped
+  // over the cap on anything but the shortest requests. Scale the output
+  // budget to the actual question count instead, and keep source text
+  // modest, there is no need for the model to read a whole chapter to write
+  // twenty questions.
+  const count = Math.max(1, Math.min(30, Number(questionCount) || 10));
+  // ordering/matching answers are long strings (items or pairs joined by
+  // ||| and ###), so the per-question estimate has to cover the worst case
+  // mix, not the average one, undershooting here truncates the response
+  // mid-string rather than just running a little short on questions.
+  const outputBudget = Math.min(5500, 350 * count + 600);
 
   const allTypes = ['multiple_choice', 'true_false', 'multi_select', 'ordering', 'matching'];
   const types = questionTypes && questionTypes.length > 0 ? questionTypes.filter(t => allTypes.includes(t)) : allTypes;
   if (types.length === 0) types.push('multiple_choice');
 
-  const prompt = `You are a quiz question generator for an educational game. Based on the following text, generate exactly ${questionCount} quiz questions using a MIX of these types: ${types.join(', ')}.
+  const prompt = `You are a quiz question generator for an educational game. Based on the following text, generate exactly ${count} quiz questions using a MIX of these types: ${types.join(', ')}.
 
 TEXT:
-${sourceText.substring(0, 8000)}
+${sourceText.substring(0, 4000)}
 
 REQUIREMENTS:
 - Difficulty: ${difficulty}
@@ -6775,25 +6818,22 @@ RESPOND WITH ONLY a JSON array. Each object:
 Return ONLY the JSON array. No markdown, no explanation.`;
 
   const result = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: 'openai/gpt-oss-120b',
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.7,
-    max_tokens: 6000,
+    max_tokens: outputBudget,
   });
 
   const text = result.choices[0]?.message?.content?.trim();
   if (!text) throw new Error('AI returned empty response');
 
-  const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  const jsonMatch = jsonStr.match(/\[[\s\S]*\]/);
-  const questions = JSON.parse(jsonMatch ? jsonMatch[0] : jsonStr);
-
+  const questions = parseGeneratedQuestions(text);
   if (!Array.isArray(questions) || questions.length === 0) {
     throw new Error('AI generated no questions');
   }
 
   const validTypes = [...allTypes, 'image_label'];
-  return questions.slice(0, questionCount).map(q => ({
+  return questions.slice(0, count).map(q => ({
     question_text: q.question_text || '',
     answer_type: validTypes.includes(q.answer_type) ? q.answer_type : 'multiple_choice',
     correct_answer: q.correct_answer || 'A',
@@ -6804,19 +6844,22 @@ Return ONLY the JSON array. No markdown, no explanation.`;
   })).filter(q => q.question_text.length > 0);
 }
 
-app.post('/api/ai/generate-from-notes', async (req, res) => {
+// Identity from the token, always. userId used to be read from the body,
+// and only gated the Blazes Plus / daily-limit check when present, so a
+// request that simply omitted userId skipped the paywall and the cap
+// entirely, unlimited free AI generation for anyone who noticed.
+app.post('/api/ai/generate-from-notes', requireAuth, async (req, res) => {
   try {
-    const { notes, questionCount = 10, difficulty = 'medium', questionTypes = ['multiple_choice'], userId } = req.body;
+    const userId = actingUserId(req);
+    const { notes, questionCount = 10, difficulty = 'medium', questionTypes = ['multiple_choice'] } = req.body;
     if (!notes || notes.trim().length < 20) return res.status(400).json({ error: 'Please provide at least 20 characters of notes' });
-    if (userId) {
-      const limit = await checkAiLimit(userId, 'quiz_generate');
-      if (!limit.allowed) {
-        if (limit.reason === 'upgrade_required') return res.status(403).json({ error: 'upgrade_required', message: 'AI Quiz Generation requires Blazes Plus or higher', requiredTier: 'blazes_plus' });
-        return res.status(429).json({ error: 'daily_limit', message: `AI quiz limit reached (${limit.used}/${limit.limit} today). Resets at midnight.`, used: limit.used, limit: limit.limit });
-      }
+    const limit = await checkAiLimit(userId, 'quiz_generate');
+    if (!limit.allowed) {
+      if (limit.reason === 'upgrade_required') return res.status(403).json({ error: 'upgrade_required', message: 'AI Quiz Generation requires Blazes Plus or higher', requiredTier: 'blazes_plus' });
+      return res.status(429).json({ error: 'daily_limit', message: `AI quiz limit reached (${limit.used}/${limit.limit} today). Resets at midnight.`, used: limit.used, limit: limit.limit });
     }
     const questions = await generateQuiz(notes, questionCount, difficulty, questionTypes);
-    if (userId) await trackAiUsage(userId, 'quiz_generate');
+    await trackAiUsage(userId, 'quiz_generate');
     console.log(`[AI] Generated ${questions.length} questions from notes (${notes.length} chars)`);
     res.json({ questions });
   } catch (err) {
@@ -6825,35 +6868,250 @@ app.post('/api/ai/generate-from-notes', async (req, res) => {
   }
 });
 
-app.post('/api/ai/generate-from-pdf', async (req, res) => {
+// ── File import formats, PDF and everything beyond it ──────────────────────
+// docx/pptx/odt/epub are all zip archives holding XML; stripping tags rather
+// than fully parsing the XML is enough to hand the AI generator readable
+// text, this is a "get something to feed the model" extractor, not a
+// document renderer.
+function stripXmlTags(xml) {
+  return xml
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+// stripXmlTags alone leaves script/style CONTENTS behind (only the tags
+// themselves are stripped), which is invisible in a browser but reads as
+// noise, or actual JS/CSS source, once it is plain text handed to the AI.
+function stripHtmlDocument(html) {
+  return stripXmlTags(
+    html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+  );
+}
+
+async function extractFromDocx(buffer) {
+  const JSZip = require('jszip');
+  const zip = await JSZip.loadAsync(buffer);
+  const doc = await zip.file('word/document.xml')?.async('string');
+  if (!doc) throw new Error('not a valid Word document');
+  return stripXmlTags(doc);
+}
+
+async function extractFromPptx(buffer) {
+  const JSZip = require('jszip');
+  const zip = await JSZip.loadAsync(buffer);
+  const slideFiles = Object.keys(zip.files)
+    .filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f))
+    .sort((a, b) => parseInt(a.match(/\d+/)[0], 10) - parseInt(b.match(/\d+/)[0], 10));
+  if (!slideFiles.length) throw new Error('not a valid PowerPoint file');
+  const texts = [];
+  for (const f of slideFiles) texts.push(stripXmlTags(await zip.file(f).async('string')));
+  return texts.join('\n\n');
+}
+
+async function extractFromOdt(buffer) {
+  const JSZip = require('jszip');
+  const zip = await JSZip.loadAsync(buffer);
+  const doc = await zip.file('content.xml')?.async('string');
+  if (!doc) throw new Error('not a valid OpenDocument file');
+  return stripXmlTags(doc);
+}
+
+async function extractFromEpub(buffer) {
+  const JSZip = require('jszip');
+  const zip = await JSZip.loadAsync(buffer);
+  const htmlFiles = Object.keys(zip.files).filter(f => /\.x?html?$/i.test(f));
+  if (!htmlFiles.length) throw new Error('not a valid EPUB file');
+  // Cap chapters so a full novel cannot blow past a reasonable payload; the
+  // generator itself only reads the first 8000 characters anyway.
+  const texts = [];
+  for (const f of htmlFiles.slice(0, 60)) texts.push(stripXmlTags(await zip.file(f).async('string')));
+  return texts.join('\n\n');
+}
+
+function extractFromRtf(text) {
+  return text
+    .replace(/\\'[0-9a-f]{2}/gi, '')
+    .replace(/\\[a-z]+-?\d* ?/gi, ' ')
+    .replace(/[{}]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+function extractFromSubtitles(text) {
+  // SRT/VTT: drop sequence numbers, timestamp lines, and cue settings; keep
+  // the spoken lines, which is exactly what a lecture recording transcript
+  // reduces to.
+  return text.split(/\r?\n/)
+    .filter(line => !/^\d+$/.test(line.trim()) && !line.includes('-->') && !/^WEBVTT/i.test(line.trim()))
+    .join(' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function extractFromJsonText(text) {
   try {
-    const { text, questionCount = 10, difficulty = 'medium', questionTypes = ['multiple_choice'], userId } = req.body;
-    if (!text || text.trim().length < 20) return res.status(400).json({ error: 'Could not extract enough text from the document' });
-    if (userId) {
-      const limit = await checkAiLimit(userId, 'quiz_generate');
-      if (!limit.allowed) {
-        if (limit.reason === 'upgrade_required') return res.status(403).json({ error: 'upgrade_required', message: 'AI Quiz Generation requires Blazes Plus or higher', requiredTier: 'blazes_plus' });
-        return res.status(429).json({ error: 'daily_limit', message: `AI quiz limit reached (${limit.used}/${limit.limit} today). Resets at midnight.`, used: limit.used, limit: limit.limit });
-      }
-    }
-    const questions = await generateQuiz(text, questionCount, difficulty, questionTypes);
-    if (userId) await trackAiUsage(userId, 'quiz_generate');
-    console.log(`[AI] Generated ${questions.length} questions from PDF (${text.length} chars)`);
-    res.json({ questions });
+    const data = JSON.parse(text);
+    const strings = [];
+    const walk = (v) => {
+      if (typeof v === 'string') strings.push(v);
+      else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+    };
+    walk(data);
+    return strings.join('\n');
+  } catch {
+    return text; // not valid JSON; treat it as plain text rather than fail
+  }
+}
+
+function extractFromSpreadsheet(buffer) {
+  const XLSX = require('xlsx');
+  const wb = XLSX.read(buffer, { type: 'buffer' });
+  return wb.SheetNames.map(name => XLSX.utils.sheet_to_csv(wb.Sheets[name])).join('\n');
+}
+
+const FILE_EXTRACTORS = {
+  pdf: async (buf) => (await require('pdf-parse')(buf)).text,
+  docx: (buf) => extractFromDocx(buf),
+  pptx: (buf) => extractFromPptx(buf),
+  odt: (buf) => extractFromOdt(buf),
+  epub: (buf) => extractFromEpub(buf),
+  xlsx: (buf) => extractFromSpreadsheet(buf),
+  csv: (buf) => extractFromSpreadsheet(buf),
+  html: (buf) => stripHtmlDocument(buf.toString('utf-8')),
+  rtf: (buf) => extractFromRtf(buf.toString('utf-8')),
+  srt: (buf) => extractFromSubtitles(buf.toString('utf-8')),
+  vtt: (buf) => extractFromSubtitles(buf.toString('utf-8')),
+  json: (buf) => extractFromJsonText(buf.toString('utf-8')),
+  txt: (buf) => buf.toString('utf-8'),
+  md: (buf) => buf.toString('utf-8'),
+};
+
+// One route for every format above, PDF included. kind picks the
+// extractor; the upload itself is the raw file body.
+app.post('/api/ai/extract-file', express.raw({ type: '*/*', limit: '15mb' }), async (req, res) => {
+  const kind = String(req.query.kind || '').toLowerCase();
+  const extractor = FILE_EXTRACTORS[kind];
+  if (!extractor) return res.status(400).json({ error: 'Unsupported file type' });
+  try {
+    const text = (await extractor(req.body) || '').trim();
+    if (!text) return res.status(422).json({ error: 'Could not find any readable text in that file.' });
+    res.json({ text: text.slice(0, 60000) });
   } catch (err) {
-    console.error('[AI] PDF generation error:', err.message || err);
-    res.status(500).json({ error: 'AI error: ' + (err.message || 'Unknown error') });
+    console.error('[AI extract-file]', kind, err.message);
+    res.status(500).json({ error: `Could not read that file. Make sure it is a valid ${kind.toUpperCase()} file.` });
   }
 });
 
-app.post('/api/ai/extract-pdf', express.raw({ type: 'application/pdf', limit: '10mb' }), async (req, res) => {
+// ── Import from the web ─────────────────────────────────────────────────────
+function isPrivateOrLocalHost(hostname) {
+  const h = hostname.toLowerCase();
+  if (h === 'localhost' || h.endsWith('.local') || h === '0.0.0.0') return true;
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = m.slice(1, 3).map(Number);
+    if (a === 127 || a === 10 || a === 0) return true;
+    if (a === 169 && b === 254) return true; // link-local, also the cloud metadata address
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+  if (h === '::1' || h.startsWith('fe80:') || h.startsWith('fc') || h.startsWith('fd')) return true;
+  return false;
+}
+
+// Fetches a teacher-supplied URL server-side. That means validating it
+// isn't pointed at the server's own network (localhost, the Render service
+// itself, cloud metadata, a private LAN address) before ever calling fetch.
+app.post('/api/ai/extract-url', async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ error: 'Enter a URL' });
+  let u;
+  try { u = new URL(url); } catch { return res.status(400).json({ error: 'That is not a valid URL' }); }
+  if (!['http:', 'https:'].includes(u.protocol)) return res.status(400).json({ error: 'URL must start with http:// or https://' });
+  if (isPrivateOrLocalHost(u.hostname)) return res.status(400).json({ error: 'That address is not reachable' });
   try {
-    const pdfParse = require('pdf-parse');
-    const data = await pdfParse(req.body);
-    res.json({ text: data.text, pages: data.numpages });
+    const r = await fetch(u.toString(), { signal: AbortSignal.timeout(10000), redirect: 'follow' });
+    if (!r.ok) return res.status(502).json({ error: `The page returned ${r.status}` });
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('text/html') && !ct.includes('text/plain')) {
+      return res.status(415).json({ error: 'That link is not a readable webpage' });
+    }
+    const raw = await r.text();
+    const cleaned = stripHtmlDocument(raw);
+    if (!cleaned) return res.status(422).json({ error: 'Could not find readable text on that page' });
+    res.json({ text: cleaned.slice(0, 60000) });
   } catch (err) {
-    console.error('[AI] PDF parse error:', err);
-    res.status(500).json({ error: 'Failed to read PDF' });
+    console.error('[AI extract-url]', err.message);
+    res.status(502).json({ error: 'Could not reach that page' });
+  }
+});
+
+// Wikipedia's own extract API returns clean article prose with no HTML to
+// strip, better quality than fetching the rendered page through extract-url.
+app.post('/api/ai/extract-wikipedia', async (req, res) => {
+  const { topic } = req.body || {};
+  if (!topic || !topic.trim()) return res.status(400).json({ error: 'Enter a topic' });
+  try {
+    const title = encodeURIComponent(topic.trim());
+    const r = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exlimit=1&redirects=1&titles=${title}&format=json`,
+      { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Blazes-Quiz-App/1.0 (educational quiz generator)' } }
+    );
+    if (!r.ok) return res.status(502).json({ error: 'Wikipedia is not responding' });
+    const data = await r.json();
+    const page = Object.values(data?.query?.pages || {})[0];
+    if (!page || page.missing !== undefined || !page.extract) {
+      return res.status(404).json({ error: `No Wikipedia article found for "${topic}"` });
+    }
+    res.json({ text: page.extract.slice(0, 60000), title: page.title });
+  } catch (err) {
+    console.error('[AI extract-wikipedia]', err.message);
+    res.status(502).json({ error: 'Could not reach Wikipedia' });
+  }
+});
+
+// Turns the classroom's lowest-accuracy questions into fresh practice
+// material, source text for generateQuiz is just those questions and how
+// often the class actually got them right.
+app.post('/api/ai/generate-from-weak-spots', requireAuth, async (req, res) => {
+  try {
+    const userId = actingUserId(req);
+    const { classroomId, questionCount = 10, difficulty = 'medium', questionTypes = ['multiple_choice'] } = req.body;
+    if (!classroomId) return res.status(400).json({ error: 'classroomId required' });
+
+    const owns = await dbGet(
+      `SELECT id FROM classrooms WHERE id = ? AND (teacher_id = ? OR id IN (SELECT classroom_id FROM classroom_teachers WHERE teacher_id = ?))`,
+      [classroomId, userId, userId]
+    );
+    if (!owns) return res.status(403).json({ error: 'Not your classroom' });
+
+    const limit = await checkAiLimit(userId, 'quiz_generate');
+    if (!limit.allowed) {
+      if (limit.reason === 'upgrade_required') return res.status(403).json({ error: 'upgrade_required', message: 'AI Quiz Generation requires Blazes Plus or higher', requiredTier: 'blazes_plus' });
+      return res.status(429).json({ error: 'daily_limit', message: `AI quiz limit reached (${limit.used}/${limit.limit} today). Resets at midnight.`, used: limit.used, limit: limit.limit });
+    }
+
+    const rows = await dbAll(
+      `SELECT q.question_text, COUNT(*) AS seen, SUM(CASE WHEN ga.is_correct = 1 THEN 1 ELSE 0 END) AS correct
+       FROM game_answers ga
+       JOIN questions q ON q.id = ga.question_id
+       JOIN classroom_students cs ON cs.student_id = ga.user_id AND cs.status = 'accepted'
+       WHERE cs.classroom_id = ?
+       GROUP BY ga.question_id
+       HAVING seen >= 2
+       ORDER BY (CAST(correct AS FLOAT) / seen) ASC
+       LIMIT 25`,
+      [classroomId]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Not enough answer history in this classroom yet. Students need to have played a few games first.' });
+
+    const sourceText = 'Topics students in this class have struggled with most (lower percentage = needs more practice):\n'
+      + rows.map((r, i) => `${i + 1}. "${r.question_text}" — only ${Math.round(100 * r.correct / r.seen)}% answered this correctly`).join('\n');
+
+    const questions = await generateQuiz(sourceText, questionCount, difficulty, questionTypes);
+    await trackAiUsage(userId, 'quiz_generate');
+    res.json({ questions });
+  } catch (err) {
+    console.error('[AI generate-from-weak-spots]', err.message);
+    res.status(500).json({ error: 'AI error: ' + (err.message || 'Unknown error') });
   }
 });
 

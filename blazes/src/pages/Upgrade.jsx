@@ -239,7 +239,7 @@ export default function Upgrade() {
                   <div className={`absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-black px-2.5 py-0.5 rounded-full ${p.badge === 'Best Value' ? 'bg-amber-400 text-amber-900' : 'bg-emerald-100 text-emerald-700'}`}>{p.badge}</div>
                 )}
                 <div className="flex items-center justify-center gap-1.5 mb-3 mt-1">
-                  <img src="/blazes-coin.png" className="w-6 h-6" alt="BB" style={{ mixBlendMode: 'multiply' }} />
+                  <img src="/blazes-coin.svg" className="w-6 h-6" alt="BB" style={{ mixBlendMode: 'multiply' }} />
                   <span className="text-xl font-black text-gray-900 tabular-nums">{p.bb.toLocaleString()}</span>
                 </div>
                 <button onClick={() => handleCheckout(`bb_${p.bb}`)} disabled={loading === `bb_${p.bb}`}

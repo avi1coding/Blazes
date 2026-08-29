@@ -117,7 +117,7 @@ export default function Pricing() {
                     <div className={`absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-bold px-2 py-0.5 rounded-full ${p.badge === 'Best Value' ? 'bg-yellow-400 text-yellow-900' : 'bg-green-100 text-green-700'}`}>{p.badge}</div>
                   )}
                   <div className="flex items-center justify-center gap-1.5 mb-2 mt-1">
-                    <img src="/blazes-coin.png" className="w-6 h-6" alt="BB" style={{ mixBlendMode: 'multiply' }} />
+                    <img src="/blazes-coin.svg" className="w-6 h-6" alt="BB" style={{ mixBlendMode: 'multiply' }} />
                     <span className="text-xl font-black text-gray-900">{p.bb.toLocaleString()}</span>
                   </div>
                   <Link to="/signup" className="block w-full py-2 bg-gray-900 text-white font-bold rounded-lg text-sm hover:bg-gray-800 transition-colors">{p.price}</Link>

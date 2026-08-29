@@ -583,7 +583,7 @@ function ShopCard({ skin, inStock, isOwned, isEquipped, canAfford, isBuying, onB
             ) : inStock && onBuy ? (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 6 }}>
-                        <img src="/blazes-coin.png" style={{ width: 15, height: 15, mixBlendMode: 'multiply' }} alt="" />
+                        <img src="/blazes-coin.svg" style={{ width: 15, height: 15, mixBlendMode: 'multiply' }} alt="" />
                         <span style={{ fontSize: 13, fontWeight: 900, color: canAfford ? '#b45309' : '#9ca3af' }}>
                             {skin.cost.toLocaleString()}
                         </span>
@@ -699,7 +699,7 @@ function SkinCard({ skin, isOwned, isEquipped, canAfford, isBuying, onBuy, onEqu
             ) : onBuy ? (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 6 }}>
-                        <img src="/blazes-coin.png" style={{ width: 15, height: 15, mixBlendMode: 'multiply' }} alt="" />
+                        <img src="/blazes-coin.svg" style={{ width: 15, height: 15, mixBlendMode: 'multiply' }} alt="" />
                         <span style={{ fontSize: 13, fontWeight: 900, color: canAfford ? '#b45309' : '#9ca3af' }}>
                             {skin.cost.toLocaleString()}
                         </span>
@@ -967,7 +967,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                     <p className="text-gray-500 mt-1 text-sm">Buy from the shop or equip from your collection</p>
                 </div>
                 <div className="flex items-center gap-2 bg-yellow-50 border-2 border-yellow-200 px-4 py-2 rounded-2xl">
-                    <img src="/blazes-coin.png" className="w-7 h-7" alt="BB" style={{ mixBlendMode: 'multiply' }} />
+                    <img src="/blazes-coin.svg" className="w-7 h-7" alt="BB" style={{ mixBlendMode: 'multiply' }} />
                     <div>
                         <div className="font-black text-yellow-700 text-lg">{balance.toLocaleString()}</div>
                         <div className="text-xs text-yellow-600 font-semibold">BlazesBucks</div>
@@ -1156,7 +1156,7 @@ export default function SkinsPage({ userId, blazesBucks, onBBChange, onSkinEquip
                             {openingPacks ? 'OPENING...' : 'OPEN FOR'}
                             {!openingPacks && (
                                 <>
-                                    <img src="/blazes-coin.png" style={{ width: 20, height: 20, mixBlendMode: 'multiply', filter: 'brightness(2)' }} alt="" />
+                                    <img src="/blazes-coin.svg" style={{ width: 20, height: 20, mixBlendMode: 'multiply', filter: 'brightness(2)' }} alt="" />
                                     <span>{(packCount * 30).toLocaleString()}</span>
                                 </>
                             )}

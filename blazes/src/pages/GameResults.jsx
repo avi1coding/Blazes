@@ -150,7 +150,7 @@ export default function GameResults() {
           {xpEarned > 0 && bbEarned > 0 && <div className="w-px h-8 bg-gray-200" />}
           {bbEarned > 0 && (
             <div className="flex items-center gap-2">
-              <img src="/blazes-coin.png" className="w-8 h-8" alt="coin" style={{ mixBlendMode: 'multiply' }} />
+              <img src="/blazes-coin.svg" className="w-8 h-8" alt="coin" style={{ mixBlendMode: 'multiply' }} />
               <div>
                 <div className="text-xl text-yellow-600">+{bbEarned}</div>
                 <div className="text-[10px] font-semibold text-gray-500">BlazesBucks</div>
@@ -332,7 +332,7 @@ export default function GameResults() {
             {xpEarned > 0 && bbEarned > 0 && <div className="w-px h-10 bg-gray-200" />}
             {bbEarned > 0 && (
               <div className="flex items-center gap-2">
-                <img src="/blazes-coin.png" className="w-8 h-8" alt="BB" style={{ mixBlendMode: 'multiply' }} />
+                <img src="/blazes-coin.svg" className="w-8 h-8" alt="BB" style={{ mixBlendMode: 'multiply' }} />
                 <div>
                   <div className="text-2xl font-black text-yellow-600">+{bbEarned}</div>
                   <div className="text-xs font-bold text-gray-500">BlazesBucks</div>

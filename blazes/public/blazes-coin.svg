@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="coinFace" cx="38%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#fff6d8"/>
+      <stop offset="35%" stop-color="#ffd85e"/>
+      <stop offset="70%" stop-color="#f5a623"/>
+      <stop offset="100%" stop-color="#c1720a"/>
+    </radialGradient>
+    <linearGradient id="rimGradient" x1="20%" y1="10%" x2="85%" y2="95%">
+      <stop offset="0%" stop-color="#ffe089"/>
+      <stop offset="45%" stop-color="#e8940f"/>
+      <stop offset="100%" stop-color="#a05e08"/>
+    </linearGradient>
+    <linearGradient id="innerRing" x1="15%" y1="10%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#fff0bd"/>
+      <stop offset="100%" stop-color="#d98416"/>
+    </linearGradient>
+    <linearGradient id="flameGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#fff4de"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="200" height="200" fill="#ffffff"/>
+
+  <!-- soft ground shadow, mirrors the reference's dropped shadow -->
+  <ellipse cx="100" cy="176" rx="58" ry="8" fill="#c1720a" opacity="0.18"/>
+
+  <!-- outer rim -->
+  <circle cx="100" cy="100" r="88" fill="url(#rimGradient)"/>
+  <!-- coin face -->
+  <circle cx="100" cy="100" r="76" fill="url(#coinFace)" stroke="#c1720a" stroke-width="2.5"/>
+  <!-- inner embossed ring, the reference's double-edge look -->
+  <circle cx="100" cy="100" r="64" fill="none" stroke="url(#innerRing)" stroke-width="4" opacity="0.85"/>
+
+  <!-- gloss sweep, upper-left highlight -->
+  <path d="M 34 62 A 76 76 0 0 1 118 28" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.35"/>
+  <path d="M 40 82 A 66 66 0 0 1 96 36" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.25"/>
+
+  <!-- flame, hand-drawn silhouette matching the app's own fire mark -->
+  <path d="M100 46
+           C 108 62, 128 78, 128 104
+           C 128 128, 112 144, 100 144
+           C 88 144, 72 128, 72 104
+           C 72 92, 78 84, 82 78
+           C 82 92, 90 98, 94 92
+           C 88 78, 92 58, 100 46 Z"
+        fill="url(#flameGrad)"/>
+  <path d="M100 96
+           C 106 104, 110 112, 106 122
+           C 103 129, 95 131, 90 126
+           C 96 122, 98 114, 92 108
+           C 96 106, 99 101, 100 96 Z"
+        fill="#e8940f" opacity="0.5"/>
+
+  <!-- sparkle accent, bottom-right, matching the reference -->
+  <path d="M156 138 L160 148 L170 152 L160 156 L156 166 L152 156 L142 152 L152 148 Z" fill="#ffffff"/>
+</svg>

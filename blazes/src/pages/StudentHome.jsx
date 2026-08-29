@@ -411,7 +411,7 @@ export default function StudentHome() {
               </button>
 
               <div className="hidden sm:flex items-center gap-1 bg-yellow-50 border border-yellow-200 px-2.5 py-1 rounded-full">
-                <img src="/blazes-coin.png" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
+                <img src="/blazes-coin.svg" className="w-4 h-4" alt="BB" style={{ mixBlendMode: 'multiply' }} />
                 <span className="font-black text-yellow-700 text-xs">{blazesBucks.toLocaleString()}</span>
               </div>
               {/* Profile with dropdown */}

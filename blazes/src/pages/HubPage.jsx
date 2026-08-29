@@ -192,7 +192,7 @@ function LevelsView({ progress, blazesBucks, isPro, navigate }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-100 to-yellow-200 border border-amber-300 flex items-center justify-center flex-shrink-0 shadow-sm">
-            <img src="/blazes-coin.png" className="w-7 h-7" alt="" style={{ mixBlendMode: 'multiply' }} />
+            <img src="/blazes-coin.svg" className="w-7 h-7" alt="" style={{ mixBlendMode: 'multiply' }} />
           </div>
           <div className="min-w-0">
             <div className="text-2xl font-black text-amber-700 tabular-nums leading-none">{blazesBucks.toLocaleString()}</div>

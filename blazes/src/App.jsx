@@ -56,7 +56,6 @@ const TeacherMonitoringDashboard = lazy(() => import("./pages/TeacherMonitoringD
 const TeacherPresentView = lazy(() => import("./pages/TeacherPresentView"));
 const StudentMonitor = lazy(() => import("./pages/StudentMonitor"));
 const TeacherGameResults = lazy(() => import("./pages/TeacherGameResults"));
-const LiveModeSetupPage = lazy(() => import("./pages/LiveModeSetupPage"));
 const HubPage = lazy(() => import("./pages/HubPage"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -139,8 +138,6 @@ function App() {
           <Route path="/game/teacher-results/:gameCode" element={<TeacherGameResults />} />
           <Route path="/game/mode-select" element={<GameModePage />} />
           <Route path="/game/classic-timed-setup" element={<ClassicTimedSetupPage />} />
-          {/* One setup route for all four endless live modes */}
-          <Route path="/game/live-setup/:mode" element={<LiveModeSetupPage />} />
           <Route path="/hub" element={<HubPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

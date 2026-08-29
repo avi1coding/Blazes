@@ -2258,6 +2258,99 @@ function mapQuestionForPlay(q) {
           }
 }
 
+function skinTierOf(skinId) {
+  if (!skinId) return 'Basic';
+  if (SKIN_PRICES[skinId] === undefined) return 'Basic';
+  const p = SKIN_PRICES[skinId];
+  if (p >= 1500) return 'Mythic';
+  if (p >= 900) return 'Legendary';
+  if (p >= 600) return 'Epic';
+  if (p >= 430) return 'Rare';
+  if (p >= 300) return 'Uncommon';
+  return 'Common';
+}
+
+/**
+ * Re-grades an answer on the server. Returns true/false when it can decide,
+ * or null when the shape is not server-checkable (in which case the caller
+ * keeps the client's verdict).
+ */
+function gradeLiveAnswer(q, answer) {
+  if (answer === undefined || answer === null || answer === '') return null;
+  const given = String(answer).trim();
+  const correctRaw = q.correct_answer;
+  if (correctRaw === undefined || correctRaw === null) return null;
+  const type = q.answer_type || 'multiple_choice';
+
+  if (type === 'math_equation') {
+    const u = parseFloat(given), c = parseFloat(correctRaw);
+    if (isNaN(u) || isNaN(c)) return false;
+    return Math.abs(u - c) <= Math.abs(c * 0.01) + 0.001;
+  }
+  if (type === 'multi_select') {
+    return given.split('').sort().join('') === String(correctRaw).split('').sort().join('');
+  }
+  if (type === 'multiple_choice' || type === 'true_false' || !type) {
+    const opts = [q.option_a, q.option_b, q.option_c, q.option_d];
+    const raw = String(correctRaw).trim();
+    // True/false questions usually store no options at all, so the two labels
+    // are generated. Accept the index as well as the word: only these two
+    // options are ever in play, so 0/1 cannot be confused with option text
+    // the way it could in a multiple choice whose options are numbers.
+    if (type === 'true_false' && !opts.some(Boolean)) {
+      const want = raw.toLowerCase() === 'false' || raw === '1';
+      const g = given.toLowerCase();
+      if (g === 'true' || g === '0') return want === false;
+      if (g === 'false' || g === '1') return want === true;
+      return null;
+    }
+    // Kits store multiple choice as a LETTER ('A'..'D'); the API converts it to
+    // an index for the client, so the raw column and the client's answer text
+    // are in different alphabets. Handle letter, index and literal text.
+    const letterIdx = /^[A-Da-d]$/.test(raw) ? raw.toUpperCase().charCodeAt(0) - 65 : -1;
+    if (letterIdx >= 0 && opts[letterIdx]) {
+      return given.toLowerCase() === String(opts[letterIdx]).toLowerCase();
+    }
+    const asIdx = Number(raw);
+    if (Number.isInteger(asIdx) && opts[asIdx]) {
+      return given.toLowerCase() === String(opts[asIdx]).toLowerCase();
+    }
+    return given.toLowerCase() === raw.toLowerCase();
+  }
+  if (type === 'short_answer' || type === 'fill_blank') {
+    // Same trim+lowercase compare /api/check-answer uses.
+    return given.toLowerCase() === String(correctRaw).toLowerCase();
+  }
+  // ordering / matching / image_label / audio: the client sends a derived
+  // string we cannot reconstruct here, so its verdict stands.
+  return null;
+}
+
+/**
+ * Grades what the classic answer route receives, which is the option INDEX the
+ * player clicked.
+ *
+ * Grading against mapQuestionForPlay rather than the raw column means the
+ * server checks the answer against exactly the question the client was given,
+ * so the two can never disagree about what option 2 was.
+ *
+ * Returns null for shapes that cannot be rebuilt here (ordering, matching,
+ * image labelling), where the client's own verdict is all there is.
+ */
+function gradeSubmission(q, selectedAnswer) {
+  const given = String(selectedAnswer ?? '').trim();
+  if (given === '') return null;
+  const m = mapQuestionForPlay(q);
+  if (!m) return null;
+
+  // Anything with buttons: the client sends which button it pressed.
+  if (Array.isArray(m.options) && m.options.length && Number.isInteger(m.correctAnswer)) {
+    if (/^\d+$/.test(given)) return Number(given) === m.correctAnswer;
+    return given.toLowerCase() === String(m.options[m.correctAnswer] ?? '').toLowerCase();
+  }
+  return gradeLiveAnswer(q, given);
+}
+
 app.get('/api/games/:gameCode', (req, res) => {
   const { gameCode } = req.params;
 
@@ -2608,10 +2701,6 @@ app.post('/api/games/:gameCode/leave', async (req, res) => {
  */
 const MODE_PLAYER_LIMITS = {
   classic_timed:     { min: 1, max: 30 },
-  vault:             { min: 2, max: 50 },
-  undertow:          { min: 2, max: 50 },
-  fracture:          { min: 2, max: 50 },
-  eclipse:           { min: 2, max: 50 },
 };
 const playerLimitsFor = (mode) => MODE_PLAYER_LIMITS[mode] || { min: 1, max: 50 };
 
@@ -3751,7 +3840,6 @@ const ACHIEVEMENTS = [
   { id: 'master_learner',        bb: 150, name: 'Master Learner' },
   // Getting Started
   { id: 'welcome_aboard',        bb: 20,  name: 'Welcome Aboard' },
-  { id: 'mode_hopper',           bb: 50,  name: 'Mode Hopper' },
   { id: 'dressed_up',            bb: 30,  name: 'Dressed Up' },
   { id: 'collector',             bb: 60,  name: 'Collector' },
   { id: 'wardrobe',              bb: 100, name: 'Wardrobe' },
@@ -3813,29 +3901,6 @@ const ACHIEVEMENTS = [
   { id: 'level_75',              bb: 300, name: 'Diamond Player' },
   { id: 'level_85',              bb: 400, name: 'Mythic' },
   { id: 'level_100',             bb: 1000, name: 'Godlike' },
-  // Live Modes
-  { id: 'vault_first',           bb: 10,   name: 'Into the Vault' },
-  { id: 'vault_regular',         bb: 30,   name: 'Vault Regular' },
-  { id: 'vault_master',          bb: 70,   name: 'Vault Master' },
-  { id: 'undertow_first',        bb: 10,   name: 'Caught the Current' },
-  { id: 'undertow_regular',      bb: 30,   name: 'Undertow Regular' },
-  { id: 'undertow_master',       bb: 70,   name: 'Undertow Master' },
-  { id: 'fracture_first',        bb: 10,   name: 'First Crack' },
-  { id: 'fracture_regular',      bb: 30,   name: 'Fracture Regular' },
-  { id: 'fracture_master',       bb: 70,   name: 'Fracture Master' },
-  { id: 'eclipse_first',         bb: 10,   name: 'First Light' },
-  { id: 'eclipse_regular',       bb: 30,   name: 'Eclipse Regular' },
-  { id: 'eclipse_master',        bb: 70,   name: 'Eclipse Master' },
-  { id: 'vault_champion',        bb: 40,   name: 'Vault Champion' },
-  { id: 'undertow_champion',     bb: 40,   name: 'Undertow Champion' },
-  { id: 'fracture_champion',     bb: 40,   name: 'Fracture Champion' },
-  { id: 'eclipse_champion',      bb: 40,   name: 'Eclipse Champion' },
-  { id: 'endless_explorer',      bb: 50,   name: 'Endless Explorer' },
-  { id: 'endless_veteran',       bb: 150,  name: 'Endless Veteran' },
-  { id: 'vault_victor',          bb: 50,   name: 'Vault Victor' },
-  { id: 'undertow_victor',       bb: 50,   name: 'Undertow Victor' },
-  { id: 'fracture_victor',       bb: 50,   name: 'Fracture Victor' },
-  { id: 'eclipse_victor',        bb: 50,   name: 'Eclipse Victor' },
   // Question Type Mastery
   { id: 'sa_novice',             bb: 15,   name: 'Short Answer Novice' },
   { id: 'sa_expert',             bb: 35,   name: 'Short Answer Expert' },
@@ -3922,7 +3987,6 @@ const ACHIEVEMENTS = [
   { id: 'ultra_fast',            bb: 60,   name: 'Ultra Fast' },
   { id: 'consistent_10',         bb: 100,  name: 'Ten in a Row' },
   { id: 'error_analyst_master',  bb: 90,   name: 'Error Analyst Master' },
-  { id: 'mode_master',           bb: 60,   name: 'Mode Master' },
 ];
 
 // Teachers don't answer questions, so the student catalog above (built
@@ -3938,7 +4002,6 @@ const TEACHER_ACHIEVEMENTS = [
   { id: 't_first_host',       bb: 15,  name: 'Game Master' },
   { id: 't_first_assignment', bb: 15,  name: 'Homework Time' },
   { id: 't_dressed_up',       bb: 20,  name: 'Dressed Up' },
-  { id: 't_mode_explorer',    bb: 60,  name: 'Mode Explorer' },
   // Kit Building
   { id: 't_kit_builder',      bb: 30,  name: 'Kit Builder' },
   { id: 't_kit_curator',      bb: 70,  name: 'Kit Curator' },
@@ -4006,7 +4069,6 @@ async function checkTeacherAchievements(userId) {
      JOIN classrooms c ON c.id = ct.classroom_id
      WHERE c.teacher_id = ?`, [userId]))?.c || 0;
   const gamesHosted = (await dbGet(`SELECT COUNT(*) AS c FROM games WHERE host_id = ? AND status = 'ended'`, [userId]))?.c || 0;
-  const modesHosted = (await dbAll(`SELECT DISTINCT game_mode FROM games WHERE host_id = ? AND status = 'ended'`, [userId])).length;
   const maxPlayers = (await dbGet(
     `SELECT MAX(pcount) AS m FROM (
        SELECT g.id, COUNT(*) AS pcount FROM games g
@@ -4030,7 +4092,6 @@ async function checkTeacherAchievements(userId) {
     t_first_host:       gamesHosted >= 1,
     t_first_assignment: assignmentsCreated >= 1,
     t_dressed_up:       skinsOwned >= 1,
-    t_mode_explorer:    modesHosted >= 5,
     t_kit_builder:      kitsCreated >= 5,
     t_kit_curator:      kitsCreated >= 15,
     t_kit_library:      kitsCreated >= 30,
@@ -4227,11 +4288,6 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
       if (top?.user_id === userId) multiWins++;
     }
 
-    // Distinct game modes played
-    const modesPlayed = (await qAll(
-      `SELECT DISTINCT g.game_mode FROM games g JOIN game_participants gp ON g.id = gp.game_id WHERE gp.user_id = ?`, [userId]
-    )).length;
-
     // Skins owned
     const skinsOwned = (await q('SELECT COUNT(*) as c FROM user_skins WHERE user_id = ?', [userId]))?.c || 0;
 
@@ -4270,28 +4326,6 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
     const seasonLevel = (await q('SELECT level FROM season_progress sp JOIN seasons s ON sp.season_id = s.id WHERE sp.user_id = ? ORDER BY s.season_number DESC LIMIT 1', [userId]))?.level || 0;
 
     // --- Stats for the second, larger achievement pass below ---
-
-    // Per live mode: plays, peak score, and first-place finishes. Mirrors the
-    // multiWins loop above (per-game top-scorer check), just scoped to one
-    // mode's games instead of every 5+ player game.
-    const liveModeStats = {};
-    for (const mode of ['vault', 'undertow', 'fracture', 'eclipse']) {
-      const rows = await qAll(
-        `SELECT g.id, gp.score FROM games g JOIN game_participants gp ON gp.game_id = g.id
-         WHERE gp.user_id = ? AND g.game_mode = ? AND g.status = 'ended'`, [userId, mode]);
-      let wins = 0;
-      for (const r of rows) {
-        const top = await q('SELECT user_id FROM game_participants WHERE game_id = ? ORDER BY score DESC LIMIT 1', [r.id]);
-        if (top?.user_id === userId) wins++;
-      }
-      liveModeStats[mode] = {
-        plays: rows.length,
-        peak: rows.reduce((m, r) => Math.max(m, r.score || 0), 0),
-        wins,
-      };
-    }
-    const liveModesPlayed = Object.values(liveModeStats).filter(s => s.plays > 0).length;
-    const liveModesTotalPlays = Object.values(liveModeStats).reduce((s, m) => s + m.plays, 0);
 
     // Correct answers by question type. One achievement type can go unused
     // by every kit on the platform and that's fine, same as any other
@@ -4378,7 +4412,6 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
       teachers_favorite:   teachersFavorite,
       // Getting Started
       welcome_aboard:      joinedMulti,
-      mode_hopper:         modesPlayed >= 4,
       dressed_up:          skinsOwned >= 1,
       collector:           skinsOwned >= 10,
       wardrobe:            skinsOwned >= 25,
@@ -4437,29 +4470,6 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
       level_85:            seasonLevel >= 85,
       level_100:           seasonLevel >= 100,
 
-      // Live Modes
-      vault_first:         liveModeStats.vault.plays >= 1,
-      vault_regular:       liveModeStats.vault.plays >= 25,
-      vault_master:        liveModeStats.vault.plays >= 100,
-      undertow_first:      liveModeStats.undertow.plays >= 1,
-      undertow_regular:    liveModeStats.undertow.plays >= 25,
-      undertow_master:     liveModeStats.undertow.plays >= 100,
-      fracture_first:      liveModeStats.fracture.plays >= 1,
-      fracture_regular:    liveModeStats.fracture.plays >= 25,
-      fracture_master:     liveModeStats.fracture.plays >= 100,
-      eclipse_first:       liveModeStats.eclipse.plays >= 1,
-      eclipse_regular:     liveModeStats.eclipse.plays >= 25,
-      eclipse_master:      liveModeStats.eclipse.plays >= 100,
-      vault_champion:      liveModeStats.vault.peak >= 300,
-      undertow_champion:   liveModeStats.undertow.peak >= 300,
-      fracture_champion:   liveModeStats.fracture.peak >= 300,
-      eclipse_champion:    liveModeStats.eclipse.peak >= 50,
-      endless_explorer:    liveModesPlayed >= 4,
-      endless_veteran:     liveModesTotalPlays >= 250,
-      vault_victor:        liveModeStats.vault.wins >= 1,
-      undertow_victor:     liveModeStats.undertow.wins >= 1,
-      fracture_victor:     liveModeStats.fracture.wins >= 1,
-      eclipse_victor:      liveModeStats.eclipse.wins >= 1,
 
       // Question Type Mastery
       sa_novice:           tc('short_answer') >= 10,
@@ -4555,7 +4565,6 @@ app.post('/api/achievements/check/:userId', async (req, res) => {
       ultra_fast:          !!(await q('SELECT id FROM game_answers WHERE user_id = ? AND is_correct = 1 AND time_taken <= 0.5 AND time_taken > 0 LIMIT 1', [userId])),
       consistent_10:       maxConsecutive90 >= 10,
       error_analyst_master: (reviewRow?.review_count || 0) >= 50,
-      mode_master:         modesPlayed >= 5,
     };
 
     // Master achievements: count how many are unlocked
@@ -7667,570 +7676,6 @@ app.post('/api/contact', async (req, res) => {
     res.status(500).json({ error: 'Failed to send message. Please try again.' });
   }
 });
-
-// ═══════════════════════════════════════════════════════════════════════════
-// LIVE MODES. Vault, Undertow, Fracture, Eclipse
-//
-// Four endless, simultaneous modes sharing one engine. Design rules they all
-// obey, which is why they can share it:
-//
-//  * A mode only ever sees (correct, milliseconds). It never learns HOW the
-//    answer was given, so every question type works. Multiple choice through
-//    matching and audio alike.
-//  * No mode ends. Standings therefore cannot be lifetime totals or the first
-//    player to join would lead forever. Every score DECAYS toward zero on a
-//    half-life, so a standing is really "how well are you doing lately" and
-//    stopping means sliding down.
-//  * Decay makes every standing a float that moves continuously, so exact ties
-//    are vanishingly rare. Cumulative answer time breaks any that survive.
-//  * The equipped skin feeds in: its colour is the player's identity on screen,
-//    and its tier grants a modest edge (never more than +25%).
-//
-// All scoring is server-side. The client reports correct/ms and gets told what
-// happened; it cannot award itself anything.
-// ═══════════════════════════════════════════════════════════════════════════
-
-const LIVE_MODES = new Set(['vault', 'undertow', 'fracture', 'eclipse']);
-
-// Score half-life in seconds. Slower modes decay slower.
-// Eclipse's score is derived from its radius, so the two MUST decay at the same
-// rate, with different half-lives the radius faded faster and a correct answer
-// after an idle gap came out as a points LOSS.
-const ECLIPSE_HALFLIFE = 70;
-const LIVE_DECAY_HALFLIFE = { vault: 150, undertow: 110, fracture: 130, eclipse: ECLIPSE_HALFLIFE };
-
-// Skin tier -> small advantage. Cosmetics should flavour play, not decide it.
-const SKIN_TIER_BONUS = { Basic: 1.0, Common: 1.03, Uncommon: 1.06, Rare: 1.10, Epic: 1.14, Legendary: 1.19, Mythic: 1.25 };
-
-// Elements that shrug off the Undertow current, and those it drags hardest.
-const HEAVY_ELEMENTS = new Set(['earth', 'stone', 'metal', 'quake', 'gravity', 'crystal', 'sand', 'vine', 'wood']);
-const LIGHT_ELEMENTS = new Set(['air', 'mist', 'gale', 'sound', 'light', 'spirit', 'storm', 'tempest', 'wave']);
-
-function skinTierOf(skinId) {
-  if (!skinId) return 'Basic';
-  if (SKIN_PRICES[skinId] === undefined) return 'Basic';
-  const p = SKIN_PRICES[skinId];
-  if (p >= 1500) return 'Mythic';
-  if (p >= 900) return 'Legendary';
-  if (p >= 600) return 'Epic';
-  if (p >= 430) return 'Rare';
-  if (p >= 300) return 'Uncommon';
-  return 'Common';
-}
-
-/** Exponential decay applied lazily on read, so no background timers are needed. */
-function decayed(value, sinceMs, halfLifeSec) {
-  if (!value) return 0;
-  const secs = Math.max(0, sinceMs / 1000);
-  return value * Math.pow(0.5, secs / halfLifeSec);
-}
-
-/** Faster answers are worth more, flattening out so a lucky fast guess is not decisive. */
-function speedFactor(ms) {
-  const s = Math.max(0.4, Math.min(20, (Number(ms) || 8000) / 1000));
-  return 1.6 / (1 + s / 4);   // ~1.45 at 0.5s, ~1.07 at 2s, ~0.53 at 8s
-}
-
-const liveShared = new Map();   // gameCode -> shared mode state, rebuilt on demand
-
-function sharedState(gameCode, mode) {
-  let s = liveShared.get(gameCode);
-  if (!s) {
-    s = { mode, updatedAt: Date.now(), pot: 40, lastCrack: null, cracks: [], current: null, currentMs: null, recent: [] };
-    liveShared.set(gameCode, s);
-  }
-  return s;
-}
-
-/** The Vault pot fills on a clock; read it lazily. */
-function vaultPot(shared) {
-  const grown = shared.pot + ((Date.now() - shared.updatedAt) / 1000) * 3.5;
-  return Math.min(600, grown);
-}
-
-async function liveParticipants(gameId) {
-  return (await dbAll(
-    `SELECT gp.user_id, gp.player_name, gp.live_score, gp.live_streak, gp.live_state,
-            gp.live_answered_at, gp.live_total_ms, gp.live_answers,
-            ue.avatar_skin
-       FROM game_participants gp
-       LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
-      WHERE gp.game_id = ?`, [gameId])) || [];
-}
-
-function liveRow(p, mode, now) {
-  const since = p.live_answered_at ? now - new Date(p.live_answered_at).getTime() : 0;
-  const score = decayed(Number(p.live_score) || 0, since, LIVE_DECAY_HALFLIFE[mode] || 120);
-  let st = {};
-  try { st = JSON.parse(p.live_state || '{}'); } catch { st = {}; }
-  return {
-    userId: p.user_id,
-    name: p.player_name,
-    skin: p.avatar_skin || null,
-    tier: skinTierOf(p.avatar_skin),
-    score: Math.round(score * 100) / 100,
-    streak: p.live_streak || 0,
-    answers: p.live_answers || 0,
-    // Eclipse radius decays too, otherwise territory would be permanent.
-    radius: mode === 'eclipse' ? Math.round(decayed(st.radius || 0, since, ECLIPSE_HALFLIFE) * 100) / 100 : undefined,
-    // Cumulative answer time is the final tiebreaker: lower is better.
-    totalMs: p.live_total_ms || 0,
-  };
-}
-
-
-/**
- * Re-grades a live-mode answer on the server. Returns true/false when it can
- * decide, or null when the shape is not server-checkable (in which case the
- * caller keeps the client's verdict).
- */
-function gradeLiveAnswer(q, answer) {
-  if (answer === undefined || answer === null || answer === '') return null;
-  const given = String(answer).trim();
-  const correctRaw = q.correct_answer;
-  if (correctRaw === undefined || correctRaw === null) return null;
-  const type = q.answer_type || 'multiple_choice';
-
-  if (type === 'math_equation') {
-    const u = parseFloat(given), c = parseFloat(correctRaw);
-    if (isNaN(u) || isNaN(c)) return false;
-    return Math.abs(u - c) <= Math.abs(c * 0.01) + 0.001;
-  }
-  if (type === 'multi_select') {
-    return given.split('').sort().join('') === String(correctRaw).split('').sort().join('');
-  }
-  if (type === 'multiple_choice' || type === 'true_false' || !type) {
-    const opts = [q.option_a, q.option_b, q.option_c, q.option_d];
-    const raw = String(correctRaw).trim();
-    // True/false questions usually store no options at all, so the two labels
-    // are generated. Accept the index as well as the word: only these two
-    // options are ever in play, so 0/1 cannot be confused with option text
-    // the way it could in a multiple choice whose options are numbers.
-    if (type === 'true_false' && !opts.some(Boolean)) {
-      const want = raw.toLowerCase() === 'false' || raw === '1';
-      const g = given.toLowerCase();
-      if (g === 'true' || g === '0') return want === false;
-      if (g === 'false' || g === '1') return want === true;
-      return null;
-    }
-    // Kits store multiple choice as a LETTER ('A'..'D'); the API converts it to
-    // an index for the client, so the raw column and the client's answer text
-    // are in different alphabets. Handle letter, index and literal text.
-    const letterIdx = /^[A-Da-d]$/.test(raw) ? raw.toUpperCase().charCodeAt(0) - 65 : -1;
-    if (letterIdx >= 0 && opts[letterIdx]) {
-      return given.toLowerCase() === String(opts[letterIdx]).toLowerCase();
-    }
-    const asIdx = Number(raw);
-    if (Number.isInteger(asIdx) && opts[asIdx]) {
-      return given.toLowerCase() === String(opts[asIdx]).toLowerCase();
-    }
-    return given.toLowerCase() === raw.toLowerCase();
-  }
-  if (type === 'short_answer' || type === 'fill_blank') {
-    // Same trim+lowercase compare /api/check-answer uses.
-    return given.toLowerCase() === String(correctRaw).toLowerCase();
-  }
-  // ordering / matching / image_label / audio: the client sends a derived
-  // string we cannot reconstruct here, so its verdict stands.
-  return null;
-}
-
-/**
- * Grades what the classic answer route receives, which is the option INDEX the
- * player clicked rather than the option text the live modes send.
- *
- * Grading against mapQuestionForPlay rather than the raw column means the
- * server checks the answer against exactly the question the client was given,
- * so the two can never disagree about what option 2 was.
- *
- * Returns null for shapes that cannot be rebuilt here (ordering, matching,
- * image labelling), where the client's own verdict is all there is.
- */
-function gradeSubmission(q, selectedAnswer) {
-  const given = String(selectedAnswer ?? '').trim();
-  if (given === '') return null;
-  const m = mapQuestionForPlay(q);
-  if (!m) return null;
-
-  // Anything with buttons: the client sends which button it pressed.
-  if (Array.isArray(m.options) && m.options.length && Number.isInteger(m.correctAnswer)) {
-    if (/^\d+$/.test(given)) return Number(given) === m.correctAnswer;
-    return given.toLowerCase() === String(m.options[m.correctAnswer] ?? '').toLowerCase();
-  }
-  return gradeLiveAnswer(q, given);
-}
-
-
-/**
- * Seconds remaining in a live game, or null when the host has not set a limit.
- * The limit lives in settings.timeLimit (seconds) exactly as the other timed
- * modes store it, and the host can grow it mid-game via /live/extend.
- */
-function liveSettings(game) {
-  const raw = game?.settings;
-  if (!raw) return {};
-  if (typeof raw !== 'string') return raw;
-  try { return JSON.parse(raw); } catch { return {}; }
-}
-
-/** SQLite writes 'YYYY-MM-DD HH:MM:SS' in UTC; new Date() would read that as local. */
-function startedAtMs(game) {
-  if (!game?.started_at) return null;
-  const v = game.started_at;
-  return new Date(v.includes('T') ? v : v.replace(' ', 'T') + 'Z').getTime();
-}
-
-function liveSecondsLeft(game) {
-  const limit = Number(liveSettings(game).timeLimit) || 0;
-  const started = startedAtMs(game);
-  if (!limit || !started) return null;
-  const elapsed = (Date.now() - started) / 1000;
-  return Math.max(0, Math.round(limit - elapsed));
-}
-
-/** Ends a live game once its clock runs out, settling scores first. */
-async function endLiveGameIfExpired(game) {
-  if (!game || game.status !== 'started') return false;
-  const left = liveSecondsLeft(game);
-  if (left === null || left > 0) return false;
-  // Running out of clock is the ordinary way a lesson ends, so it has to pay
-  // out exactly like the host pressing End does.
-  await finishGame(game.game_code);
-  return true;
-}
-
-// Host extends the clock without interrupting play.
-app.post('/api/games/:gameCode/live/extend', requireAuth, async (req, res) => {
-  try {
-    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [req.params.gameCode]);
-    if (!game) return res.status(404).json({ error: 'Game not found' });
-    if (!LIVE_MODES.has(game.game_mode)) return res.status(400).json({ error: 'Not a live mode' });
-    if (game.host_id !== actingUserId(req)) return res.status(403).json({ error: 'Only the host can extend this game' });
-    if (game.status !== 'started') return res.status(409).json({ error: 'Game is not running' });
-
-    const minutes = Math.max(1, Math.min(60, Number(req.body?.minutes) || 5));
-    const settings = liveSettings(game);
-    // If the host never set a limit, extending starts the clock from now.
-    const started = startedAtMs(game);
-    const elapsed = started ? (Date.now() - started) / 1000 : 0;
-    const base = Number(settings.timeLimit) || Math.round(elapsed);
-    settings.timeLimit = base + minutes * 60;
-    await dbRun('UPDATE games SET settings = ? WHERE id = ?', [JSON.stringify(settings), game.id]);
-    res.json({ minutes, secondsLeft: liveSecondsLeft({ ...game, settings }) });
-  } catch (err) {
-    console.error('[live/extend]', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── GET state ──────────────────────────────────────────────────────────────
-app.get('/api/games/:gameCode/live/state', async (req, res) => {
-  try {
-    const { gameCode } = req.params;
-    const userId = req.query.userId ? parseInt(req.query.userId, 10) : null;
-    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
-    if (!game) return res.status(404).json({ error: 'Game not found' });
-    if (!LIVE_MODES.has(game.game_mode)) return res.status(400).json({ error: 'Not a live mode' });
-
-    const mode = game.game_mode;
-    // The clock is the teacher's: reaching zero ends the game the same way the
-    // End button does, settling scores on the way out.
-    if (await endLiveGameIfExpired(game)) game.status = 'ended';
-    const shared = sharedState(gameCode, mode);
-    const now = Date.now();
-    const rows = (await liveParticipants(game.id)).map(p => liveRow(p, mode, now));
-
-    // Rank by score, then by speed. Two identical floats are already unlikely;
-    // total time makes a true tie essentially impossible.
-    rows.sort((a, b) => (b.score - a.score) || (a.totalMs - b.totalMs));
-    rows.forEach((r, i) => { r.rank = i + 1; });
-
-    res.json({
-      mode,
-      status: game.status,
-      secondsLeft: liveSecondsLeft(game),
-      isHost: userId != null && game.host_id === userId,
-      players: rows,
-      me: userId ? rows.find(r => r.userId === userId) || null : null,
-      shared: {
-        pot: mode === 'vault' ? Math.round(vaultPot(shared)) : undefined,
-        lastCrack: mode === 'vault' ? shared.lastCrack : undefined,
-        current: mode === 'undertow' ? shared.current : undefined,
-        // The pane is drawn from the last 40 cracks to keep the payload small,
-        // but scoring counts every crack against you, up to 120. Send the real
-        // count and the multiplier it produces as well, otherwise a player can
-        // be scoring at 0.3x while their screen shows an intact pane.
-        cracks: mode === 'fracture' ? shared.cracks.slice(-40) : undefined,
-        myCracks: mode === 'fracture' && userId != null
-          ? shared.cracks.filter(c => c.near === userId).length : undefined,
-        dim: mode === 'fracture' && userId != null
-          ? Math.max(0.3, 1 - shared.cracks.filter(c => c.near === userId).length * 0.08)
-          : undefined,
-      },
-    });
-  } catch (err) {
-    console.error('[live/state]', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── POST answer ────────────────────────────────────────────────────────────
-app.post('/api/games/:gameCode/live/answer', async (req, res) => {
-  try {
-    const { gameCode } = req.params;
-    // Identity from the token. Taking userId from the body let anyone inflate
-    // their own standing, or post `correct: false` as a rival to drive that
-    // rival's score to zero, and the score column feeds placement BlazesBucks.
-    //
-    // The one exception is a guest. Students who join a room by code without
-    // signing in get a negative transient id and no token, so requiring one
-    // here threw every guest in the class out to the login page on their very
-    // first answer. A negative id is accepted only when that exact id already
-    // holds a seat in this game: it can never name a real account, because
-    // real ids are positive, and it is the same level of trust the classic
-    // answer route already runs at.
-    const bodyId = Number(req.body?.userId);
-    const guestId = Number.isInteger(bodyId) && bodyId < 0 ? bodyId : null;
-    let userId = actingUserId(req);
-    if (!userId && guestId !== null) {
-      const seat = await dbGet(
-        `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
-         WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
-      if (seat) userId = guestId;
-    }
-    if (!userId) {
-      return res.status(401).json({ error: 'unauthenticated', message: 'Please sign in again.' });
-    }
-    const { questionId, answer, correct, ms } = req.body;
-
-    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
-    if (!game) return res.status(404).json({ error: 'Game not found' });
-    if (!LIVE_MODES.has(game.game_mode)) return res.status(400).json({ error: 'Not a live mode' });
-    if (await endLiveGameIfExpired(game)) game.status = 'ended';
-    if (game.status === 'ended' || game.status === 'abandoned') {
-      return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
-    }
-
-    const mode = game.game_mode;
-    const shared = sharedState(gameCode, mode);
-    const now = Date.now();
-    const answerMs = Math.max(150, Math.min(120000, Number(ms) || 8000));
-
-    // Grade on the server whenever we can. The client still reports what it
-    // computed, but its verdict is only trusted for question shapes the server
-    // cannot re-check (and never when the stored answer says otherwise).
-    let isCorrect = !!correct;
-    if (questionId) {
-      const q = await dbGet('SELECT * FROM questions WHERE id = ? AND kit_id = ?', [questionId, game.kit_id]);
-      if (!q) return res.status(400).json({ error: 'Unknown question for this game' });
-      const graded = gradeLiveAnswer(q, answer);
-      if (graded !== null) isCorrect = graded;
-
-      // One score per question per attempt: without this the same request could
-      // be replayed indefinitely for unbounded points.
-      // datetime('now', ...) not an ISO string: answered_at is written by SQLite's
-      // CURRENT_TIMESTAMP as 'YYYY-MM-DD HH:MM:SS', which never string-compares
-      // greater than an ISO value containing 'T'. The guard silently never fired.
-      const already = await dbGet(
-        "SELECT id FROM game_answers WHERE game_id = ? AND user_id = ? AND question_id = ? AND answered_at > datetime('now', '-3 seconds')",
-        [game.id, userId, questionId]);
-      if (already) return res.status(429).json({ error: 'duplicate', message: 'Already answered.' });
-    }
-
-    const row = await dbGet(
-      `SELECT gp.*, ue.avatar_skin FROM game_participants gp
-       LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
-       WHERE gp.game_id = ? AND gp.user_id = ?`, [game.id, userId]);
-    if (!row) return res.status(403).json({ error: 'Not a participant' });
-
-    const since = row.live_answered_at ? now - new Date(row.live_answered_at).getTime() : 0;
-    const halfLife = LIVE_DECAY_HALFLIFE[mode] || 120;
-    let score = decayed(Number(row.live_score) || 0, since, halfLife);
-    let streak = isCorrect ? (row.live_streak || 0) + 1 : 0;
-    let st = {};
-    try { st = JSON.parse(row.live_state || '{}'); } catch { st = {}; }
-
-    const tierMul = SKIN_TIER_BONUS[skinTierOf(row.avatar_skin)] || 1;
-    const spd = speedFactor(answerMs);
-    let delta = 0;
-    const flash = { mode };
-
-    if (mode === 'vault') {
-      // The pot fills on a clock; a correct answer cracks it and takes a share
-      // set by your streak, then it resets. Wrong answers cost you the streak.
-      if (isCorrect) {
-        const pot = vaultPot(shared);
-        const cap = 1 + Math.min(5, streak) * 0.35 * tierMul;   // tier lengthens the fuse
-        const share = Math.min(1, 0.30 + 0.10 * Math.min(5, streak));
-        delta = pot * share * spd * (cap / 2);
-        shared.pot = Math.max(20, pot * (1 - share));
-        shared.updatedAt = now;
-        shared.lastCrack = { userId, name: row.player_name, amount: Math.round(delta), at: now };
-        flash.cracked = Math.round(delta);
-        flash.potLeft = Math.round(shared.pot);
-      } else {
-        delta = -Math.min(score * 0.12, 25);
-      }
-
-    } else if (mode === 'undertow') {
-      // One shared current flows toward whoever has been fastest lately. Riding
-      // it multiplies your points; fighting it divides them. Heavy skins resist
-      // the pull, light skins get swung hardest, in both directions.
-      // Only a correct answer moves the current. Timing alone used to set it,
-      // so a student clicking through wrong answers in 200ms owned the current
-      // for the whole lesson and put everyone answering properly on the
-      // fighting-it penalty. Entries also age out, so a current cannot be held
-      // by someone who stopped answering.
-      if (isCorrect) {
-        shared.recent.push({ userId, ms: answerMs, at: now });
-      }
-      shared.recent = shared.recent.filter(r => now - r.at < 60000);
-      if (shared.recent.length > 6) shared.recent = shared.recent.slice(-6);
-      const fastest = shared.recent.reduce((a, b) => (a && a.ms <= b.ms ? a : b), null);
-      shared.current = fastest ? { userId: fastest.userId, ms: fastest.ms } : null;
-
-      const element = row.avatar_skin || '';
-      const heavy = HEAVY_ELEMENTS.has(element);
-      const light = LIGHT_ELEMENTS.has(element);
-      const withCurrent = !shared.current || shared.current.userId === userId
-        || answerMs <= shared.current.ms * 1.25;
-      let swing = withCurrent ? 1.55 : 0.6;
-      if (heavy) swing = withCurrent ? 1.30 : 0.85;   // steadier both ways
-      if (light) swing = withCurrent ? 1.80 : 0.45;   // wilder both ways
-      delta = isCorrect ? 26 * spd * swing * tierMul : -Math.min(score * 0.10, 22);
-      flash.withCurrent = withCurrent;
-      flash.swing = Math.round(swing * 100) / 100;
-
-    } else if (mode === 'fracture') {
-      // Everyone's wrong answers crack one shared pane. Cracks near you dim your
-      // multiplier; your correct answers repair the nearest ones. Skin tier sets
-      // repair reach, so a better skin cleans up faster but never scores more.
-      const myCracks = shared.cracks.filter(c => c.near === userId).length;
-      const dim = Math.max(0.3, 1 - myCracks * 0.08);
-      if (isCorrect) {
-        const reach = Math.round(1 + (tierMul - 1) * 8);   // 1..3 cracks per answer
-        let repaired = 0;
-        for (let i = shared.cracks.length - 1; i >= 0 && repaired < reach; i--) {
-          if (shared.cracks[i].near === userId) { shared.cracks.splice(i, 1); repaired++; }
-        }
-        delta = 30 * spd * dim * tierMul;
-        flash.repaired = repaired;
-      } else {
-        // A wrong answer cracks the glass next to whoever is nearest in rank.
-        const others = (await liveParticipants(game.id))
-          .map(p => liveRow(p, mode, now))
-          .sort((a, b) => b.score - a.score);
-        const meIdx = others.findIndex(o => o.userId === userId);
-        const neighbour = others[meIdx + 1] || others[meIdx - 1] || { userId };
-        shared.cracks.push({ near: neighbour.userId, at: now, x: Math.random(), y: Math.random() });
-        while (shared.cracks.length > 120) shared.cracks.shift();
-        delta = -Math.min(score * 0.08, 18);
-        flash.crackedNear = neighbour.userId;
-      }
-      flash.dim = Math.round(dim * 100) / 100;
-
-    } else if (mode === 'eclipse') {
-      // Your skin's glow lights territory. Radius grows with correct answers and
-      // decays constantly, so ground is held only by continuing to answer.
-      // Overlap with a more recently-active player eats into your effective area.
-      let radius = decayed(st.radius || 0, since, ECLIPSE_HALFLIFE);
-      radius = isCorrect
-        ? Math.min(30, radius + 2.6 * spd * tierMul)
-        : Math.max(0, radius - 2.2);
-      st.radius = radius;
-
-      // How contested your ground is, measured as a share of your own area
-      // rather than a sum over the room. Charging a fixed penalty per rival
-      // grew with class size while lit area did not, so in a class of 30 every
-      // score sat at exactly 0 and placement BlazesBucks then paid whoever had
-      // answered least. Averaging makes it a property of the contest itself,
-      // so the same overlap costs the same in a group of 3 and a group of 40.
-      const rivals = (await liveParticipants(game.id)).filter(p => p.user_id !== userId);
-      let overlapSum = 0;
-      let activeRivals = 0;
-      for (const rv of rivals) {
-        let rst = {}; try { rst = JSON.parse(rv.live_state || '{}'); } catch { rst = {}; }
-        const rvSince = rv.live_answered_at ? now - new Date(rv.live_answered_at).getTime() : Infinity;
-        const rvRadius = decayed(rst.radius || 0, rvSince, ECLIPSE_HALFLIFE);
-        if (rvRadius <= 0) continue;
-        activeRivals++;
-        // A rival only shares the ground you both cover.
-        overlapSum += Math.min(radius, rvRadius) / Math.max(radius, 0.001);
-      }
-      const contested = activeRivals > 0 ? overlapSum / activeRivals : 0;
-      const area = Math.PI * radius * radius;
-      // Lose at most half your area to overlap. Whoever is out in front is
-      // overlapped proportionally less, and answering more always still beats
-      // answering less, which is what keeps the standings separating.
-      const effective = area * (1 - Math.min(0.5, contested * 0.5));
-      // Score IS the lit area, scaled. Floor the delta at 0 on a correct answer so
-      // rejoining after a break can never read as a penalty for answering well.
-      delta = (effective / 12) - score;
-      if (isCorrect && delta < 0) delta = 0;
-      flash.radius = Math.round(radius * 100) / 100;
-      flash.contested = Math.round(contested * 100) / 100;
-    }
-
-    score = Math.max(0, score + delta);
-
-    await dbRun(
-      `UPDATE game_participants
-          SET live_score = ?, live_streak = ?, live_state = ?, live_answered_at = ?,
-              live_total_ms = COALESCE(live_total_ms, 0) + ?,
-              live_answers  = COALESCE(live_answers, 0) + 1,
-              score = ?
-        WHERE game_id = ? AND user_id = ?`,
-      [score, streak, JSON.stringify(st), new Date(now).toISOString(), answerMs, Math.round(score), game.id, userId]
-    );
-
-    // Same answer log as every other mode, so stats and analytics still work.
-    if (questionId) {
-      await dbRun(
-        'INSERT INTO game_answers (game_id, user_id, question_id, answer, is_correct, time_taken) VALUES (?, ?, ?, ?, ?, ?)',
-        [game.id, userId, questionId, '', isCorrect ? 1 : 0, Math.round(answerMs / 100) / 10]
-      );
-    }
-
-    res.json({
-      // The server's own verdict, not the client's. Callers used to infer it
-      // from `delta > 0`, which is wrong for any mode whose delta can be zero
-      // or negative on a correct answer (eclipse floors it at 0), so a student
-      // could answer forty right and post a correct count of nought.
-      isCorrect,
-      delta: Math.round(delta * 100) / 100,
-      score: Math.round(score * 100) / 100,
-      streak,
-      flash,
-    });
-  } catch (err) {
-    console.error('[live/answer]', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * Freeze each live-mode player's CURRENT (decayed) standing into `score` before
- * results and placement BlazesBucks are computed. Without this, /results ranked
- * by the raw stored value, so someone who stopped answering an hour ago could
- * outrank the player who was visibly winning on the decayed leaderboard players
- * actually saw.
- */
-async function settleLiveScores(gameCode) {
-  try {
-    const game = await dbGet('SELECT id, game_mode FROM games WHERE game_code = ?', [gameCode]);
-    if (!game || !LIVE_MODES.has(game.game_mode)) return;
-    const now = Date.now();
-    for (const p of await liveParticipants(game.id)) {
-      const row = liveRow(p, game.game_mode, now);
-      await dbRun('UPDATE game_participants SET score = ? WHERE game_id = ? AND user_id = ?',
-        [Math.round(row.score), game.id, p.user_id]);
-    }
-  } catch (err) {
-    console.error('[settleLiveScores]', err);
-  }
-}
-app.locals.settleLiveScores = settleLiveScores;
-
 
 // Serve frontend static files in production
 const clientBuildPath = path.join(__dirname, '..', 'blazes', 'dist');

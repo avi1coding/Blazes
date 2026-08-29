@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Lock, Trophy, Star, Zap, Target, Calendar, TrendingUp, BookOpen, Clock, BarChart3, Award, Brain, Flame, Crown, Shirt, Users, Gamepad2, GraduationCap, ClipboardList, Layers, UserPlus,
-  Vault, Waves, Sparkles, Sun, Moon, Puzzle, ListOrdered, MapPin, Music, Calculator, CheckSquare, ShoppingBag, Compass, Globe, Handshake,
+  Sun, Moon, Puzzle, ListOrdered, MapPin, Music, Calculator, CheckSquare, ShoppingBag, Compass, Globe, Handshake,
 } from 'lucide-react';
 
 const STUDENT_CATEGORIES = [
@@ -11,7 +11,6 @@ const STUDENT_CATEGORIES = [
             { id: 'first_steps', bb: 20, name: 'First Steps', desc: 'Answer your first question', icon: Star },
             { id: 'getting_the_hang', bb: 30, name: 'Getting the Hang of It', desc: 'Answer 10 questions', icon: Zap },
             { id: 'welcome_aboard', bb: 20, name: 'Welcome Aboard', desc: 'Join a multiplayer game (5+)', icon: Users },
-            { id: 'mode_hopper', bb: 50, name: 'Mode Hopper', desc: 'Play every game mode', icon: Gamepad2 },
             { id: 'dressed_up', bb: 30, name: 'Dressed Up', desc: 'Buy your first skin', icon: Shirt },
             { id: 'collector', bb: 60, name: 'Collector', desc: 'Own 10 skins', icon: Shirt },
             { id: 'wardrobe', bb: 100, name: 'Wardrobe', desc: 'Own 25 skins', icon: Shirt },
@@ -139,33 +138,6 @@ const STUDENT_CATEGORIES = [
         ]
     },
     {
-        id: 'live_modes', label: 'Live Modes', color: '#dc2626',
-        achievements: [
-            { id: 'vault_first', bb: 10, name: 'Into the Vault', desc: 'Play a game of Vault', icon: Vault },
-            { id: 'vault_regular', bb: 30, name: 'Vault Regular', desc: 'Play Vault 25 times', icon: Vault },
-            { id: 'vault_master', bb: 70, name: 'Vault Master', desc: 'Play Vault 100 times', icon: Vault },
-            { id: 'vault_champion', bb: 40, name: 'Vault Champion', desc: 'Reach 300 points in Vault', icon: Trophy },
-            { id: 'vault_victor', bb: 50, name: 'Vault Victor', desc: 'Finish #1 in a Vault game', icon: Crown },
-            { id: 'undertow_first', bb: 10, name: 'Caught the Current', desc: 'Play a game of Undertow', icon: Waves },
-            { id: 'undertow_regular', bb: 30, name: 'Undertow Regular', desc: 'Play Undertow 25 times', icon: Waves },
-            { id: 'undertow_master', bb: 70, name: 'Undertow Master', desc: 'Play Undertow 100 times', icon: Waves },
-            { id: 'undertow_champion', bb: 40, name: 'Undertow Champion', desc: 'Reach 300 points in Undertow', icon: Trophy },
-            { id: 'undertow_victor', bb: 50, name: 'Undertow Victor', desc: 'Finish #1 in an Undertow game', icon: Crown },
-            { id: 'fracture_first', bb: 10, name: 'First Crack', desc: 'Play a game of Fracture', icon: Sparkles },
-            { id: 'fracture_regular', bb: 30, name: 'Fracture Regular', desc: 'Play Fracture 25 times', icon: Sparkles },
-            { id: 'fracture_master', bb: 70, name: 'Fracture Master', desc: 'Play Fracture 100 times', icon: Sparkles },
-            { id: 'fracture_champion', bb: 40, name: 'Fracture Champion', desc: 'Reach 300 points in Fracture', icon: Trophy },
-            { id: 'fracture_victor', bb: 50, name: 'Fracture Victor', desc: 'Finish #1 in a Fracture game', icon: Crown },
-            { id: 'eclipse_first', bb: 10, name: 'First Light', desc: 'Play a game of Eclipse', icon: Sun },
-            { id: 'eclipse_regular', bb: 30, name: 'Eclipse Regular', desc: 'Play Eclipse 25 times', icon: Sun },
-            { id: 'eclipse_master', bb: 70, name: 'Eclipse Master', desc: 'Play Eclipse 100 times', icon: Sun },
-            { id: 'eclipse_champion', bb: 40, name: 'Eclipse Champion', desc: 'Reach 50 points in Eclipse', icon: Trophy },
-            { id: 'eclipse_victor', bb: 50, name: 'Eclipse Victor', desc: 'Finish #1 in an Eclipse game', icon: Crown },
-            { id: 'endless_explorer', bb: 50, name: 'Endless Explorer', desc: 'Play all 4 live modes', icon: Compass },
-            { id: 'endless_veteran', bb: 150, name: 'Endless Veteran', desc: '250 live mode games total', icon: Crown },
-        ]
-    },
-    {
         id: 'question_types', label: 'Question Type Mastery', color: '#3b82f6',
         achievements: [
             { id: 'sa_novice', bb: 15, name: 'Short Answer Novice', desc: '10 short answer correct', icon: BookOpen },
@@ -285,7 +257,6 @@ const STUDENT_CATEGORIES = [
             { id: 'ultra_fast', bb: 60, name: 'Ultra Fast', desc: 'Correct in under 0.5 seconds', icon: Zap },
             { id: 'consistent_10', bb: 100, name: 'Ten in a Row', desc: '10 games in a row 90%+', icon: TrendingUp },
             { id: 'error_analyst_master', bb: 90, name: 'Error Analyst Master', desc: 'Review missed questions 50x', icon: BarChart3 },
-            { id: 'mode_master', bb: 60, name: 'Mode Master', desc: 'Play every game mode', icon: Layers },
         ]
     },
 ];
@@ -304,7 +275,6 @@ const TEACHER_CATEGORIES = [
             { id: 't_first_host', bb: 15, name: 'Game Master', desc: 'Host your first game', icon: Gamepad2 },
             { id: 't_first_assignment', bb: 15, name: 'Homework Time', desc: 'Create your first assignment', icon: ClipboardList },
             { id: 't_dressed_up', bb: 20, name: 'Dressed Up', desc: 'Buy your first skin', icon: Shirt },
-            { id: 't_mode_explorer', bb: 60, name: 'Mode Explorer', desc: 'Host every game mode at least once', icon: Layers },
         ]
     },
     {

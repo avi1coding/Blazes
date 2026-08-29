@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AvatarPreview, getNameColor, isBlazesPlusCached, cacheTier } from './SkinsPage';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Clock, Trophy, Check, X, Heart, Skull, Lock, Users, Flame, BarChart3, Crown, Medal, Maximize2 } from 'lucide-react';
-import LiveModeGamePlay from './LiveModeGamePlay';
-import { LIVE_MODE_META } from '../utils/liveModes';
 
 import { authHeaders } from '../utils/auth';
 function getFullImageUrl(url) {
@@ -1007,9 +1005,5 @@ export default function GamePlay() {
   if (error) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-red-600">{error}</div>;
   if (!game) return null;
 
-  // The four endless live modes all run on one shell.
-  if (LIVE_MODE_META[game.game_mode]) {
-    return <LiveModeGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
-  }
   return <ClassicGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
 }

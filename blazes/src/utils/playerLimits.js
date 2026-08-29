@@ -10,12 +10,6 @@
  */
 export const MODE_PLAYER_LIMITS = {
   classic_timed:     { min: 1, max: 30 },
-  // The live modes are all built around a shared board, so one player alone
-  // has nothing to contest.
-  vault:             { min: 2, max: 50 },
-  undertow:          { min: 2, max: 50 },
-  fracture:          { min: 2, max: 50 },
-  eclipse:           { min: 2, max: 50 },
 };
 
 export const DEFAULT_PLAYER_LIMITS = { min: 1, max: 50 };

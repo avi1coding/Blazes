@@ -56,10 +56,21 @@ const AI_IMPORT_GROUPS = [
   },
 ];
 
+// A stable key for each of the 20 options (file kinds share id: 'file', so
+// that alone isn't unique) and the flat, grouped list the Import From
+// dropdown renders from.
+const aiOptionKey = (opt) => (opt.id === 'file' ? `file:${opt.kind}` : opt.id);
+const AI_IMPORT_OPTIONS = AI_IMPORT_GROUPS.flatMap(g => g.options.map(opt => ({
+  value: aiOptionKey(opt), label: opt.label, icon: opt.icon, group: g.label, opt,
+})));
+
 // One dropdown implementation for the whole form: a button showing the
 // current value, a chevron, and a list that closes on an outside click.
 // Question count, difficulty, "which kit", "which classroom" all use this
 // instead of each hand-rolling its own open state and native <select>.
+// options: [{value, label, icon?, group?}]. A `group` on consecutive
+// entries renders as a small header above them, so one dropdown can
+// replace what would otherwise be a whole separate tabbed picker.
 function StyledSelect({ value, onChange, options, placeholder = 'Select...', empty }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -70,25 +81,41 @@ function StyledSelect({ value, onChange, options, placeholder = 'Select...', emp
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
   const selected = options.find(o => String(o.value) === String(value));
+  const SelectedIcon = selected?.icon;
+  let lastGroup = null;
   return (
     <div ref={ref} className="relative">
       <button type="button" onClick={() => setOpen(o => !o)}
         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-semibold bg-white hover:border-purple-300 transition-colors flex items-center justify-between gap-2">
-        <span className={`truncate ${selected ? 'text-gray-900' : 'text-gray-400 font-normal'}`}>{selected ? selected.label : placeholder}</span>
+        <span className={`flex items-center gap-2 min-w-0 ${selected ? 'text-gray-900' : 'text-gray-400 font-normal'}`}>
+          {SelectedIcon && <SelectedIcon className="w-4 h-4 flex-shrink-0 text-purple-500" />}
+          <span className="truncate">{selected ? selected.label : placeholder}</span>
+        </span>
         <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden max-h-56 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden max-h-64 overflow-y-auto">
           {options.length === 0 ? (
             <div className="px-3 py-2.5 text-sm text-gray-400">{empty || 'Nothing here yet'}</div>
-          ) : options.map(o => (
-            <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); }}
-              className={`w-full px-3 py-2.5 text-sm font-semibold text-left hover:bg-purple-50 transition-colors ${
-                String(value) === String(o.value) ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
-              }`}>
-              {o.label}
-            </button>
-          ))}
+          ) : options.map(o => {
+            const showHeader = o.group && o.group !== lastGroup;
+            lastGroup = o.group;
+            const OptIcon = o.icon;
+            return (
+              <div key={o.value}>
+                {showHeader && (
+                  <div className="px-3 pt-2.5 pb-1 text-[10px] font-black uppercase tracking-wider text-gray-400 bg-gray-50 sticky top-0">{o.group}</div>
+                )}
+                <button type="button" onClick={() => { onChange(o.value); setOpen(false); }}
+                  className={`w-full px-3 py-2.5 text-sm font-semibold text-left hover:bg-purple-50 transition-colors flex items-center gap-2 ${
+                    String(value) === String(o.value) ? 'bg-purple-50 text-purple-700' : 'text-gray-700'
+                  }`}>
+                  {OptIcon && <OptIcon className="w-4 h-4 flex-shrink-0 text-gray-400" />}
+                  <span className="truncate">{o.label}</span>
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -129,10 +156,6 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
   // fills, so Questions/Difficulty/Types/Generate below never need to
   // know which source produced the text.
   const [aiSource, setAiSource] = useState('paste');
-  // Which of the 4 groups is expanded in the import picker. Showing one
-  // group's options at a time instead of all 20 stacked keeps the picker
-  // to a glance instead of a scroll.
-  const [aiCategoryTab, setAiCategoryTab] = useState(AI_IMPORT_GROUPS[0].label);
   const [aiSourceLabel, setAiSourceLabel] = useState('');
   const [aiExtracting, setAiExtracting] = useState(false);
   const [aiUrlInput, setAiUrlInput] = useState('');
@@ -149,7 +172,7 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
   // count/difficulty/types below it, those are independent of where the
   // text came from.
   const resetAiSource = () => {
-    setAiSource('paste'); setAiCategoryTab(AI_IMPORT_GROUPS[0].label); setAiSourceLabel(''); setAiNotes(''); setAiError('');
+    setAiSource('paste'); setAiSourceLabel(''); setAiNotes(''); setAiError('');
     setAiUrlInput(''); setAiTopicInput(''); setAiWikiInput('');
     setAiSelectedKitId(''); setAiSelectedClassroomId('');
   };
@@ -939,40 +962,19 @@ export default function CreateKit({ user, onBack, onKitCreated }) {
             <input ref={aiFileInputRef} type="file" className="hidden" onChange={handleAiFileSelected} />
 
             <div className="space-y-5">
-              {/* Import from: 4 category tabs, one group's options visible
-                  at a time instead of all 20 stacked at once. */}
+              {/* Import from: one dropdown, the 20 sources grouped inside
+                  it, instead of a permanent tab bar and grid taking up
+                  space whether or not it's being used. */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1.5">Import From</label>
-                <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-2.5">
-                  {AI_IMPORT_GROUPS.map(group => {
-                    const TabIcon = group.icon;
-                    const isActiveTab = aiCategoryTab === group.label;
-                    return (
-                      <button key={group.label} type="button" onClick={() => setAiCategoryTab(group.label)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-bold transition-colors ${
-                          isActiveTab ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                        }`}>
-                        <TabIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="hidden sm:inline truncate">{group.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {AI_IMPORT_GROUPS.find(g => g.label === aiCategoryTab).options.map((opt, i) => {
-                    const OptIcon = opt.icon;
-                    const active = opt.id === 'file' ? (aiSource === 'file' && aiPendingFileKind === opt.kind) : aiSource === opt.id;
-                    return (
-                      <button key={opt.kind || opt.id + i} type="button" onClick={() => pickAiOption(opt)}
-                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-colors border-2 ${
-                          active ? 'bg-purple-50 text-purple-700 border-purple-300' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-200 hover:bg-purple-50/50'
-                        }`}>
-                        <OptIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="truncate">{opt.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <StyledSelect
+                  value={aiSource === 'file' ? `file:${aiPendingFileKind}` : aiSource}
+                  onChange={key => {
+                    const match = AI_IMPORT_OPTIONS.find(o => o.value === key);
+                    if (match) pickAiOption(match.opt);
+                  }}
+                  options={AI_IMPORT_OPTIONS}
+                />
               </div>
 
               {/* Source-specific small input, only for sources that need one */}

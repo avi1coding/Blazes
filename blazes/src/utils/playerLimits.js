@@ -10,6 +10,8 @@
  */
 export const MODE_PLAYER_LIMITS = {
   classic_timed:     { min: 1, max: 30 },
+  // A shared grid is only contested with someone else on it.
+  territory:         { min: 2, max: 50 },
 };
 
 export const DEFAULT_PLAYER_LIMITS = { min: 1, max: 50 };

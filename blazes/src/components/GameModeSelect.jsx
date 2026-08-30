@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Flame, Trophy, Lock, ChevronRight, Users, Clock, X, BookOpen, Check } from 'lucide-react';
+import { Flame, Trophy, Lock, ChevronRight, Users, Clock, X, BookOpen, Check, Grid3x3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GameplayMockup from './GameplayMockup';
 
@@ -47,11 +47,35 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
       ],
       available: true
     },
+    {
+      id: 'territory',
+      name: 'Territory',
+      tagline: 'A shared grid. Your color spreads on its own.',
+      icon: Grid3x3,
+      gradient: 'from-emerald-500 to-teal-600',
+      solid: 'bg-emerald-600',
+      glow: 'shadow-emerald-500/40',
+      accent: 'emerald',
+      tags: ['multi'],
+      description: 'The whole class shares one grid. A correct answer automatically claims the tile next to your last one, no picking, so your color spreads outward on its own. Tiles fade back to open ground if left alone, so the board never fills up, it just keeps shifting for as long as you run the game.',
+      difficulty: 'Easy',
+      players: '2-50',
+      duration: 'Set by host',
+      features: [
+        'Correct answers claim ground automatically',
+        'No picking or choices to make beyond the question',
+        'Tiles fade over time, so it never runs out of room',
+        'You set the length and can extend it mid-game',
+        'Works with every question type'
+      ],
+      available: true
+    },
   ];
 
 
   const handleContinue = () => {
     if (selectedMode === 'classic_timed') navigate('/game/classic-timed-setup', { state: { kit, user } });
+    else if (selectedMode === 'territory') navigate('/game/territory-setup', { state: { kit, user } });
   };
 
   const selected = gameModes.find(m => m.id === selectedMode);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AvatarPreview, getNameColor, isBlazesPlusCached, cacheTier } from './SkinsPage';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import TerritoryGamePlay from './TerritoryGamePlay';
 import { Clock, Trophy, Check, X, Heart, Skull, Lock, Users, Flame, BarChart3, Crown, Medal, Maximize2 } from 'lucide-react';
 
 import { authHeaders } from '../utils/auth';
@@ -1005,5 +1006,8 @@ export default function GamePlay() {
   if (error) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-red-600">{error}</div>;
   if (!game) return null;
 
+  if (game.game_mode === 'territory') {
+    return <TerritoryGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
+  }
   return <ClassicGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
 }

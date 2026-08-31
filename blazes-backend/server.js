@@ -2701,8 +2701,6 @@ app.post('/api/games/:gameCode/leave', async (req, res) => {
  */
 const MODE_PLAYER_LIMITS = {
   classic_timed:     { min: 1, max: 30 },
-  // A shared grid is only contested with someone else on it.
-  territory:         { min: 2, max: 50 },
   // Stealing needs someone to steal from.
   jackpot:           { min: 2, max: 50 },
 };
@@ -2814,7 +2812,6 @@ async function finishGame(gameCode) {
       WHERE game_code = ? AND status != 'ended'`, [gameCode]);
 
   try { await app.locals.settleLiveScores?.(gameCode); } catch (e) { console.error('[finishGame] live settle:', e.message); }
-  try { await app.locals.settleTerritoryScores?.(gameCode); } catch (e) { console.error('[finishGame] territory settle:', e.message); }
   try { await app.locals.settleJackpotScores?.(gameCode); } catch (e) { console.error('[finishGame] jackpot settle:', e.message); }
 
   const paidAlready = async (userId, reason) => !!await dbGet(
@@ -2884,7 +2881,6 @@ app.put('/api/games/:gameCode/abandon', (req, res) => {
     async function (err) {
       if (err) return res.status(500).json({ error: err.message });
       try { await app.locals.settleLiveScores?.(gameCode); } catch (_) {}
-      try { await app.locals.settleTerritoryScores?.(gameCode); } catch (_) {}
       try { await app.locals.settleJackpotScores?.(gameCode); } catch (_) {}
       res.json({ message: 'Game abandoned', changed: this.changes });
     }
@@ -2892,18 +2888,9 @@ app.put('/api/games/:gameCode/abandon', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TERRITORY
-//
-// A shared grid of tiles. A correct answer automatically claims the tile next
-// to your last one, no picking, so your color spreads outward on its own.
-// Tiles decay back to neutral if nobody refreshes them, so the board never
-// fills up and finishes, it just keeps shifting for as long as the teacher
-// runs the game. Skin only sets which color a claim shows as; it changes
-// nothing about how fast or how often you claim.
-//
-// Time helpers below are intentionally generic (not Territory-specific),
-// any future endless mode can reuse them the same way the old live modes'
-// equivalents used to be shared.
+// Endless-mode time helpers, shared by every mode that runs for as long as
+// the teacher sets the clock (currently Jackpot) rather than to a natural
+// end, the same way the old live modes' equivalents used to be shared.
 // ═══════════════════════════════════════════════════════════════════════════
 
 function endlessSettings(game) {
@@ -2939,246 +2926,6 @@ async function endEndlessGameIfExpired(game) {
   return true;
 }
 
-const TERRITORY_COLS = 8;
-const TERRITORY_ROWS = 8;
-const TERRITORY_DECAY_MS = 90 * 1000;
-
-const territoryShared = new Map(); // gameCode -> { tiles: [{owner, claimedAt}], lastTileByPlayer: {userId: index} }
-
-function territoryState(gameCode) {
-  let s = territoryShared.get(gameCode);
-  if (!s) {
-    s = {
-      tiles: Array.from({ length: TERRITORY_COLS * TERRITORY_ROWS }, () => ({ owner: null, claimedAt: 0 })),
-      lastTileByPlayer: {},
-    };
-    territoryShared.set(gameCode, s);
-  }
-  return s;
-}
-
-function territoryNeighbors(index) {
-  const col = index % TERRITORY_COLS;
-  const row = Math.floor(index / TERRITORY_COLS);
-  const out = [];
-  if (col > 0) out.push(index - 1);
-  if (col < TERRITORY_COLS - 1) out.push(index + 1);
-  if (row > 0) out.push(index - TERRITORY_COLS);
-  if (row < TERRITORY_ROWS - 1) out.push(index + TERRITORY_COLS);
-  return out;
-}
-
-/** A tile whose claim has decayed reads as unowned, without needing a background timer. */
-function territoryEffectiveOwner(shared, index, now) {
-  const t = shared.tiles[index];
-  if (!t.owner) return null;
-  return (now - t.claimedAt > TERRITORY_DECAY_MS) ? null : t.owner;
-}
-
-/**
- * Claims one tile for userId: next to their last tile when possible (spreads
- * their patch outward), preferring open ground over taking someone else's,
- * and jumping to a fresh spot if they are fully boxed in by their own tiles.
- */
-function territoryClaim(shared, userId) {
-  const now = Date.now();
-  const notMine = (i) => territoryEffectiveOwner(shared, i, now) !== userId;
-  const isOpen = (i) => territoryEffectiveOwner(shared, i, now) === null;
-
-  let candidates = [];
-  const last = shared.lastTileByPlayer[userId];
-  if (last !== undefined) {
-    const neighbors = territoryNeighbors(last).filter(notMine);
-    const open = neighbors.filter(isOpen);
-    candidates = open.length ? open : neighbors;
-  }
-  if (!candidates.length) {
-    const all = shared.tiles.map((_, i) => i).filter(notMine);
-    const open = all.filter(isOpen);
-    candidates = open.length ? open : all;
-  }
-  if (!candidates.length) candidates = shared.tiles.map((_, i) => i); // whole board is already theirs
-
-  const choice = candidates[Math.floor(Math.random() * candidates.length)];
-  shared.tiles[choice] = { owner: userId, claimedAt: now };
-  shared.lastTileByPlayer[userId] = choice;
-  return choice;
-}
-
-function territoryStandings(shared, now) {
-  const counts = {};
-  for (let i = 0; i < shared.tiles.length; i++) {
-    const owner = territoryEffectiveOwner(shared, i, now);
-    if (owner != null) counts[owner] = (counts[owner] || 0) + 1;
-  }
-  return counts;
-}
-
-// Keeps game_participants.score in sync with tile counts, the tile grid is
-// the source of truth (it can change for a player without them answering, if
-// a rival claims one of their tiles), so other screens that read the generic
-// score column, monitoring, present view, still show something current.
-async function syncTerritoryScores(gameId, gameCode) {
-  const shared = territoryState(gameCode);
-  const counts = territoryStandings(shared, Date.now());
-  const participants = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ?', [gameId]);
-  for (const p of participants) {
-    await dbRun('UPDATE game_participants SET score = ? WHERE game_id = ? AND user_id = ?',
-      [counts[p.user_id] || 0, gameId, p.user_id]);
-  }
-}
-
-app.get('/api/games/:gameCode/territory/state', async (req, res) => {
-  try {
-    const { gameCode } = req.params;
-    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
-    if (!game) return res.status(404).json({ error: 'Game not found' });
-    if (game.game_mode !== 'territory') return res.status(400).json({ error: 'Not a Territory game' });
-    if (await endEndlessGameIfExpired(game)) game.status = 'ended';
-
-    // Same guest-tolerant identity rule as /territory/answer, read from the
-    // query string since this is a GET: a signed-in player is whoever their
-    // token says, and a guest is only trusted for a seat they already hold.
-    const queryId = Number(req.query?.userId);
-    const guestId = Number.isInteger(queryId) && queryId < 0 ? queryId : null;
-    let userId = actingUserId(req);
-    if (!userId && guestId !== null) {
-      const seat = await dbGet(
-        `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
-         WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
-      if (seat) userId = guestId;
-    }
-    const shared = territoryState(gameCode);
-    const now = Date.now();
-    const counts = territoryStandings(shared, now);
-
-    if (game.status === 'started') await syncTerritoryScores(game.id, gameCode);
-
-    const participants = await dbAll(
-      `SELECT gp.user_id, gp.player_name, ue.avatar_skin
-         FROM game_participants gp
-         LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
-        WHERE gp.game_id = ?`, [game.id]);
-
-    const standings = participants
-      .map(p => ({ userId: p.user_id, name: p.player_name, skin: p.avatar_skin || null, tiles: counts[p.user_id] || 0 }))
-      .sort((a, b) => b.tiles - a.tiles);
-    standings.forEach((s, i) => { s.rank = i + 1; });
-
-    res.json({
-      mode: 'territory',
-      status: game.status,
-      secondsLeft: endlessSecondsLeft(game),
-      isHost: userId != null && game.host_id === userId,
-      cols: TERRITORY_COLS,
-      rows: TERRITORY_ROWS,
-      tiles: shared.tiles.map((_, i) => territoryEffectiveOwner(shared, i, now)),
-      standings,
-      me: userId ? standings.find(s => s.userId === userId) || null : null,
-    });
-  } catch (err) {
-    console.error('[territory/state]', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/games/:gameCode/territory/answer', async (req, res) => {
-  try {
-    const { gameCode } = req.params;
-    // Same identity rule as every other answer route this session: a
-    // signed-in player is whoever their token says, and a guest is accepted
-    // only for a seat they already hold in this game.
-    const bodyId = Number(req.body?.userId);
-    const guestId = Number.isInteger(bodyId) && bodyId < 0 ? bodyId : null;
-    let userId = actingUserId(req);
-    if (!userId && guestId !== null) {
-      const seat = await dbGet(
-        `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
-         WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
-      if (seat) userId = guestId;
-    }
-    if (!userId) return res.status(401).json({ error: 'unauthenticated', message: 'Please sign in again.' });
-
-    const { questionId, answer, correct, ms } = req.body;
-    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
-    if (!game) return res.status(404).json({ error: 'Game not found' });
-    if (game.game_mode !== 'territory') return res.status(400).json({ error: 'Not a Territory game' });
-    if (await endEndlessGameIfExpired(game)) game.status = 'ended';
-    if (game.status === 'ended' || game.status === 'abandoned') {
-      return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
-    }
-
-    let isCorrect = !!correct;
-    if (questionId) {
-      const q = await dbGet('SELECT * FROM questions WHERE id = ? AND kit_id = ?', [questionId, game.kit_id]);
-      if (!q) return res.status(400).json({ error: 'Unknown question for this game' });
-      const graded = gradeLiveAnswer(q, answer);
-      if (graded !== null) isCorrect = graded;
-
-      // One claim per question per attempt, same replay guard the other
-      // answer-taking routes use.
-      const already = await dbGet(
-        "SELECT id FROM game_answers WHERE game_id = ? AND user_id = ? AND question_id = ? AND answered_at > datetime('now', '-3 seconds')",
-        [game.id, userId, questionId]);
-      if (already) return res.status(429).json({ error: 'duplicate', message: 'Already answered.' });
-    }
-
-    const answerMs = Math.max(150, Math.min(120000, Number(ms) || 8000));
-    if (questionId) {
-      await dbRun(
-        'INSERT INTO game_answers (game_id, user_id, question_id, answer, is_correct, time_taken) VALUES (?, ?, ?, ?, ?, ?)',
-        [game.id, userId, questionId, '', isCorrect ? 1 : 0, Math.round(answerMs / 100) / 10]
-      );
-    }
-
-    let claimedTile = null;
-    if (isCorrect) {
-      const shared = territoryState(gameCode);
-      claimedTile = territoryClaim(shared, userId);
-      await syncTerritoryScores(game.id, gameCode);
-    }
-
-    res.json({ isCorrect, claimedTile });
-  } catch (err) {
-    console.error('[territory/answer]', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/games/:gameCode/territory/extend', requireAuth, async (req, res) => {
-  try {
-    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [req.params.gameCode]);
-    if (!game) return res.status(404).json({ error: 'Game not found' });
-    if (game.game_mode !== 'territory') return res.status(400).json({ error: 'Not a Territory game' });
-    if (game.host_id !== actingUserId(req)) return res.status(403).json({ error: 'Only the host can extend this game' });
-    if (game.status !== 'started') return res.status(409).json({ error: 'Game is not running' });
-
-    // Positive or negative: the host can add time or take it away.
-    const minutes = Math.max(-60, Math.min(60, Number(req.body?.minutes) || 5));
-    const settings = endlessSettings(game);
-    // If the host never set a limit, extending starts the clock from now.
-    const started = gameStartedAtMs(game);
-    const elapsed = started ? (Date.now() - started) / 1000 : 0;
-    const currentLimit = Number(settings.timeLimit) || Math.round(elapsed);
-    settings.timeLimit = currentLimit + minutes * 60;
-    await dbRun('UPDATE games SET settings = ? WHERE game_code = ?', [JSON.stringify(settings), req.params.gameCode]);
-    res.json({ secondsLeft: Math.max(0, Math.round(settings.timeLimit - elapsed)) });
-  } catch (err) {
-    console.error('[territory/extend]', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Freezes final tile counts into game_participants.score when the game ends,
-// so the existing results page (which already just reads that column) shows
-// Territory's standings without needing to know Territory exists.
-async function settleTerritoryScores(gameCode) {
-  const game = await dbGet('SELECT id, game_mode FROM games WHERE game_code = ?', [gameCode]);
-  if (!game || game.game_mode !== 'territory') return;
-  await syncTerritoryScores(game.id, gameCode);
-  territoryShared.delete(gameCode);
-}
-app.locals.settleTerritoryScores = settleTerritoryScores;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // JACKPOT
@@ -3190,8 +2937,8 @@ app.locals.settleTerritoryScores = settleTerritoryScores;
 // weighted result server-side (the client only plays the landing animation,
 // so nobody can rig their own spin) and it takes that percentage from
 // whoever currently leads — skip yourself if you're already #1, so it can't
-// be a no-op. Same endless shape as Territory: runs for as long as the
-// teacher sets the clock, most chips when it ends wins.
+// be a no-op. Runs for as long as the teacher sets the clock, most chips
+// when it ends wins.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const JACKPOT_CORRECT_CHIPS = 10;

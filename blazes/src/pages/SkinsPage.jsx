@@ -268,8 +268,8 @@ function hashColor(seed) {
  * color when nobody else in the list has claimed it yet, otherwise the next
  * free color from the catalog (deterministically, by userId, so the same
  * roster always resolves the same way). Nobody's actual equipped skin
- * changes — this is for modes like Territory, where two players sharing a
- * color would make their progress indistinguishable.
+ * changes — this is for game modes where two players sharing a color would
+ * make their progress indistinguishable.
  */
 export function assignUniqueSkinColors(players) {
   const sorted = [...players].sort((a, b) => a.userId - b.userId);

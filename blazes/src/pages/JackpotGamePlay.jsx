@@ -93,9 +93,12 @@ export default function JackpotGamePlay({ gameCode, user, equippedSkinId, initia
   const colorMap = assignUniqueSkinColors(standings);
   const wheelSegments = useMemo(() => buildWheelSegments(state?.wheel || []), [state?.wheel]);
 
-  // Only a real navigate-away/tab-close should count as leaving — see the
-  // identical fix in TerritoryGamePlay for why pagehide + an unconditional
-  // cleanup call is the wrong pattern (it fires on ordinary unmounts too).
+  // Only a real navigate-away/tab-close should count as leaving. pagehide
+  // fires far more eagerly (e.g. just backgrounding the tab on some
+  // browsers), and calling leave() from the cleanup fires it on every
+  // ordinary unmount too (including React StrictMode's mount/cleanup/mount
+  // in dev) — both would get a player briefly switching tabs shown as
+  // having left.
   useEffect(() => {
     const leave = () => {
       try {

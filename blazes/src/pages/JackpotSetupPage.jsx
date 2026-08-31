@@ -5,8 +5,8 @@ import HostPlaysToggle from '../components/HostPlaysToggle';
 
 /**
  * Jackpot runs until the teacher ends it or the clock they set here runs
- * out, same shape as Territory: a plain number of minutes, with the option
- * to extend or pull back time mid-game from the lobby/gameplay screen.
+ * out: a plain number of minutes, with the option to extend or pull back
+ * time mid-game from the lobby/gameplay screen.
  */
 export default function JackpotSetupPage() {
   const navigate = useNavigate();

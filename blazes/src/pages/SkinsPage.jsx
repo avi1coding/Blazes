@@ -252,6 +252,45 @@ export function getSkinById(skinId) { return SKIN_BY_ID[skinId] || null; }
 export function getSkinIcon(skinId) { return SKIN_ICONS[skinId] || null; }
 export function getSkinColor(skinId) { return SKIN_BY_ID[skinId]?.glow || null; }
 
+// Deduped, stable-ordered list of every glow color a skin can render as.
+// Backs assignUniqueSkinColors below.
+const SKIN_COLOR_PALETTE = [...new Set(ALL_SKINS.map(s => s.glow).filter(Boolean))];
+
+function hashColor(seed) {
+  let h = 0;
+  const s = String(seed);
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return `hsl(${h % 360}, 65%, 50%)`;
+}
+
+/**
+ * Give every player a unique display color: their real equipped skin's
+ * color when nobody else in the list has claimed it yet, otherwise the next
+ * free color from the catalog (deterministically, by userId, so the same
+ * roster always resolves the same way). Nobody's actual equipped skin
+ * changes — this is for modes like Territory, where two players sharing a
+ * color would make their progress indistinguishable.
+ */
+export function assignUniqueSkinColors(players) {
+  const sorted = [...players].sort((a, b) => a.userId - b.userId);
+  const used = new Set();
+  const colorFor = {};
+  for (const p of sorted) {
+    const real = getSkinColor(p.skin);
+    if (real && !used.has(real)) { colorFor[p.userId] = real; used.add(real); }
+  }
+  let i = 0;
+  for (const p of sorted) {
+    if (colorFor[p.userId]) continue;
+    while (i < SKIN_COLOR_PALETTE.length && used.has(SKIN_COLOR_PALETTE[i])) i++;
+    const color = SKIN_COLOR_PALETTE[i] || hashColor(p.userId);
+    colorFor[p.userId] = color;
+    used.add(color);
+    i++;
+  }
+  return colorFor;
+}
+
 const FREE_SKIN_IDS = AVATAR_SKINS.filter(s => s.cost === 0).map(s => s.id);
 
 const TIER_COLORS = {

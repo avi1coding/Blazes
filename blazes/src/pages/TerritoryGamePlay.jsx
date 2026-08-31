@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Flame, ArrowLeft, Clock, Plus, Square, Loader2 } from 'lucide-react';
 import QuestionView from '../components/QuestionView';
-import { AvatarPreview, getSkinColor } from './SkinsPage';
+import { AvatarPreview, assignUniqueSkinColors } from './SkinsPage';
 import { authHeaders, handleUnauthorized } from '../utils/auth';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -60,6 +60,11 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
   useEffect(() => {
     if (state?.me) scoreRef.current = state.me.tiles;
   }, [state?.me]);
+
+  const standings = state?.standings || [];
+  // Deterministic given the same roster/skins, so this stays stable across
+  // polls without needing to be memoized.
+  const colorMap = assignUniqueSkinColors(standings);
 
   // Tell the server when a player leaves, same beacon pattern used
   // elsewhere so a closed tab doesn't just silently vanish from the roster.
@@ -179,11 +184,7 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
   const question = questions[queue[qIdx]];
   const cols = state?.cols || 8;
   const tiles = state?.tiles || Array(cols * (state?.rows || 8)).fill(null);
-  const colorFor = (userId) => {
-    if (userId == null) return null;
-    const p = state?.standings?.find(s => s.userId === userId);
-    return (p && getSkinColor(p.skin)) || '#94a3b8';
-  };
+  const colorFor = (userId) => (userId == null ? null : colorMap[userId] || '#94a3b8');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -268,17 +269,17 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
             <div className="bg-white rounded-2xl border-2 border-gray-100 p-4 shadow-sm">
               <div className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Standings</div>
               <div className="space-y-2">
-                {(state?.standings || []).map(p => (
+                {standings.map(p => (
                   <div key={p.userId} className={`flex items-center gap-2 p-2 rounded-xl ${p.userId === user.id ? 'bg-gray-100' : ''}`}>
                     <span className="w-5 text-xs font-black text-gray-400 tabular-nums">{p.rank}</span>
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: getSkinColor(p.skin) || '#94a3b8' }} />
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: colorMap[p.userId] || '#94a3b8' }} />
                     <span className={`flex-1 text-sm truncate ${p.userId === user.id ? 'font-black text-gray-900' : 'font-semibold text-gray-600'}`}>
                       {p.name}
                     </span>
                     <span className="text-sm font-black tabular-nums text-gray-900">{p.tiles}</span>
                   </div>
                 ))}
-                {!state?.standings?.length && <div className="text-sm text-gray-400 font-semibold">Waiting for players...</div>}
+                {!standings.length && <div className="text-sm text-gray-400 font-semibold">Waiting for players...</div>}
               </div>
               <p className="text-[11px] text-gray-400 font-semibold mt-3 leading-snug">
                 Tiles fade if you stop answering. The game ends when your teacher ends it.

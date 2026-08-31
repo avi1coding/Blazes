@@ -72,8 +72,12 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
   // polls without needing to be memoized.
   const colorMap = assignUniqueSkinColors(standings);
 
-  // Tell the server when a player leaves, same beacon pattern used
-  // elsewhere so a closed tab doesn't just silently vanish from the roster.
+  // Tell the server when a player actually leaves (tab close, navigate away),
+  // same beforeunload-only pattern ClassicGamePlay uses. pagehide fires far
+  // more eagerly (e.g. just backgrounding the tab on some browsers), and
+  // calling leave() from the cleanup fired it on every ordinary unmount too
+  // (including React StrictMode's mount/cleanup/mount in dev) — both made a
+  // player briefly switching tabs get shown as having left.
   useEffect(() => {
     const leave = () => {
       try {
@@ -91,8 +95,8 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
         }
       } catch { /* best effort */ }
     };
-    window.addEventListener('pagehide', leave);
-    return () => { window.removeEventListener('pagehide', leave); leave(); };
+    window.addEventListener('beforeunload', leave);
+    return () => window.removeEventListener('beforeunload', leave);
   }, [gameCode, user.id]);
 
   const handleAnswer = useCallback(async ({ correct, ms, answer }) => {
@@ -144,8 +148,8 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
     setToast({ show: true, message: 'Game ended for everyone.', type: 'warning' });
     refresh();
   };
-  const extendGame = async () => {
-    await fetch(`${BASE}/api/games/${gameCode}/territory/extend`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ minutes: 5 }) });
+  const adjustTime = async (minutes) => {
+    await fetch(`${BASE}/api/games/${gameCode}/territory/extend`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ minutes }) });
     refresh();
   };
 
@@ -222,8 +226,14 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
             )}
             {isHost && (
               <>
-                <button onClick={extendGame} className="px-3 py-2 bg-white border-2 border-gray-100 rounded-xl font-bold text-sm hover:border-gray-200">
+                <button onClick={() => adjustTime(-1)} className="px-3 py-2 bg-white border-2 border-gray-100 rounded-xl font-bold text-sm hover:border-gray-200">
+                  -1m
+                </button>
+                <button onClick={() => adjustTime(5)} className="px-3 py-2 bg-white border-2 border-gray-100 rounded-xl font-bold text-sm hover:border-gray-200">
                   +5m
+                </button>
+                <button onClick={() => adjustTime(10)} className="px-3 py-2 bg-white border-2 border-gray-100 rounded-xl font-bold text-sm hover:border-gray-200">
+                  +10m
                 </button>
                 <button onClick={endGame} className="px-3 py-2 bg-red-50 text-red-600 border-2 border-red-100 rounded-xl font-bold text-sm hover:border-red-200">
                   End

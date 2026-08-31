@@ -2918,7 +2918,10 @@ function gameStartedAtMs(game) {
 
 function endlessSecondsLeft(game) {
   const settings = endlessSettings(game);
-  if (!settings.timeLimit) return null;
+  // == null (not !settings.timeLimit): a host shrinking the clock via -1m
+  // can legitimately land timeLimit on exactly 0, which must still read as
+  // "out of time" rather than being mistaken for "no limit configured".
+  if (settings.timeLimit == null) return null;
   const started = gameStartedAtMs(game);
   if (!started) return settings.timeLimit;
   return Math.max(0, Math.round(settings.timeLimit - (Date.now() - started) / 1000));
@@ -3146,7 +3149,8 @@ app.post('/api/games/:gameCode/territory/extend', requireAuth, async (req, res) 
     if (game.host_id !== actingUserId(req)) return res.status(403).json({ error: 'Only the host can extend this game' });
     if (game.status !== 'started') return res.status(409).json({ error: 'Game is not running' });
 
-    const minutes = Math.max(1, Math.min(60, Number(req.body?.minutes) || 5));
+    // Positive or negative: the host can add time or take it away.
+    const minutes = Math.max(-60, Math.min(60, Number(req.body?.minutes) || 5));
     const settings = endlessSettings(game);
     // If the host never set a limit, extending starts the clock from now.
     const started = gameStartedAtMs(game);

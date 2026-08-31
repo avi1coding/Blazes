@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Flame, ArrowLeft, Clock, Plus, Square, Loader2 } from 'lucide-react';
 import QuestionView from '../components/QuestionView';
+import Toast from '../components/Toast';
 import { AvatarPreview, assignUniqueSkinColors } from './SkinsPage';
 import { authHeaders, handleUnauthorized } from '../utils/auth';
 
@@ -28,6 +29,7 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [flashTile, setFlashTile] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'warning' });
 
   const questions = useMemo(() => initialGame?.questions || [], [initialGame]);
   const [queue, setQueue] = useState(() => shuffledQueue(questions.length));
@@ -41,12 +43,16 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
 
   const refresh = useCallback(async () => {
     try {
-      const r = await fetch(`${BASE}/api/games/${gameCode}/territory/state`, { headers: authHeaders() });
+      // userId is read from the token for a signed-in player; a guest has no
+      // token, so it rides along here too and is only trusted for a seat it
+      // already holds (see /territory/state).
+      const qs = user?.id != null ? `?userId=${encodeURIComponent(user.id)}` : '';
+      const r = await fetch(`${BASE}/api/games/${gameCode}/territory/state${qs}`, { headers: authHeaders() });
       if (handleUnauthorized(r)) return;
       const d = await r.json().catch(() => null);
       if (d && !d.error) setState(d);
     } catch { /* transient network hiccup, next poll retries */ }
-  }, [gameCode]);
+  }, [gameCode, user]);
 
   useEffect(() => {
     // setTimeout, not a direct call: calling refresh() (it calls setState)
@@ -134,8 +140,8 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
   const homePath = user?.role === 'teacher' ? '/home/teacher' : '/home/student';
 
   const endGame = async () => {
-    if (!confirm('End the game for everyone?')) return;
     await fetch(`${BASE}/api/games/${gameCode}/end`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({}) });
+    setToast({ show: true, message: 'Game ended for everyone.', type: 'warning' });
     refresh();
   };
   const extendGame = async () => {
@@ -159,6 +165,7 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
   if (gameOver) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast(t => ({ ...t, show: false }))} />
         <div className="bg-white rounded-2xl p-8 text-center border-2 border-gray-100 max-w-sm">
           <Flame className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="font-black text-gray-900 mb-1">This game has ended</p>
@@ -188,6 +195,7 @@ export default function TerritoryGamePlay({ gameCode, user, equippedSkinId, init
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast(t => ({ ...t, show: false }))} />
       <div className="max-w-5xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4 gap-3">

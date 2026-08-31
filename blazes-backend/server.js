@@ -3029,7 +3029,18 @@ app.get('/api/games/:gameCode/territory/state', async (req, res) => {
     if (game.game_mode !== 'territory') return res.status(400).json({ error: 'Not a Territory game' });
     if (await endEndlessGameIfExpired(game)) game.status = 'ended';
 
-    const userId = actingUserId(req);
+    // Same guest-tolerant identity rule as /territory/answer, read from the
+    // query string since this is a GET: a signed-in player is whoever their
+    // token says, and a guest is only trusted for a seat they already hold.
+    const queryId = Number(req.query?.userId);
+    const guestId = Number.isInteger(queryId) && queryId < 0 ? queryId : null;
+    let userId = actingUserId(req);
+    if (!userId && guestId !== null) {
+      const seat = await dbGet(
+        `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
+         WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
+      if (seat) userId = guestId;
+    }
     const shared = territoryState(gameCode);
     const now = Date.now();
     const counts = territoryStandings(shared, now);

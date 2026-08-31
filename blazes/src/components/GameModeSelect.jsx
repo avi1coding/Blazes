@@ -23,6 +23,18 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
       .catch(() => {});
   }, [showKitPicker, user]);
 
+  // Warm the browser cache for the lobby music while the teacher is still
+  // picking a mode and filling out setup. Without this, LobbyMusic.mp3 only
+  // starts downloading once the lobby itself mounts, so it takes a moment
+  // to start. Fire-and-forget, we just want the bytes cached ahead of time.
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch('/audio/LobbyMusic.mp3', { signal: ctrl.signal, cache: 'force-cache' })
+      .then(r => r.arrayBuffer())
+      .catch(() => { /* offline, AbortError, etc., silent */ });
+    return () => ctrl.abort();
+  }, []);
+
   const gameModes = [
     {
       id: 'classic_timed',

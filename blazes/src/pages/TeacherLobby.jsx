@@ -267,7 +267,7 @@ export default function TeacherLobby() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                                 <span className="text-gray-600 font-semibold">Kit</span>
-                                <span className="font-black text-gray-900">{game.kit_id}</span>
+                                <span className="font-black text-gray-900">{game.kit_title || 'Unknown Kit'}</span>
                             </div>
 
                             {game.settings && typeof game.settings === 'object' && (

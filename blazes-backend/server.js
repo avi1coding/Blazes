@@ -2354,7 +2354,11 @@ function gradeSubmission(q, selectedAnswer) {
 app.get('/api/games/:gameCode', (req, res) => {
   const { gameCode } = req.params;
 
-  db.get('SELECT * FROM games WHERE game_code = ?', [gameCode], async (err, game) => {
+  db.get(
+    `SELECT g.*, qk.title AS kit_title FROM games g
+     LEFT JOIN question_kits qk ON qk.id = g.kit_id
+     WHERE g.game_code = ?`,
+    [gameCode], async (err, game) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!game) return res.status(404).json({ error: 'Game not found' });
 

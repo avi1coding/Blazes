@@ -2703,6 +2703,8 @@ const MODE_PLAYER_LIMITS = {
   classic_timed:     { min: 1, max: 30 },
   // A shared grid is only contested with someone else on it.
   territory:         { min: 2, max: 50 },
+  // Stealing needs someone to steal from.
+  jackpot:           { min: 2, max: 50 },
 };
 const playerLimitsFor = (mode) => MODE_PLAYER_LIMITS[mode] || { min: 1, max: 50 };
 
@@ -2813,6 +2815,7 @@ async function finishGame(gameCode) {
 
   try { await app.locals.settleLiveScores?.(gameCode); } catch (e) { console.error('[finishGame] live settle:', e.message); }
   try { await app.locals.settleTerritoryScores?.(gameCode); } catch (e) { console.error('[finishGame] territory settle:', e.message); }
+  try { await app.locals.settleJackpotScores?.(gameCode); } catch (e) { console.error('[finishGame] jackpot settle:', e.message); }
 
   const paidAlready = async (userId, reason) => !!await dbGet(
     `SELECT id FROM blazes_bucks_log WHERE user_id = ? AND game_code = ? AND reason = ? LIMIT 1`,
@@ -2882,6 +2885,7 @@ app.put('/api/games/:gameCode/abandon', (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       try { await app.locals.settleLiveScores?.(gameCode); } catch (_) {}
       try { await app.locals.settleTerritoryScores?.(gameCode); } catch (_) {}
+      try { await app.locals.settleJackpotScores?.(gameCode); } catch (_) {}
       res.json({ message: 'Game abandoned', changed: this.changes });
     }
   );
@@ -3175,6 +3179,382 @@ async function settleTerritoryScores(gameCode) {
   territoryShared.delete(gameCode);
 }
 app.locals.settleTerritoryScores = settleTerritoryScores;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// JACKPOT
+//
+// Correct answers earn chips, wrong answers cost a few. Chips buy upgrades
+// that are all double-edged (more upside always comes with more downside),
+// and can be spent to steal a cut from another player outright. Every 5
+// questions a player answers, they get a wheel spin: the server rolls a
+// weighted result server-side (the client only plays the landing animation,
+// so nobody can rig their own spin) and it takes that percentage from
+// whoever currently leads — skip yourself if you're already #1, so it can't
+// be a no-op. Same endless shape as Territory: runs for as long as the
+// teacher sets the clock, most chips when it ends wins.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const JACKPOT_CORRECT_CHIPS = 10;
+const JACKPOT_WRONG_CHIPS = -5;
+const JACKPOT_QUESTIONS_PER_SPIN = 5;
+const JACKPOT_STEAL_COST = 20;
+const JACKPOT_STEAL_PCT = 20;
+const JACKPOT_STEAL_COOLDOWN_MS = 15000;
+const JACKPOT_INSURANCE_CAP_PCT = 25;
+
+const JACKPOT_UPGRADES = {
+  multiplier: { cost: 60, name: 'Multiplier', good: '1.5x chips on correct answers', bad: '1.5x chips lost on wrong answers' },
+  shield: { cost: 40, name: 'Shield', good: 'Blocks the next steal against you', bad: 'One-time use — buy again after it blocks one' },
+  insurance: { cost: 70, name: 'Insurance', good: 'Steals against you are capped at 25%', bad: 'Your own steals are weaker' },
+  luckyCharm: { cost: 80, name: 'Lucky Charm', good: 'Better odds on your wheel spin', bad: '1.5x more taken when someone steals from you' },
+  pickpocket: { cost: 50, name: 'Pickpocket Training', good: 'Steal 30% instead of 20%', bad: 'Stealing costs 35 chips instead of 20' },
+};
+
+// Weighted like a real prize wheel: common in the middle, rare at both
+// extremes, so hitting the 75% jackpot (or the 0% bust) actually feels rare.
+const JACKPOT_WHEEL = [
+  { pct: 0, weight: 6 },
+  { pct: 10, weight: 14 },
+  { pct: 15, weight: 16 },
+  { pct: 20, weight: 16 },
+  { pct: 25, weight: 14 },
+  { pct: 35, weight: 10 },
+  { pct: 50, weight: 6 },
+  { pct: 75, weight: 2 },
+];
+
+const jackpotShared = new Map(); // gameCode -> { players: { [userId]: {...} } }
+
+function jackpotState(gameCode) {
+  let s = jackpotShared.get(gameCode);
+  if (!s) { s = { players: {} }; jackpotShared.set(gameCode, s); }
+  return s;
+}
+
+function jackpotPlayer(shared, userId) {
+  if (!shared.players[userId]) {
+    shared.players[userId] = {
+      chips: 0,
+      questionsSinceSpin: 0,
+      upgrades: { multiplier: false, insurance: false, luckyCharm: false, pickpocket: false },
+      shieldCharges: 0,
+      lastStealAt: 0,
+    };
+  }
+  return shared.players[userId];
+}
+
+function rollJackpotWheel() {
+  const total = JACKPOT_WHEEL.reduce((sum, seg) => sum + seg.weight, 0);
+  let r = Math.random() * total;
+  for (const seg of JACKPOT_WHEEL) {
+    if (r < seg.weight) return seg.pct;
+    r -= seg.weight;
+  }
+  return JACKPOT_WHEEL[JACKPOT_WHEEL.length - 1].pct;
+}
+
+// Current chip leader, excluding one player (so the spinner can't target themselves).
+function jackpotLeader(shared, excludeUserId) {
+  let best = null;
+  for (const [uid, p] of Object.entries(shared.players)) {
+    const id = Number(uid);
+    if (id === excludeUserId) continue;
+    if (p.chips <= 0) continue;
+    if (!best || p.chips > best.chips) best = { userId: id, chips: p.chips };
+  }
+  return best;
+}
+
+// Shared by both the wheel and the manual steal: applies a target's Shield
+// (blocks the transfer outright, one charge) and Insurance (caps the
+// percentage) before moving chips. Mutates both players' balances.
+function applyJackpotSteal(shared, attackerId, targetId, pct) {
+  const attacker = jackpotPlayer(shared, attackerId);
+  const target = jackpotPlayer(shared, targetId);
+  const effectivePct = target.upgrades.insurance ? Math.min(pct, JACKPOT_INSURANCE_CAP_PCT) : pct;
+  let amount = Math.round(target.chips * (effectivePct / 100));
+  let blocked = false;
+  if (target.shieldCharges > 0 && amount > 0) {
+    target.shieldCharges -= 1;
+    blocked = true;
+    amount = 0;
+  }
+  target.chips = Math.max(0, target.chips - amount);
+  attacker.chips += amount;
+  return { amount, blocked, pctUsed: effectivePct };
+}
+
+async function syncJackpotScores(gameId, gameCode) {
+  const shared = jackpotState(gameCode);
+  const participants = await dbAll('SELECT user_id FROM game_participants WHERE game_id = ?', [gameId]);
+  for (const p of participants) {
+    const chips = shared.players[p.user_id]?.chips || 0;
+    await dbRun('UPDATE game_participants SET score = ? WHERE game_id = ? AND user_id = ?', [chips, gameId, p.user_id]);
+  }
+}
+
+app.get('/api/games/:gameCode/jackpot/state', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.game_mode !== 'jackpot') return res.status(400).json({ error: 'Not a Jackpot game' });
+    if (await endEndlessGameIfExpired(game)) game.status = 'ended';
+
+    const queryId = Number(req.query?.userId);
+    const guestId = Number.isInteger(queryId) && queryId < 0 ? queryId : null;
+    let userId = actingUserId(req);
+    if (!userId && guestId !== null) {
+      const seat = await dbGet(
+        `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
+         WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
+      if (seat) userId = guestId;
+    }
+
+    const shared = jackpotState(gameCode);
+    if (game.status === 'started') await syncJackpotScores(game.id, gameCode);
+
+    const participants = await dbAll(
+      `SELECT gp.user_id, gp.player_name, ue.avatar_skin
+         FROM game_participants gp
+         LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
+        WHERE gp.game_id = ?`, [game.id]);
+
+    const now = Date.now();
+    const standings = participants
+      .map(p => {
+        const jp = jackpotPlayer(shared, p.user_id);
+        return {
+          userId: p.user_id, name: p.player_name, skin: p.avatar_skin || null,
+          chips: jp.chips, questionsSinceSpin: jp.questionsSinceSpin,
+          upgrades: jp.upgrades, shieldCharges: jp.shieldCharges,
+          canStealAt: jp.lastStealAt ? jp.lastStealAt + JACKPOT_STEAL_COOLDOWN_MS : 0,
+        };
+      })
+      .sort((a, b) => b.chips - a.chips);
+    standings.forEach((s, i) => { s.rank = i + 1; });
+
+    res.json({
+      mode: 'jackpot',
+      status: game.status,
+      secondsLeft: endlessSecondsLeft(game),
+      isHost: userId != null && game.host_id === userId,
+      questionsPerSpin: JACKPOT_QUESTIONS_PER_SPIN,
+      upgrades: JACKPOT_UPGRADES,
+      wheel: JACKPOT_WHEEL,
+      stealCost: JACKPOT_STEAL_COST,
+      stealPct: JACKPOT_STEAL_PCT,
+      stealCooldownMs: JACKPOT_STEAL_COOLDOWN_MS,
+      serverNow: now,
+      standings,
+      me: userId ? standings.find(s => s.userId === userId) || null : null,
+    });
+  } catch (err) {
+    console.error('[jackpot/state]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/games/:gameCode/jackpot/answer', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const bodyId = Number(req.body?.userId);
+    const guestId = Number.isInteger(bodyId) && bodyId < 0 ? bodyId : null;
+    let userId = actingUserId(req);
+    if (!userId && guestId !== null) {
+      const seat = await dbGet(
+        `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
+         WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
+      if (seat) userId = guestId;
+    }
+    if (!userId) return res.status(401).json({ error: 'unauthenticated', message: 'Please sign in again.' });
+
+    const { questionId, answer, correct, ms } = req.body;
+    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.game_mode !== 'jackpot') return res.status(400).json({ error: 'Not a Jackpot game' });
+    if (await endEndlessGameIfExpired(game)) game.status = 'ended';
+    if (game.status === 'ended' || game.status === 'abandoned') {
+      return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
+    }
+
+    let isCorrect = !!correct;
+    if (questionId) {
+      const q = await dbGet('SELECT * FROM questions WHERE id = ? AND kit_id = ?', [questionId, game.kit_id]);
+      if (!q) return res.status(400).json({ error: 'Unknown question for this game' });
+      const graded = gradeLiveAnswer(q, answer);
+      if (graded !== null) isCorrect = graded;
+
+      const already = await dbGet(
+        "SELECT id FROM game_answers WHERE game_id = ? AND user_id = ? AND question_id = ? AND answered_at > datetime('now', '-3 seconds')",
+        [game.id, userId, questionId]);
+      if (already) return res.status(429).json({ error: 'duplicate', message: 'Already answered.' });
+    }
+
+    const answerMs = Math.max(150, Math.min(120000, Number(ms) || 8000));
+    if (questionId) {
+      await dbRun(
+        'INSERT INTO game_answers (game_id, user_id, question_id, answer, is_correct, time_taken) VALUES (?, ?, ?, ?, ?, ?)',
+        [game.id, userId, questionId, '', isCorrect ? 1 : 0, Math.round(answerMs / 100) / 10]
+      );
+    }
+
+    const shared = jackpotState(gameCode);
+    const player = jackpotPlayer(shared, userId);
+    let base = isCorrect ? JACKPOT_CORRECT_CHIPS : JACKPOT_WRONG_CHIPS;
+    if (player.upgrades.multiplier) base = Math.round(base * 1.5);
+    player.chips = Math.max(0, player.chips + base);
+
+    let spin = null;
+    player.questionsSinceSpin += 1;
+    if (player.questionsSinceSpin >= JACKPOT_QUESTIONS_PER_SPIN) {
+      player.questionsSinceSpin = 0;
+      const target = jackpotLeader(shared, userId);
+      if (!target) {
+        spin = { pct: 0, targetUserId: null, targetName: null, amount: 0, blocked: false };
+      } else {
+        let pct = rollJackpotWheel();
+        if (player.upgrades.luckyCharm) pct = Math.max(pct, rollJackpotWheel());
+        const result = applyJackpotSteal(shared, userId, target.userId, pct);
+        const targetRow = await dbGet('SELECT player_name FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, target.userId]);
+        spin = { pct: result.pctUsed, targetUserId: target.userId, targetName: targetRow?.player_name || 'Someone', amount: result.amount, blocked: result.blocked };
+      }
+    }
+
+    await syncJackpotScores(game.id, gameCode);
+    res.json({ isCorrect, chipsDelta: base, chips: player.chips, spin });
+  } catch (err) {
+    console.error('[jackpot/answer]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/games/:gameCode/jackpot/upgrade', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const bodyId = Number(req.body?.userId);
+    const guestId = Number.isInteger(bodyId) && bodyId < 0 ? bodyId : null;
+    let userId = actingUserId(req);
+    if (!userId && guestId !== null) {
+      const seat = await dbGet(
+        `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
+         WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
+      if (seat) userId = guestId;
+    }
+    if (!userId) return res.status(401).json({ error: 'unauthenticated', message: 'Please sign in again.' });
+
+    const { upgradeId } = req.body;
+    const catalog = JACKPOT_UPGRADES[upgradeId];
+    if (!catalog) return res.status(400).json({ error: 'Unknown upgrade' });
+
+    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.game_mode !== 'jackpot') return res.status(400).json({ error: 'Not a Jackpot game' });
+    if (game.status !== 'started') return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
+
+    const shared = jackpotState(gameCode);
+    const player = jackpotPlayer(shared, userId);
+    if (upgradeId !== 'shield' && player.upgrades[upgradeId]) {
+      return res.status(409).json({ error: 'already_owned', message: 'You already own this upgrade.' });
+    }
+    if (player.chips < catalog.cost) {
+      return res.status(402).json({ error: 'insufficient_chips', message: 'Not enough chips.' });
+    }
+
+    player.chips -= catalog.cost;
+    if (upgradeId === 'shield') player.shieldCharges += 1;
+    else player.upgrades[upgradeId] = true;
+
+    res.json({ chips: player.chips, upgrades: player.upgrades, shieldCharges: player.shieldCharges });
+  } catch (err) {
+    console.error('[jackpot/upgrade]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/games/:gameCode/jackpot/steal', async (req, res) => {
+  try {
+    const { gameCode } = req.params;
+    const bodyId = Number(req.body?.userId);
+    const guestId = Number.isInteger(bodyId) && bodyId < 0 ? bodyId : null;
+    let userId = actingUserId(req);
+    if (!userId && guestId !== null) {
+      const seat = await dbGet(
+        `SELECT gp.id FROM game_participants gp JOIN games g ON g.id = gp.game_id
+         WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, guestId]);
+      if (seat) userId = guestId;
+    }
+    if (!userId) return res.status(401).json({ error: 'unauthenticated', message: 'Please sign in again.' });
+
+    const targetUserId = Number(req.body?.targetUserId);
+    if (!Number.isInteger(targetUserId) || targetUserId === userId) {
+      return res.status(400).json({ error: 'Invalid target' });
+    }
+
+    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.game_mode !== 'jackpot') return res.status(400).json({ error: 'Not a Jackpot game' });
+    if (game.status !== 'started') return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
+
+    const targetSeat = await dbGet(
+      `SELECT gp.id, gp.player_name FROM game_participants gp JOIN games g ON g.id = gp.game_id
+       WHERE g.game_code = ? AND gp.user_id = ?`, [gameCode, targetUserId]);
+    if (!targetSeat) return res.status(404).json({ error: 'Target is not in this game' });
+
+    const shared = jackpotState(gameCode);
+    const attacker = jackpotPlayer(shared, userId);
+    const cost = attacker.upgrades.pickpocket ? 35 : JACKPOT_STEAL_COST;
+    const now = Date.now();
+    if (now - attacker.lastStealAt < JACKPOT_STEAL_COOLDOWN_MS) {
+      return res.status(429).json({ error: 'cooldown', message: 'Steal is still on cooldown.' });
+    }
+    if (attacker.chips < cost) {
+      return res.status(402).json({ error: 'insufficient_chips', message: 'Not enough chips.' });
+    }
+
+    attacker.chips -= cost;
+    attacker.lastStealAt = now;
+    const pct = attacker.upgrades.pickpocket ? 30 : JACKPOT_STEAL_PCT;
+    const result = applyJackpotSteal(shared, userId, targetUserId, pct);
+
+    await syncJackpotScores(game.id, gameCode);
+    res.json({ amount: result.amount, blocked: result.blocked, chips: attacker.chips, targetName: targetSeat.player_name });
+  } catch (err) {
+    console.error('[jackpot/steal]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/games/:gameCode/jackpot/extend', requireAuth, async (req, res) => {
+  try {
+    const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [req.params.gameCode]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.game_mode !== 'jackpot') return res.status(400).json({ error: 'Not a Jackpot game' });
+    if (game.host_id !== actingUserId(req)) return res.status(403).json({ error: 'Only the host can adjust this game' });
+    if (game.status !== 'started') return res.status(409).json({ error: 'Game is not running' });
+
+    const minutes = Math.max(-60, Math.min(60, Number(req.body?.minutes) || 5));
+    const settings = endlessSettings(game);
+    const started = gameStartedAtMs(game);
+    const elapsed = started ? (Date.now() - started) / 1000 : 0;
+    const currentLimit = Number(settings.timeLimit) || Math.round(elapsed);
+    settings.timeLimit = currentLimit + minutes * 60;
+    await dbRun('UPDATE games SET settings = ? WHERE game_code = ?', [JSON.stringify(settings), req.params.gameCode]);
+    res.json({ secondsLeft: Math.max(0, Math.round(settings.timeLimit - elapsed)) });
+  } catch (err) {
+    console.error('[jackpot/extend]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+async function settleJackpotScores(gameCode) {
+  const game = await dbGet('SELECT id, game_mode FROM games WHERE game_code = ?', [gameCode]);
+  if (!game || game.game_mode !== 'jackpot') return;
+  await syncJackpotScores(game.id, gameCode);
+  jackpotShared.delete(gameCode);
+}
+app.locals.settleJackpotScores = settleJackpotScores;
 
 // Submit final score for game. Awards BB based on new economy
 app.post('/api/games/:gameCode/answers', async (req, res) => {

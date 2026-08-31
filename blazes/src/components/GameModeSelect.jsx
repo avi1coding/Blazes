@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Flame, Trophy, Lock, ChevronRight, Users, Clock, X, BookOpen, Check, Grid3x3 } from 'lucide-react';
+import { Flame, Trophy, Lock, ChevronRight, Users, Clock, X, BookOpen, Check, Grid3x3, Coins } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GameplayMockup from './GameplayMockup';
 
@@ -82,12 +82,36 @@ export default function GameModeSelect({ kit: initialKit, user, onBack }) {
       ],
       available: true
     },
+    {
+      id: 'jackpot',
+      name: 'Jackpot',
+      tagline: 'Earn chips, buy upgrades, spin to steal.',
+      icon: Coins,
+      gradient: 'from-amber-500 to-yellow-600',
+      solid: 'bg-amber-500',
+      glow: 'shadow-amber-500/40',
+      accent: 'amber',
+      tags: ['multi'],
+      description: "Correct answers earn chips, wrong ones cost a few. Chips buy upgrades that always cut both ways, or can be spent to steal straight from another player. Every 5 questions you answer, spin the wheel — it takes a random cut from whoever's currently in the lead. Most chips when the clock runs out wins.",
+      difficulty: 'Medium',
+      players: '2-50',
+      duration: 'Set by host',
+      features: [
+        'Every upgrade has a real tradeoff, not just a bonus',
+        'Spend chips to steal straight from another player',
+        "Every 5 questions, spin the wheel for a shot at the leader's chips",
+        'You set the length and can extend it mid-game',
+        'Works with every question type'
+      ],
+      available: true
+    },
   ];
 
 
   const handleContinue = () => {
     if (selectedMode === 'classic_timed') navigate('/game/classic-timed-setup', { state: { kit, user } });
     else if (selectedMode === 'territory') navigate('/game/territory-setup', { state: { kit, user } });
+    else if (selectedMode === 'jackpot') navigate('/game/jackpot-setup', { state: { kit, user } });
   };
 
   const selected = gameModes.find(m => m.id === selectedMode);

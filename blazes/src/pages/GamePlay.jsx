@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AvatarPreview, getNameColor, isBlazesPlusCached, cacheTier } from './SkinsPage';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import TerritoryGamePlay from './TerritoryGamePlay';
+import JackpotGamePlay from './JackpotGamePlay';
 import { Clock, Trophy, Check, X, Heart, Skull, Lock, Users, Flame, BarChart3, Crown, Medal, Maximize2 } from 'lucide-react';
 
 import { authHeaders } from '../utils/auth';
@@ -1008,6 +1009,9 @@ export default function GamePlay() {
 
   if (game.game_mode === 'territory') {
     return <TerritoryGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
+  }
+  if (game.game_mode === 'jackpot') {
+    return <JackpotGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
   }
   return <ClassicGamePlay gameCode={gameCode} user={user} equippedSkinId={equippedSkinId} initialGame={game} />;
 }

@@ -53,6 +53,7 @@ const GameStats = lazy(() => import("./pages/GameStats"));
 const GameResults = lazy(() => import("./pages/GameResults"));
 const ClassicTimedSetupPage = lazy(() => import("./pages/ClassicTimedSetupPage"));
 const TerritorySetupPage = lazy(() => import("./pages/TerritorySetupPage"));
+const JackpotSetupPage = lazy(() => import("./pages/JackpotSetupPage"));
 const TeacherMonitoringDashboard = lazy(() => import("./pages/TeacherMonitoringDashboard"));
 const TeacherPresentView = lazy(() => import("./pages/TeacherPresentView"));
 const StudentMonitor = lazy(() => import("./pages/StudentMonitor"));
@@ -140,6 +141,7 @@ function App() {
           <Route path="/game/mode-select" element={<GameModePage />} />
           <Route path="/game/classic-timed-setup" element={<ClassicTimedSetupPage />} />
           <Route path="/game/territory-setup" element={<TerritorySetupPage />} />
+          <Route path="/game/jackpot-setup" element={<JackpotSetupPage />} />
           <Route path="/hub" element={<HubPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

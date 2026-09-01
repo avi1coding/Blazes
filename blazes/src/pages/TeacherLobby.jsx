@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Flame, Users, Copy, Zap, CheckCircle, Eye } from 'lucide-react';
 import Toast from '../components/Toast';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
+import { authHeaders } from '../utils/auth';
 
 export default function TeacherLobby() {
     const { gameCode } = useParams();
@@ -138,7 +139,7 @@ export default function TeacherLobby() {
             const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
             const response = await fetch(`${baseUrl}/api/games/${gameCode}/start`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(),
                 body: JSON.stringify({ userId: currentUser.id })
             });
 

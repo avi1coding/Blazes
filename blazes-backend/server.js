@@ -1179,14 +1179,29 @@ app.post('/api/auth/register', async (req, res) => {
 
   try {
     let { email, password, role, name } = req.body;
+
+    if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
     email = email.toLowerCase();
+    const effectiveRole = role || 'student';
 
     const hashedPassword = await bcrypt.hash(password, 10);
     console.log('Hashed password ready');
 
+    // email_verified/verification_token are set right in the INSERT, not via a
+    // follow-up UPDATE: the UPDATE used to fire after the row already existed
+    // (and after res.json below), so a client that logged in immediately after
+    // registering could land on the row while it still carried the column's
+    // default (email_verified=1) and skip verification entirely.
+    const verifyToken = require('crypto').randomBytes(32).toString('hex');
+
     db.run(
-      'INSERT INTO users (email, password, name, role) VALUES (?, ?, ?, ?)',
-      [email, hashedPassword, name, role || 'student'],
+      'INSERT INTO users (email, password, name, role, email_verified, verification_token) VALUES (?, ?, ?, ?, 0, ?)',
+      [email, hashedPassword, name, effectiveRole, verifyToken],
       function (err) {
         console.log('DB result:', err ? err.message : 'SUCCESS', 'ID:', this?.lastID);
         if (err) {
@@ -1199,10 +1214,6 @@ app.post('/api/auth/register', async (req, res) => {
         });
         db.run('INSERT OR IGNORE INTO user_settings (user_id) VALUES (?)', [userId]);
         db.run('INSERT OR IGNORE INTO user_equipped (user_id, avatar_skin) VALUES (?, ?)', [userId, randomBasicSkin()]);
-
-        // Email verification
-        const verifyToken = require('crypto').randomBytes(32).toString('hex');
-        db.run('UPDATE users SET email_verified = 0, verification_token = ? WHERE id = ?', [verifyToken, userId]);
 
         const transporter = require('nodemailer').createTransport({
           service: 'gmail',
@@ -1225,8 +1236,8 @@ app.post('/api/auth/register', async (req, res) => {
         }).catch(err => console.error('[Auth] Verification email error:', err));
 
         res.json({
-          token: signToken({ id: userId, role }),
-          user: { id: userId, email, name, role },
+          token: signToken({ id: userId, role: effectiveRole }),
+          user: { id: userId, email, name, role: effectiveRole },
           needsVerification: true
         });
       }
@@ -1253,8 +1264,16 @@ function recordFailedLogin(ip) {
   loginAttempts.set(ip, attempts);
 }
 
+// Precomputed once at startup so the "user not found" branch below can run a
+// bcrypt compare against something, keeping its timing in line with the
+// real-account branch instead of leaking via a fast-path (user enumeration).
+const DUMMY_BCRYPT_HASH = bcrypt.hashSync('blazes-timing-normalization', 10);
+
 app.post('/api/auth/login', (req, res) => {
   let { email, password } = req.body;
+  if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
   email = email.toLowerCase();
   console.log('Login attempt:', email);
 
@@ -1269,13 +1288,14 @@ app.post('/api/auth/login', (req, res) => {
     }
     if (!user) {
       console.log('User not found');
+      await bcrypt.compare(password, DUMMY_BCRYPT_HASH).catch(() => {});
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     console.log('User found:', user.email);
 
     try {
-      const valid = await bcrypt.compare(password, user.password);
+      const valid = await bcrypt.compare(password, user.password || DUMMY_BCRYPT_HASH);
       console.log('Password match:', valid);
 
       if (valid) {
@@ -2108,8 +2128,12 @@ app.put('/api/kits/:kitId/questions/:questionId', (req, res) => {
 });
 
 // Create a new game
-app.post('/api/games/create', (req, res) => {
-  const { hostId, kitId, gameCode, gameMode, settings } = req.body;
+app.post('/api/games/create', requireAuth, (req, res) => {
+  // hostId comes from the verified token, never the request body — otherwise
+  // anyone who knows (or guesses; ids are sequential) a teacher's numeric id
+  // could create a game "hosted" by them without ever signing in.
+  const hostId = actingUserId(req);
+  const { kitId, gameCode, gameMode, settings } = req.body;
 
   db.run(
     `INSERT INTO games (host_id, kit_id, game_code, game_mode, status, settings)
@@ -2486,6 +2510,13 @@ app.post('/api/games/:gameCode/answer', async (req, res) => {
       });
     });
     if (!game) return res.status(404).json({ error: 'Game not found' });
+    if (game.game_mode === 'jackpot') {
+      // Jackpot scores live in the in-memory jackpotShared map and are only
+      // ever written by /jackpot/answer. Grading a jackpot answer here would
+      // never reach that map, so the score this game ends with (computed by
+      // settleJackpotScores from jackpotShared) would silently drop back to 0.
+      return res.status(400).json({ error: 'wrong_endpoint', message: 'Jackpot games must submit answers via /jackpot/answer.' });
+    }
 
     // Get question details
     const question = await new Promise((resolve, reject) => {
@@ -2684,6 +2715,13 @@ app.post('/api/games/:gameCode/leave', async (req, res) => {
     const game = await dbGet('SELECT id FROM games WHERE game_code = ?', [gameCode]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
 
+    // This fires from navigator.sendBeacon on tab-close, which can't attach an
+    // Authorization header, so a token can't be required here. What we can
+    // require is that the claimed userId actually holds a seat in THIS game —
+    // closes off leaving an arbitrary/unrelated account, even without a token.
+    const seat = await dbGet('SELECT id FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, userId]);
+    if (!seat) return res.status(403).json({ error: 'not_a_participant', message: 'That user is not in this game.' });
+
     const key = `${game.id}:${userId}`;
     if (pendingLeaves.has(key)) clearTimeout(pendingLeaves.get(key));
     pendingLeaves.set(key, setTimeout(async () => {
@@ -2710,9 +2748,12 @@ const MODE_PLAYER_LIMITS = {
 };
 const playerLimitsFor = (mode) => MODE_PLAYER_LIMITS[mode] || { min: 1, max: 50 };
 
-app.put('/api/games/:gameCode/start', (req, res) => {
+app.put('/api/games/:gameCode/start', requireAuth, (req, res) => {
   const { gameCode } = req.params;
-  const { userId } = req.body;
+  // Same reasoning as /api/games/create: the acting user comes from the
+  // verified token, never a claimed body value, or the host-match check
+  // below is trivially defeated by anyone who knows the real host's id.
+  const userId = actingUserId(req);
 
   console.log(`[START GAME] gameCode=${gameCode}, userId=${userId}, type=${typeof userId}`);
 

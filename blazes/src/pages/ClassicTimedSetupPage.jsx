@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Settings, Clock, Star, Play } from 'lucide-react';
 import HostPlaysToggle from '../components/HostPlaysToggle';
+import { authHeaders } from '../utils/auth';
 
 export default function ClassicTimedSetupPage() {
   const navigate = useNavigate();
@@ -54,7 +55,7 @@ export default function ClassicTimedSetupPage() {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const response = await fetch(`${base}/api/games/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           hostId: user.id,
           kitId: kit.id,

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Play, Clock, Coins } from 'lucide-react';
 import HostPlaysToggle from '../components/HostPlaysToggle';
+import { authHeaders } from '../utils/auth';
 
 /**
  * Jackpot runs until the teacher ends it or the clock they set here runs
@@ -42,7 +43,7 @@ export default function JackpotSetupPage() {
     try {
       const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       const res = await fetch(`${base}/api/games/create`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: authHeaders(),
         body: JSON.stringify({
           hostId: user.id, kitId: kit.id, gameCode, gameMode: 'jackpot',
           settings: {

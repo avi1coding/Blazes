@@ -81,13 +81,6 @@ export default function JackpotSetupPage() {
             </div>
           </div>
 
-          <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
-            Correct answers earn chips, wrong ones cost a few. Chips buy upgrades that always cut both
-            ways, or can be spent to steal straight from another player. Every 5 questions, spin the
-            wheel — it takes a random cut from whoever's currently in the lead. Most chips when the
-            clock runs out wins.
-          </p>
-
           <div className="mb-6">
             <label className="block text-sm font-bold text-gray-700 mb-2">Game name</label>
             <input type="text" value={gameName} onChange={(e) => setGameName(e.target.value)}
@@ -110,9 +103,6 @@ export default function JackpotSetupPage() {
             {!minutesValid && (
               <p className="text-xs text-red-600 font-bold mt-2">Enter a length between 1 and 300 minutes.</p>
             )}
-            <p className="text-xs text-gray-500 font-semibold mt-2">
-              You can add or take away time, or end the game, at any point while it is running.
-            </p>
           </div>
 
           <label className="flex items-center gap-3 mb-4 cursor-pointer">

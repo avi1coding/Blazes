@@ -4,6 +4,7 @@ import { Flame, Trophy, Target, Home, Share2, X, Crown, Medal, Shield, Sparkles,
 import Toast from '../components/Toast';
 import { AvatarPreview, getNameColor, isBlazesPlusCached, cacheTier } from './SkinsPage';
 import { rankParticipants } from '../utils/ranking';
+import { PODIUM_TOTAL_MS } from '../components/PodiumReveal';
 
 export default function GameResults() {
   const navigate = useNavigate();
@@ -27,6 +28,11 @@ export default function GameResults() {
   const [showOverview, setShowOverview] = useState(false);
   const [userTier, setUserTier] = useState('free');
   const [abandoned, setAbandoned] = useState(false);
+  // Jackpot with 3+ finishers gets a podium reveal on the teacher's screen;
+  // this player's own leaderboard stays hidden until that reveal would be
+  // done, anchored to the server's game-end time so it doesn't matter when
+  // this particular tab happened to load the results.
+  const [revealReady, setRevealReady] = useState(true);
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
@@ -74,6 +80,14 @@ export default function GameResults() {
         setLeaderboard(sorted);
         if (sorted.length > 0 && sorted[0].user_id === user?.id) {
           setHasWon(true);
+        }
+        if (data.gameMode === 'jackpot' && sorted.length >= 3 && data.endedAt) {
+          const elapsedMs = (data.serverNow || Date.now()) - data.endedAt;
+          const waitMs = Math.max(0, PODIUM_TOTAL_MS - elapsedMs);
+          if (waitMs > 0) {
+            setRevealReady(false);
+            setTimeout(() => setRevealReady(true), waitMs);
+          }
         }
         // Sync the "Your Score" stat to the server's tally, the value passed
         // in via location.state is the client's local tally (off by a lot,
@@ -251,8 +265,16 @@ export default function GameResults() {
           </div>
         )}
 
+        {/* Holding state while the teacher's podium reveal plays out */}
+        {!abandoned && leaderboard.length > 0 && !revealReady && (
+          <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-xl border-2 border-gray-200 mb-6 text-center">
+            <Flame className="w-10 h-10 text-red-400 mx-auto mb-3 animate-pulse" />
+            <p className="font-black text-gray-900">Revealing results...</p>
+          </div>
+        )}
+
         {/* Leaderboard, only shown for normally-ended games */}
-        {!abandoned && leaderboard.length > 0 && (
+        {!abandoned && leaderboard.length > 0 && revealReady && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-gray-200 mb-6">
             <div className="flex items-center gap-2 mb-6">
               <Trophy className="w-6 h-6 text-yellow-500" strokeWidth={2.5} />

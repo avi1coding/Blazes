@@ -292,52 +292,79 @@ export default function JackpotGamePlay({ gameCode, user, equippedSkinId, initia
       <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast(t => ({ ...t, show: false }))} />
 
       {spin && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4"
-          onDoubleClick={skipSpin}>
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center">
-            <p className="text-xs font-black uppercase tracking-widest text-amber-600 mb-3">Spin time!</p>
-            <div className="relative w-56 h-56 mx-auto mb-6">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 w-0 h-0
-                border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[16px] border-t-gray-900" />
-              <div
-                className="w-full h-full rounded-full border-4 border-white shadow-xl"
-                style={{
-                  background: `conic-gradient(${wheelSegments.map(s => `${SEGMENT_COLORS[s.pct] || '#94a3b8'} ${s.start}deg ${s.end}deg`).join(', ')})`,
-                  transform: `rotate(${spinRotation}deg)`,
-                  transition: spinFast ? 'transform 100ms linear' : `transform ${SPIN_MS}ms cubic-bezier(0.15, 0.65, 0.25, 1)`,
-                }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center">
-                  <Coins className="w-5 h-5 text-amber-500" />
+        <div
+          className="fixed inset-0 bg-gray-900/90 z-[60] flex flex-col items-center justify-center gap-3 p-3"
+          onClick={() => { if (!spinRevealed) skipSpin(); }}
+        >
+          <p className="flex-shrink-0 text-sm font-black uppercase tracking-widest text-amber-400">Spin time!</p>
+
+          <div className="relative flex-shrink-0" style={{ width: 'min(75vw, 58vh, 640px)', height: 'min(75vw, 58vh, 640px)' }}>
+            {/* Pointer, fixed in place while the wheel spins beneath it */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 w-0 h-0 drop-shadow-lg
+              border-l-[16px] border-l-transparent border-r-[16px] border-r-transparent border-t-[26px] border-t-white" />
+
+            <div
+              className="absolute inset-0 rounded-full border-[10px] border-gray-900 shadow-2xl ring-4 ring-white/15"
+              style={{
+                background: `conic-gradient(${wheelSegments.map(s => `${SEGMENT_COLORS[s.pct] || '#94a3b8'} ${s.start}deg ${s.end}deg`).join(', ')})`,
+                transform: `rotate(${spinRotation}deg)`,
+                transition: spinFast ? 'transform 100ms linear' : `transform ${SPIN_MS}ms cubic-bezier(0.15, 0.65, 0.25, 1)`,
+              }}
+            >
+              {/* Spoke dividers between segments */}
+              {wheelSegments.map((s, i) => (
+                <div key={`div-${i}`} className="absolute inset-0" style={{ transform: `rotate(${s.start}deg)` }}>
+                  <div className="absolute left-1/2 top-0 -translate-x-1/2 w-[2px] h-1/2 bg-white/40" />
                 </div>
+              ))}
+              {/* Percentage labels, one per segment, reading outward from the hub */}
+              {wheelSegments.map((s, i) => (
+                <div key={`lbl-${i}`} className="absolute inset-0" style={{ transform: `rotate(${s.mid}deg)` }}>
+                  <span
+                    className="absolute left-1/2 top-[10%] -translate-x-1/2 font-black text-white whitespace-nowrap"
+                    style={{ fontSize: 'clamp(14px, 3.6vmin, 30px)', textShadow: '0 1px 3px rgba(0,0,0,0.55)' }}
+                  >
+                    {s.pct}%
+                  </span>
+                </div>
+              ))}
+              {/* Rim lights, carnival-wheel style */}
+              {Array.from({ length: 20 }).map((_, i) => (
+                <div key={`bulb-${i}`} className="absolute inset-0" style={{ transform: `rotate(${i * 18}deg)` }}>
+                  <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white ring-2 ring-amber-300 shadow" />
+                </div>
+              ))}
+            </div>
+
+            {/* Hub */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-[15%] h-[15%] min-w-[46px] min-h-[46px] rounded-full bg-white shadow-lg ring-4 ring-gray-900/10 flex items-center justify-center">
+                <Coins className="w-[55%] h-[55%] text-amber-500" />
               </div>
             </div>
-            {!spinRevealed && (
-              <p className="text-xs text-gray-400 font-semibold">Double-click the wheel to skip</p>
-            )}
-            {spinRevealed && (
-              <div>
-                {spin.targetUserId == null ? (
-                  <p className="font-black text-gray-900">Nobody to steal from yet — spin wasted!</p>
-                ) : spin.blocked ? (
-                  <p className="font-black text-gray-900">
-                    Landed on {spin.pct}% — but {spin.targetName} had a Shield up. Blocked!
-                  </p>
-                ) : (
-                  <p className="font-black text-gray-900">
-                    Landed on {spin.pct}%! You stole <span className="text-amber-600">{spin.amount} chips</span> from {spin.targetName}.
-                  </p>
-                )}
-                <button
-                  onClick={() => setSpin(null)}
-                  className="w-full mt-5 py-3 bg-gray-900 text-white rounded-xl font-black"
-                >
-                  Continue
-                </button>
-              </div>
-            )}
           </div>
+
+          {spinRevealed && (
+            <div className="flex-shrink-0 bg-white rounded-2xl p-5 max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
+              {spin.targetUserId == null ? (
+                <p className="font-black text-gray-900">Nobody to steal from yet — spin wasted!</p>
+              ) : spin.blocked ? (
+                <p className="font-black text-gray-900">
+                  Landed on {spin.pct}% — but {spin.targetName} had a Shield up. Blocked!
+                </p>
+              ) : (
+                <p className="font-black text-gray-900">
+                  Landed on {spin.pct}%! You stole <span className="text-amber-600">{spin.amount} chips</span> from {spin.targetName}.
+                </p>
+              )}
+              <button
+                onClick={() => setSpin(null)}
+                className="w-full mt-4 py-3 bg-gray-900 text-white rounded-xl font-black"
+              >
+                Continue
+              </button>
+            </div>
+          )}
         </div>
       )}
 

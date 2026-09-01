@@ -4,6 +4,7 @@ import { Flame, Trophy, Home, Users, Crown, Medal, Shield, Skull, Heart, BarChar
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 import { rankParticipants } from '../utils/ranking';
 import GameStatsModal from '../components/GameStatsModal';
+import PodiumReveal from '../components/PodiumReveal';
 
 export default function TeacherGameResults() {
     const { gameCode } = useParams();
@@ -91,6 +92,10 @@ export default function TeacherGameResults() {
         : String(n || 0);
 
     const sorted = rankParticipants(participants);
+    // Jackpot with 3+ finishers gets the staged podium reveal instead of the
+    // plain winner card and leaderboard — fewer than 3 means there's no 3rd
+    // place to fill, so it falls back to the normal leaderboard below.
+    const showPodium = gameMode === 'jackpot' && sorted.length >= 3;
 
     // Compute placements with ties (same score+status = same placement)
     const placements = [];
@@ -162,8 +167,9 @@ export default function TeacherGameResults() {
                     </div>
                 </div>
 
-                {/* Winner Card */}
-                {winner && (
+                {/* Winner Card. Skipped when the podium reveal below already
+                    covers 1st place dramatically — showing both is redundant. */}
+                {winner && !showPodium && (
                     <div className="bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-400 rounded-3xl p-1 mb-6 shadow-lg">
                         <div className="bg-white rounded-[1.35rem] p-6 flex items-center gap-5">
                             <div className="relative">
@@ -214,8 +220,15 @@ export default function TeacherGameResults() {
                     </div>
                 )}
 
+                {/* Podium reveal, jackpot games with 3+ finishers */}
+                {!results?.abandoned && showPodium && (
+                    <div className="mb-6">
+                        <PodiumReveal top3={sorted.slice(0, 3)} rest={sorted.slice(3)} playerSkins={playerSkins} />
+                    </div>
+                )}
+
                 {/* Full Leaderboard, only when the game ended normally */}
-                {!results?.abandoned && sorted.length > 0 && (
+                {!results?.abandoned && !showPodium && sorted.length > 0 && (
                     <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200">
                         <div className="flex items-center gap-2 mb-6">
                             <Trophy className="w-6 h-6 text-yellow-500" strokeWidth={2.5} />

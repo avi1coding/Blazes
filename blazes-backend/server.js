@@ -3780,6 +3780,13 @@ app.get('/api/games/:gameCode/results', (req, res) => {
           abandoned: !!game.abandoned,
           settings,
           totalRoundsPlayed: game.rounds_played || 0,
+          // Server-clock anchors so the teacher's podium reveal and the
+          // student's "wait for it" hold can agree on timing without a
+          // realtime channel: both sides know how long ago (in server time)
+          // the game actually ended, regardless of when each client's own
+          // results page happens to load.
+          endedAt: game.ended_at ? parseDbDate(game.ended_at).getTime() : null,
+          serverNow: Date.now(),
           participants: participants || []
         });
       }

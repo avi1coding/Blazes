@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Flame, ArrowLeft, Clock, Coins, Shield, ShieldCheck, ShoppingBag, Sparkles, Star, Swords, Zap, Crown, Plus, Minus, X, Loader2 } from 'lucide-react';
+import { Flame, ArrowLeft, Clock, Coins, Shield, ShieldCheck, ShoppingBag, Sparkles, Star, Swords, Trophy, Zap, Crown, Plus, Minus, X, Loader2 } from 'lucide-react';
 import QuestionView from '../components/QuestionView';
 import Toast from '../components/Toast';
 import { AvatarPreview, assignUniqueSkinColors } from './SkinsPage';
@@ -61,6 +61,7 @@ export default function JackpotGamePlay({ gameCode, user, equippedSkinId, initia
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'warning' });
   const [shopOpen, setShopOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
 
   const [spin, setSpin] = useState(null); // { pct, targetUserId, targetName, amount, blocked }
   const [spinRotation, setSpinRotation] = useState(0);
@@ -399,6 +400,61 @@ export default function JackpotGamePlay({ gameCode, user, equippedSkinId, initia
         </div>
       )}
 
+      {leaderboardOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setLeaderboardOpen(false)}>
+          <div className="bg-white rounded-3xl p-4 sm:p-6 max-w-sm w-full max-h-[85vh] overflow-y-auto flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex-shrink-0 flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                <h2 className="text-lg font-black text-gray-900">Leaderboard</h2>
+              </div>
+              <button onClick={() => setLeaderboardOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100" aria-label="Close leaderboard">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            {cooldownLeft > 0 && (
+              <div className="flex-shrink-0 text-[11px] font-bold text-gray-400 flex items-center gap-1 mb-2">
+                <Shield className="w-3 h-3" /> Steal ready in {cooldownLeft}s
+              </div>
+            )}
+            <div className="space-y-1 overflow-y-auto">
+              {standings.map((p, i) => {
+                const isMe = p.userId === user.id;
+                const stealCost = me?.upgrades?.pickpocket ? 35 : (state?.stealCost || 20);
+                const canSteal = !isMe && cooldownLeft === 0 && (me?.chips ?? 0) >= stealCost && p.chips > 0;
+                return (
+                  <div key={p.userId} className={`flex items-center gap-2 px-2 py-1.5 rounded-xl ${isMe ? 'bg-amber-50 ring-2 ring-amber-300' : ''}`}>
+                    {i === 0 ? (
+                      <Crown className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                    ) : (
+                      <span className={`w-4 text-center text-xs font-black tabular-nums flex-shrink-0 ${
+                        i === 1 ? 'text-gray-400' : i === 2 ? 'text-amber-700' : 'text-gray-300'
+                      }`}>{p.rank}</span>
+                    )}
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: colorMap[p.userId] || '#94a3b8' }} />
+                    <span className={`flex-1 text-sm truncate ${isMe ? 'font-black text-gray-900' : 'font-semibold text-gray-600'}`}>
+                      {p.name}{isMe && ' (you)'}
+                    </span>
+                    <span className="text-sm font-black tabular-nums text-gray-900">{p.chips}</span>
+                    {!isMe && (
+                      <button
+                        onClick={() => stealFrom(p.userId)}
+                        disabled={!canSteal}
+                        title={`Steal ${stealCost} chips to take a cut`}
+                        className={`p-1 rounded-lg flex-shrink-0 ${canSteal ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-gray-100 text-gray-300'}`}
+                      >
+                        <Swords className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              {!standings.length && <div className="text-sm text-gray-400 font-semibold px-2 py-1.5">Waiting for players...</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 min-h-0 max-w-6xl mx-auto w-full p-3 sm:p-4 flex flex-col gap-3">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-shrink-0">
@@ -446,96 +502,60 @@ export default function JackpotGamePlay({ gameCode, user, equippedSkinId, initia
           <div className="flex-shrink-0 bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm font-semibold">{error}</div>
         )}
 
-        {/* THE GAME — chips, spin countdown, the shop, and the live leaderboard,
-            all on one side; answering (the side part that fuels it) on the
-            other. Everything fits in the viewport, nothing here scrolls the
-            page — only the leaderboard list scrolls internally if it's long. */}
-        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3">
-          <div className="lg:w-72 flex-shrink-0 flex flex-col gap-3 min-h-0">
-            <div className="flex-shrink-0 bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-3 sm:p-4 shadow-lg shadow-amber-500/20">
-              <div className="flex items-center justify-between gap-3 mb-2.5">
-                <div className="flex items-center gap-2">
-                  <Coins className="w-7 h-7 text-yellow-200 flex-shrink-0" />
-                  <span className="text-3xl font-black text-white tabular-nums">{me?.chips ?? 0}</span>
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  {Array.from({ length: questionsPerSpin }).map((_, i) => (
-                    <div key={i} className={`w-2.5 h-2.5 rounded-full transition-colors ${i < progress ? 'bg-yellow-200' : 'bg-white/25'}`} />
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={() => setShopOpen(true)}
-                className="w-full flex items-center justify-center gap-1.5 bg-white/95 hover:bg-white text-amber-700 font-black text-sm py-2 rounded-xl transition-colors"
-              >
-                <ShoppingBag className="w-4 h-4" /> Shop
-              </button>
-            </div>
-
-            <div className="flex-1 min-h-0 bg-white rounded-2xl border-2 border-gray-100 shadow-sm p-3 flex flex-col">
-              <div className="flex-shrink-0 flex items-center justify-between mb-2">
-                <span className="text-[11px] font-black uppercase tracking-widest text-gray-400">Leaderboard</span>
-                {cooldownLeft > 0 && (
-                  <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1">
-                    <Shield className="w-3 h-3" /> {cooldownLeft}s
-                  </span>
-                )}
-              </div>
-              <div className="max-h-36 lg:max-h-none flex-1 min-h-0 overflow-y-auto space-y-1">
-                {standings.map((p, i) => {
-                  const isMe = p.userId === user.id;
-                  const stealCost = me?.upgrades?.pickpocket ? 35 : (state?.stealCost || 20);
-                  const canSteal = !isMe && cooldownLeft === 0 && (me?.chips ?? 0) >= stealCost && p.chips > 0;
-                  return (
-                    <div key={p.userId} className={`flex items-center gap-2 px-2 py-1.5 rounded-xl ${isMe ? 'bg-amber-50 ring-2 ring-amber-300' : ''}`}>
-                      {i === 0 ? (
-                        <Crown className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                      ) : (
-                        <span className={`w-4 text-center text-xs font-black tabular-nums flex-shrink-0 ${
-                          i === 1 ? 'text-gray-400' : i === 2 ? 'text-amber-700' : 'text-gray-300'
-                        }`}>{p.rank}</span>
-                      )}
-                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: colorMap[p.userId] || '#94a3b8' }} />
-                      <span className={`flex-1 text-sm truncate ${isMe ? 'font-black text-gray-900' : 'font-semibold text-gray-600'}`}>
-                        {p.name}{isMe && ' (you)'}
-                      </span>
-                      <span className="text-sm font-black tabular-nums text-gray-900">{p.chips}</span>
-                      {!isMe && (
-                        <button
-                          onClick={() => stealFrom(p.userId)}
-                          disabled={!canSteal}
-                          title={`Steal ${stealCost} chips to take a cut`}
-                          className={`p-1 rounded-lg flex-shrink-0 ${canSteal ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-gray-100 text-gray-300'}`}
-                        >
-                          <Swords className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-                {!standings.length && <div className="text-sm text-gray-400 font-semibold px-2 py-1.5">Waiting for players...</div>}
-              </div>
-            </div>
+        {/* Game status bar — chips, spin countdown, and quick access to the
+            leaderboard and shop, both popups now instead of permanent panels
+            so the rest of the screen is free for the question. */}
+        <div className="flex-shrink-0 bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Coins className="w-6 h-6 text-yellow-200 flex-shrink-0" />
+            <span className="text-2xl font-black text-white tabular-nums">{me?.chips ?? 0}</span>
           </div>
+          <div className="flex gap-1 flex-shrink-0">
+            {Array.from({ length: questionsPerSpin }).map((_, i) => (
+              <div key={i} className={`w-2.5 h-2.5 rounded-full transition-colors ${i < progress ? 'bg-yellow-200' : 'bg-white/25'}`} />
+            ))}
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setLeaderboardOpen(true)}
+              className="relative p-2.5 bg-white/95 hover:bg-white text-amber-700 rounded-xl transition-colors"
+              aria-label="Leaderboard"
+            >
+              <Trophy className="w-4.5 h-4.5" />
+              {me?.rank != null && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-gray-900 text-white text-[10px] font-black flex items-center justify-center">
+                  {me.rank}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setShopOpen(true)}
+              className="p-2.5 bg-white/95 hover:bg-white text-amber-700 rounded-xl transition-colors"
+              aria-label="Shop"
+            >
+              <ShoppingBag className="w-4.5 h-4.5" />
+            </button>
+          </div>
+        </div>
 
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex-shrink-0 text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Answer to earn chips</div>
-            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col justify-center">
-              {question && (
-                <QuestionView
-                  key={`${qIdx}-${question.id}`}
-                  question={question}
-                  questionNumber={qIdx + 1}
-                  onAnswer={handleAnswer}
-                  onNext={nextQuestion}
-                />
-              )}
-              {busy && (
-                <div className="flex items-center justify-center gap-2 text-sm font-semibold text-gray-400 mt-2 flex-shrink-0">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Saving...
-                </div>
-              )}
-            </div>
+        {/* Answering — the side part that fuels the game above. */}
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-shrink-0 text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Answer to earn chips</div>
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col justify-center max-w-2xl w-full mx-auto">
+            {question && (
+              <QuestionView
+                key={`${qIdx}-${question.id}`}
+                question={question}
+                questionNumber={qIdx + 1}
+                onAnswer={handleAnswer}
+                onNext={nextQuestion}
+              />
+            )}
+            {busy && (
+              <div className="flex items-center justify-center gap-2 text-sm font-semibold text-gray-400 mt-2 flex-shrink-0">
+                <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -252,6 +252,10 @@ export default function StudentLobby() {
                             <span className="font-black text-gray-900 tracking-widest">{gameCode}</span>
                         </div>
                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <span className="text-gray-600 font-semibold">Kit</span>
+                            <span className="font-black text-gray-900">{game.kit_title || 'Unknown Kit'}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                             <span className="text-gray-600 font-semibold">Mode</span>
                             <span className="font-bold text-gray-900 capitalize">
                                 {game.game_mode ? game.game_mode.replace('_', ' ') : 'Default'}

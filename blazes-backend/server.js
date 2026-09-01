@@ -2961,6 +2961,14 @@ const JACKPOT_UPGRADES = {
   pickpocket: { cost: 50, name: 'Pickpocket Training', good: 'Steal 30% instead of 20%', bad: 'Stealing costs 35 chips instead of 20' },
 };
 
+// "This game has ended" is only true for one of the two ways a game can be
+// not-'started' — a game the host hasn't started yet gets its own message.
+function jackpotNotRunningError(game) {
+  return game.status === 'waiting'
+    ? { error: 'not_started', message: "This game hasn't started yet." }
+    : { error: 'game_over', message: 'This game has ended.' };
+}
+
 // Weighted like a real prize wheel: common in the middle, rare at both
 // extremes, so hitting the 75% jackpot (or the 0% bust) actually feels rare.
 const JACKPOT_WHEEL = [
@@ -3025,6 +3033,10 @@ function applyJackpotSteal(shared, attackerId, targetId, pct) {
   const target = jackpotPlayer(shared, targetId);
   const effectivePct = target.upgrades.insurance ? Math.min(pct, JACKPOT_INSURANCE_CAP_PCT) : pct;
   let amount = Math.round(target.chips * (effectivePct / 100));
+  // Lucky Charm makes its owner a flashier target: whatever would be taken is
+  // 1.5x worse, capped at their actual balance so this can never mint chips
+  // that didn't exist on the target's side.
+  if (target.upgrades.luckyCharm) amount = Math.min(target.chips, Math.round(amount * 1.5));
   let blocked = false;
   if (target.shieldCharges > 0 && amount > 0) {
     target.shieldCharges -= 1;
@@ -3067,18 +3079,24 @@ app.get('/api/games/:gameCode/jackpot/state', async (req, res) => {
     if (game.status === 'started') await syncJackpotScores(game.id, gameCode);
 
     const participants = await dbAll(
-      `SELECT gp.user_id, gp.player_name, ue.avatar_skin
+      `SELECT gp.user_id, gp.player_name, gp.score, ue.avatar_skin
          FROM game_participants gp
          LEFT JOIN user_equipped ue ON ue.user_id = gp.user_id
         WHERE gp.game_id = ?`, [game.id]);
 
+    // Ending a game (including auto-expiry, which can happen inside this
+    // same request via endEndlessGameIfExpired above) wipes the in-memory
+    // chip map right after freezing it into game_participants.score — so an
+    // ended game's real chip counts live only in that column from here on,
+    // never in jackpotPlayer().
+    const gameEnded = game.status === 'ended' || game.status === 'abandoned';
     const now = Date.now();
     const standings = participants
       .map(p => {
         const jp = jackpotPlayer(shared, p.user_id);
         return {
           userId: p.user_id, name: p.player_name, skin: p.avatar_skin || null,
-          chips: jp.chips, questionsSinceSpin: jp.questionsSinceSpin,
+          chips: gameEnded ? (p.score || 0) : jp.chips, questionsSinceSpin: jp.questionsSinceSpin,
           upgrades: jp.upgrades, shieldCharges: jp.shieldCharges,
           canStealAt: jp.lastStealAt ? jp.lastStealAt + JACKPOT_STEAL_COOLDOWN_MS : 0,
         };
@@ -3126,8 +3144,8 @@ app.post('/api/games/:gameCode/jackpot/answer', async (req, res) => {
     if (!game) return res.status(404).json({ error: 'Game not found' });
     if (game.game_mode !== 'jackpot') return res.status(400).json({ error: 'Not a Jackpot game' });
     if (await endEndlessGameIfExpired(game)) game.status = 'ended';
-    if (game.status === 'ended' || game.status === 'abandoned') {
-      return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
+    if (game.status !== 'started') {
+      return res.status(409).json(jackpotNotRunningError(game));
     }
 
     let isCorrect = !!correct;
@@ -3167,6 +3185,9 @@ app.post('/api/games/:gameCode/jackpot/answer', async (req, res) => {
       } else {
         let pct = rollJackpotWheel();
         if (player.upgrades.luckyCharm) pct = Math.max(pct, rollJackpotWheel());
+        // Insurance also weakens its owner's own offense: even a spin they
+        // triggered themselves is capped, the same as a steal against them.
+        if (player.upgrades.insurance) pct = Math.min(pct, JACKPOT_INSURANCE_CAP_PCT);
         const result = applyJackpotSteal(shared, userId, target.userId, pct);
         const targetRow = await dbGet('SELECT player_name FROM game_participants WHERE game_id = ? AND user_id = ?', [game.id, target.userId]);
         spin = { pct: result.pctUsed, targetUserId: target.userId, targetName: targetRow?.player_name || 'Someone', amount: result.amount, blocked: result.blocked };
@@ -3202,7 +3223,7 @@ app.post('/api/games/:gameCode/jackpot/upgrade', async (req, res) => {
     const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
     if (game.game_mode !== 'jackpot') return res.status(400).json({ error: 'Not a Jackpot game' });
-    if (game.status !== 'started') return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
+    if (game.status !== 'started') return res.status(409).json(jackpotNotRunningError(game));
 
     const shared = jackpotState(gameCode);
     const player = jackpotPlayer(shared, userId);
@@ -3246,7 +3267,7 @@ app.post('/api/games/:gameCode/jackpot/steal', async (req, res) => {
     const game = await dbGet('SELECT * FROM games WHERE game_code = ?', [gameCode]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
     if (game.game_mode !== 'jackpot') return res.status(400).json({ error: 'Not a Jackpot game' });
-    if (game.status !== 'started') return res.status(409).json({ error: 'game_over', message: 'This game has ended.' });
+    if (game.status !== 'started') return res.status(409).json(jackpotNotRunningError(game));
 
     const targetSeat = await dbGet(
       `SELECT gp.id, gp.player_name FROM game_participants gp JOIN games g ON g.id = gp.game_id
@@ -3266,7 +3287,9 @@ app.post('/api/games/:gameCode/jackpot/steal', async (req, res) => {
 
     attacker.chips -= cost;
     attacker.lastStealAt = now;
-    const pct = attacker.upgrades.pickpocket ? 30 : JACKPOT_STEAL_PCT;
+    let pct = attacker.upgrades.pickpocket ? 30 : JACKPOT_STEAL_PCT;
+    // Insurance weakens its owner's own offense too, not just their defense.
+    if (attacker.upgrades.insurance) pct = pct / 2;
     const result = applyJackpotSteal(shared, userId, targetUserId, pct);
 
     await syncJackpotScores(game.id, gameCode);
@@ -3285,7 +3308,8 @@ app.post('/api/games/:gameCode/jackpot/extend', requireAuth, async (req, res) =>
     if (game.host_id !== actingUserId(req)) return res.status(403).json({ error: 'Only the host can adjust this game' });
     if (game.status !== 'started') return res.status(409).json({ error: 'Game is not running' });
 
-    const minutes = Math.max(-60, Math.min(60, Number(req.body?.minutes) || 5));
+    const rawMinutes = Number(req.body?.minutes);
+    const minutes = Math.max(-60, Math.min(60, Number.isFinite(rawMinutes) ? rawMinutes : 5));
     const settings = endlessSettings(game);
     const started = gameStartedAtMs(game);
     const elapsed = started ? (Date.now() - started) / 1000 : 0;

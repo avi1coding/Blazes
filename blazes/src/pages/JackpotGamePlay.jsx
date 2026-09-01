@@ -237,6 +237,19 @@ export default function JackpotGamePlay({ gameCode, user, equippedSkinId, initia
     );
   }
 
+  if (state?.status === 'waiting') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl p-8 text-center border-2 border-gray-100 max-w-sm">
+          <Coins className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <p className="font-black text-gray-900 mb-1">Waiting for the host to start</p>
+          <p className="text-sm text-gray-500 mb-4">The game hasn't begun yet — hang tight.</p>
+          <button onClick={() => navigate(homePath)} className="px-5 py-2.5 bg-gray-900 text-white rounded-xl font-bold">Back</button>
+        </div>
+      </div>
+    );
+  }
+
   if (gameOver) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">

@@ -3,38 +3,15 @@ import { playerLimitsFor, playerCountProblem } from '../utils/playerLimits';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Flame, Users, Copy, Zap, CheckCircle, Eye } from 'lucide-react';
 import Toast from '../components/Toast';
-import VolumeControl from '../components/VolumeControl';
-import { createSeamlessLoop } from '../utils/seamlessAudio';
 import { AvatarPreview, getNameColor, cacheTier } from './SkinsPage';
 
 export default function TeacherLobby() {
     const { gameCode } = useParams();
     const navigate = useNavigate();
 
-    // Lobby music. Seamless loop via Web Audio API
-    const lobbyAudioRef = useRef(null);
-    useEffect(() => {
-      const s = JSON.parse(localStorage.getItem('blazes_settings') || '{}');
-      const vol = (s.music_volume ?? 30) / 100;
-      const muted = s.sound_enabled === false || s.sound_enabled === 0;
-      const audio = createSeamlessLoop('/audio/LobbyMusic.mp3', muted ? 0 : vol);
-      lobbyAudioRef.current = audio;
-      audio.play();
-      return () => audio.stop();
-    }, []);
-
-    // Warm the browser cache for the in-game music while the teacher is still
-    // sitting in the lobby. Without this, GameMusic.mp3 starts downloading
-    // only when the monitoring dashboard mounts, so the music doesn't start
-    // until several seconds into the game. Fire-and-forget fetch, we don't
-    // need to use the response, we just want the bytes in the HTTP cache.
-    useEffect(() => {
-      const ctrl = new AbortController();
-      fetch('/audio/GameMusic.mp3', { signal: ctrl.signal, cache: 'force-cache' })
-        .then(r => r.arrayBuffer())
-        .catch(() => { /* offline, AbortError, etc., silent */ });
-      return () => ctrl.abort();
-    }, []);
+    // Music is off for now (placeholder tracks, better ones coming in a
+    // future update) — the files stay in public/audio/ and seamlessAudio.js
+    // is untouched, this just doesn't call it.
 
     // Cancel game if host closes/leaves the tab
     useEffect(() => {
@@ -169,7 +146,6 @@ export default function TeacherLobby() {
             console.log('start response:', response.status, data);
 
             if (response.ok) {
-                if (lobbyAudioRef.current) lobbyAudioRef.current.stop();
                 if (currentUser.role === 'student') {
                     if (presentWin) presentWin.close();
                     if (monitorWin) monitorWin.close();
@@ -249,12 +225,9 @@ export default function TeacherLobby() {
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-5 sm:p-8 text-white mb-6 sm:mb-8">
-                    <div className="flex items-center justify-between mb-2 sm:mb-4">
-                        <div className="flex items-center gap-3">
-                            <Flame className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />
-                            <h1 className="text-2xl sm:text-4xl font-black">Teacher Lobby</h1>
-                        </div>
-                        <VolumeControl audioRef={lobbyAudioRef} />
+                    <div className="flex items-center gap-3 mb-2 sm:mb-4">
+                        <Flame className="w-6 h-6 sm:w-8 sm:h-8" strokeWidth={2.5} />
+                        <h1 className="text-2xl sm:text-4xl font-black">Teacher Lobby</h1>
                     </div>
                     <p className="text-white/90 text-sm sm:text-base">Game Code: <span className="font-black text-base sm:text-lg">{gameCode}</span></p>
                 </div>

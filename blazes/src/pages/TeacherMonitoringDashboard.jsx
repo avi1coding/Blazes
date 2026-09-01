@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Flame, Users, TrendingUp, Eye, LogOut, StopCircle, X, Maximize2 } from 'lucide-react';
 import { AvatarPreview, cacheTier } from './SkinsPage';
-import VolumeControl from '../components/VolumeControl';
-import { createSeamlessLoop } from '../utils/seamlessAudio';
 
 export default function TeacherMonitoringDashboard() {
   const navigate = useNavigate();
@@ -18,18 +16,10 @@ export default function TeacherMonitoringDashboard() {
   const fetchedSkinIds = useRef(new Set());
   const navigatedRef = useRef(false);
   const [endGameConfirm, setEndGameConfirm] = useState(false);
-  const gameAudioRef = useRef(null);
 
-  // Gameplay music. Seamless loop, plays only on host's device
-  useEffect(() => {
-    const s = JSON.parse(localStorage.getItem('blazes_settings') || '{}');
-    const vol = (s.music_volume ?? 30) / 100;
-    const muted = s.sound_enabled === false || s.sound_enabled === 0;
-    const audio = createSeamlessLoop('/audio/GameMusic.mp3', muted ? 0 : vol);
-    gameAudioRef.current = audio;
-    audio.play();
-    return () => audio.stop();
-  }, []);
+  // Music is off for now (placeholder tracks, better ones coming in a future
+  // update) — the files stay in public/audio/ and seamlessAudio.js is
+  // untouched, this just doesn't call it.
 
   // Teacher closing the monitoring tab abandons the game so students aren't
   // left waiting on a host that's no longer watching. Skip when the game has
@@ -77,7 +67,6 @@ export default function TeacherMonitoringDashboard() {
           // Auto-navigate to results when game ends
           if (data.status === 'ended' && !navigatedRef.current) {
             navigatedRef.current = true;
-            if (gameAudioRef.current) gameAudioRef.current.stop();
             navigate(`/game/teacher-results/${gameCode}`);
           }
         } else {
@@ -122,7 +111,6 @@ export default function TeacherMonitoringDashboard() {
 
   const confirmEndGame = async () => {
     setEndGameConfirm(false);
-    if (gameAudioRef.current) gameAudioRef.current.stop();
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       await fetch(`${baseUrl}/api/games/${gameCode}/end`, { method: 'PUT' });
@@ -141,13 +129,11 @@ export default function TeacherMonitoringDashboard() {
       setLeaveConfirm(true);
       return;
     }
-    if (gameAudioRef.current) gameAudioRef.current.stop();
     navigate('/home/teacher');
   };
 
   const confirmLeave = async () => {
     setLeaveConfirm(false);
-    if (gameAudioRef.current) gameAudioRef.current.stop();
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
       await fetch(`${baseUrl}/api/games/${gameCode}/abandon`, { method: 'PUT' });
@@ -243,9 +229,6 @@ export default function TeacherMonitoringDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="text-gray-600">
-              <VolumeControl audioRef={gameAudioRef} />
-            </div>
             <button
               onClick={() => window.open(`/game/present/${gameCode}`, '_blank', 'noopener')}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors font-bold"
